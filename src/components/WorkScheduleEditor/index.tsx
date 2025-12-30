@@ -12,7 +12,7 @@ import {
     WorkScheduleDetail,
     WorkScheduleEntry,
     ApprovalStepInfo,
-    DeptDutyConfig
+    DeptDutyConfig, copyFromSpecificMonth
 } from '../../apis/workSchedule';
 import { fetchPositionsByDept, Position } from '../../apis/Position';
 import './style.css';
@@ -55,6 +55,9 @@ const WorkScheduleEditor: React.FC = () => {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [viewRejectReasonModalOpen, setViewRejectReasonModalOpen] = useState(false);
+    const [canFinalApprove, setCanFinalApprove] = useState(false);
+    const [showCopyModal, setShowCopyModal] = useState(false);
+    const [copySourceMonth, setCopySourceMonth] = useState('');
 
     useEffect(() => {
         loadData();
@@ -68,7 +71,7 @@ const WorkScheduleEditor: React.FC = () => {
     const [showConfigModal, setShowConfigModal] = useState(false); // 모달 표시 여부
     const [tempConfig, setTempConfig] = useState<DeptDutyConfig | null>(null); // 모달 내부 임시 저장용
     const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
+    const [canManageMembers, setCanManageMembers] = useState(false);
     const loadHolidays = async (year: number) => {
         try {
             // ✅ 백엔드 프록시를 통해 호출
@@ -255,6 +258,29 @@ const WorkScheduleEditor: React.FC = () => {
         }
     };
 
+    // 복사 핸들러
+    const handleCopyFromMonth = async () => {
+        if (!copySourceMonth) {
+            alert('복사할 년월을 선택해주세요.');
+            return;
+        }
+
+        try {
+            await copyFromSpecificMonth(
+                parseInt(id!),
+                copySourceMonth,
+                cookies.accessToken
+            );
+
+            alert('데이터 불러오기 완료');
+            setShowCopyModal(false);
+            await loadData(); // 데이터 새로고침
+
+        } catch (err: any) {
+            alert(err.response?.data?.error || '데이터 불러오기 실패');
+        }
+    };
+
     useEffect(() => {
         if (scheduleData) {
             const [year] = scheduleData.yearMonth.split('-').map(Number);
@@ -267,6 +293,63 @@ const WorkScheduleEditor: React.FC = () => {
             }
         }
     }, [scheduleData]);
+
+    // 2. 전결 권한 확인 useEffect
+    useEffect(() => {
+        const checkFinalApprovalRight = async () => {
+            if (!scheduleData || !currentUser) {
+                setCanFinalApprove(false);
+                return;
+            }
+
+            const currentStep = scheduleData.approvalSteps?.find((step: any) => step.isCurrent);
+
+            if (!currentStep || currentStep.approverId !== currentUser.userId) {
+                setCanFinalApprove(false);
+                return;
+            }
+
+            try {
+                const response = await axios.get(
+                    `/api/v1/work-schedules/${id}/can-final-approve`,
+                    { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                );
+
+                setCanFinalApprove(response.data.canFinalApprove);
+
+            } catch (err) {
+                console.error('전결 권한 확인 실패:', err);
+                setCanFinalApprove(false);
+            }
+        };
+
+        if (scheduleData?.schedule.approvalStatus === 'SUBMITTED') {
+            checkFinalApprovalRight();
+        }
+    }, [scheduleData, currentUser, id]);
+
+    // 3. 전결 승인 핸들러
+    const handleFinalApprove = async () => {
+        if (!window.confirm('전결 승인하시겠습니까? 이후 모든 승인 단계가 완료 처리됩니다.')) {
+            return;
+        }
+
+        try {
+            const currentStep = scheduleData?.approvalSteps?.find((step: any) => step.isCurrent);
+
+            await axios.post(
+                `/api/v1/work-schedules/${id}/final-approve`,
+                { stepOrder: currentStep?.stepOrder },
+                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+            );
+
+            alert('전결 승인이 완료되었습니다.');
+            navigate('/detail/work-schedule');
+
+        } catch (err: any) {
+            alert(err.response?.data?.error || '전결 승인 중 오류 발생');
+        }
+    };
 
     // 셀 렌더링 부분 수정
     const isWeekend = (dayOfWeek: string) => dayOfWeek === '토' || dayOfWeek === '일';
@@ -564,14 +647,14 @@ const WorkScheduleEditor: React.FC = () => {
                 entryId: entry.id,
                 workData: entry.workData || {},
                 remarks: entry.remarks || "",
-                positionId: entry.positionId !== undefined ? entry.positionId : null,  // ✅ positionId 추가
-                nightDutyRequired: entry.nightDutyRequired !== undefined ? entry.nightDutyRequired : null  // ✅ nightDutyRequired 추가
+                positionId: entry.positionId !== undefined ? entry.positionId : null,
+                nightDutyRequired: entry.nightDutyRequired !== undefined ? entry.nightDutyRequired : null
             }));
 
             // ✅ 하나의 API 호출로 모든 업데이트
             await updateWorkData(parseInt(id!), updates, cookies.accessToken);
 
-            // ✅ 하단 비고 저장 (유지)
+            // ✅ 하단 비고 저장
             if (scheduleData.schedule.remarks !== undefined) {
                 await axios.put(
                     `/api/v1/work-schedules/${id}/remarks`,
@@ -580,14 +663,16 @@ const WorkScheduleEditor: React.FC = () => {
                 );
             }
 
-            // ✅ 작성자 서명 (유지)
-            await axios.put(
-                `/api/v1/work-schedules/${id}/creator-signature`,
-                { isSigned: localCreatorSigned },
-                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
-            );
+            // ✅ [수정] 작성자 서명은 DRAFT 상태일 때만 업데이트
+            if (scheduleData.schedule.approvalStatus === 'DRAFT') {
+                await axios.put(
+                    `/api/v1/work-schedules/${id}/creator-signature`,
+                    { isSigned: localCreatorSigned },
+                    { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                );
+            }
 
-            // ✅ PDF 삭제 (유지, APPROVED 상태일 때)
+            // ✅ PDF 삭제 (APPROVED 상태일 때만)
             if (scheduleData.schedule.approvalStatus === 'APPROVED') {
                 await axios.delete(
                     `/api/v1/work-schedules/${id}/pdf`,
@@ -600,7 +685,7 @@ const WorkScheduleEditor: React.FC = () => {
                 : '임시저장되었습니다.';
             alert(message);
 
-            // ✅ 데이터 reload (await으로 동기화)
+            // ✅ 데이터 reload
             await loadData();
 
         } catch (err: any) {
@@ -710,6 +795,11 @@ const WorkScheduleEditor: React.FC = () => {
             const userData = await userRes.json();
             setCurrentUser(userData);
 
+            // ✅ 권한 정보 조회
+            const permRes = await fetch('/api/v1/user/me/permissions', {
+                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+            });
+            const permData = await permRes.json();
             // 근무표 상세 정보
             const detail = await fetchWorkScheduleDetail(parseInt(id!), cookies.accessToken);
 
@@ -734,15 +824,39 @@ const WorkScheduleEditor: React.FC = () => {
             const positionsData = await fetchPositionsByDept(detail.schedule.deptCode, cookies.accessToken);
             setPositions(positionsData);
 
-            // 편집 권한 확인
-            const canEdit = detail.schedule.createdBy === userData.userId &&
-                (detail.schedule.approvalStatus === 'DRAFT' || detail.schedule.approvalStatus === 'APPROVED');
+            // ✅ 권한 확인
+            const hasCreatePermission = permData.permissions?.includes('WORK_SCHEDULE_CREATE');
+            const hasManagePermission = permData.permissions?.includes('WORK_SCHEDULE_MANAGE');
+            const isCreator = detail.schedule.createdBy === userData.userId;
+            const isDraft = detail.schedule.approvalStatus === 'DRAFT';
+            const isApproved = detail.schedule.approvalStatus === 'APPROVED';
+
+            // ✅ 편집 가능 조건
+            const canEdit = (isDraft && isCreator) || (isApproved && hasManagePermission);
             setIsEditable(canEdit);
+
+            // ✅ 인원 추가/삭제 가능 조건
+            const canManageMembers = (isDraft && isCreator) || (isApproved && hasManagePermission);
+            setCanManageMembers(canManageMembers);
 
         } catch (err: any) {
             setError(err.response?.data?.error || '데이터를 불러올 수 없습니다.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!window.confirm('임시저장된 근무표를 삭제하시겠습니까?')) return;
+
+        try {
+            await axios.delete(`/api/v1/work-schedules/${id}`, {
+                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+            });
+            alert('삭제되었습니다.');
+            navigate('/detail/work-schedule');
+        } catch (err: any) {
+            alert(err.response?.data?.error || '삭제 실패');
         }
     };
 
@@ -1333,7 +1447,7 @@ const WorkScheduleEditor: React.FC = () => {
                         {scheduleData.yearMonth.replace('-', '년 ')}월 근무현황표
                     </h1>
 
-                    <div>
+                    <div className="wse-header-actions">
                         <span className="wse-header-info">
                             <span>부서: {scheduleData.deptName || schedule.deptCode}</span>
                         </span>
@@ -1348,6 +1462,14 @@ const WorkScheduleEditor: React.FC = () => {
                                 }}
                             >
                                 ⚙️ 당직 설정
+                            </button>
+                        )}
+                        {isEditable && schedule.approvalStatus === 'DRAFT' && (
+                            <button
+                                onClick={() => setShowCopyModal(true)}
+                                className="wse-btn-copy"
+                            >
+                                📋 이전 달 불러오기
                             </button>
                         )}
                     </div>
@@ -1371,23 +1493,16 @@ const WorkScheduleEditor: React.FC = () => {
                         </tr>
                         <tr>
                             <th>서명</th>
-                            {scheduleData.approvalSteps?. map((step: any, index: number) => {
-                                // 작성자 단계 여부 확인
+                            {scheduleData.approvalSteps?.map((step: any, index: number) => {
                                 const isCreatorStep = step.stepOrder === 0;
 
-                                // 서명 권한 확인
-                                const canSign = step.isCurrent &&
-                                    step.approverId === currentUser?. userId &&
-                                    ! step.isSigned;
+                                // ✅ 전결 처리 여부 확인
+                                const isFinalApproved = step.isFinalApproved;
 
-                                // signedSteps 확인 로직
                                 const isSigned = isCreatorStep
                                     ? localCreatorSigned
-                                    : (signedSteps. has(step.stepOrder) || !!step.signatureUrl);
+                                    : (signedSteps.has(step.stepOrder) || !!step.signatureUrl || isFinalApproved);
 
-                                const showSignature = isSigned;
-
-                                // 표시할 서명 이미지
                                 const displaySignature = isCreatorStep
                                     ? localCreatorSignatureUrl
                                     : step.signatureUrl;
@@ -1397,21 +1512,31 @@ const WorkScheduleEditor: React.FC = () => {
                                         key={index}
                                         className="wse-signature-cell"
                                         onClick={() => {
-                                            // ✅ [중요] 현재 사용자가 이 칸의 결재자인지 확인
                                             const isCurrentUserApprover = step.approverId === currentUser?.userId;
                                             const canClickSign = isCreatorStep || isCurrentUserApprover;
 
-                                            if (canClickSign) {
-                                                handleSignStep(step. stepOrder);
+                                            if (canClickSign && !isFinalApproved) {
+                                                handleSignStep(step.stepOrder);
                                             }
                                         }}
                                         style={{
-                                            cursor: (isCreatorStep || (step.approverId === currentUser?. userId)) ? 'pointer' : 'default',
-                                            backgroundColor: (isCreatorStep && isEditable) || (step.approverId === currentUser?.userId) ? '#FFF' : 'transparent'
+                                            cursor: (isCreatorStep || (step.approverId === currentUser?.userId)) && !isFinalApproved
+                                                ? 'pointer'
+                                                : 'default',
+                                            backgroundColor: isFinalApproved
+                                                ? '#FFF'
+                                                : ((isCreatorStep && isEditable) || (step.approverId === currentUser?.userId)
+                                                    ? '#FFF'
+                                                    : 'transparent')
                                         }}
                                     >
-                                        {showSignature ?  (
-                                            displaySignature ?  (
+                                        {isFinalApproved && !displaySignature ? (
+                                            // 서명 이미지가 없으면 "전결처리!" 텍스트 표시
+                                            <span style={{color: 'red', fontSize: '12px', fontWeight: 'bold'}}>
+                                                전결처리!
+                                            </span>
+                                        ) : isSigned ? (
+                                            displaySignature ? (
                                                 <img
                                                     src={displaySignature}
                                                     alt="서명"
@@ -1421,8 +1546,7 @@ const WorkScheduleEditor: React.FC = () => {
                                                 <span style={{color: 'blue', fontWeight: 'bold'}}>서명(저장대기)</span>
                                             )
                                         ) : (
-                                            // 서명 안 된 상태
-                                            (isCreatorStep || (step. approverId === currentUser?.userId)) ? (
+                                            (isCreatorStep || (step.approverId === currentUser?.userId)) ? (
                                                 <span className="sign-placeholder">클릭하여 서명</span>
                                             ) : (
                                                 <span style={{color: '#ccc'}}>-</span>
@@ -1466,7 +1590,6 @@ const WorkScheduleEditor: React.FC = () => {
                         </tbody>
                     </table>
                 </div>
-
 
 
                 {/* 근무 타입 버튼 (편집 가능할 때만) */}
@@ -1519,13 +1642,12 @@ const WorkScheduleEditor: React.FC = () => {
                                         <div className="wse-day-of-week">{d.dayOfWeek}</div>
                                     </th>
                                 );
-                            })}
-                            {renderDutyHeaders()} {/* ✅ 동적 헤더 */}
+                            })}{renderDutyHeaders()}
                             <th colSpan={3}>휴가</th>
                             <th rowSpan={2}>비고</th>
                         </tr>
                         <tr>
-                            {renderDutySubHeaders()} {/* ✅ 동적 서브헤더 */}
+                            {renderDutySubHeaders()}
                             <th>총 휴가수</th>
                             <th>이달 사용수</th>
                             <th>사용 총계</th>
@@ -1533,7 +1655,7 @@ const WorkScheduleEditor: React.FC = () => {
                         </thead>
                         <tbody>
                         {entries.map((entry, idx) => {
-                            const user = users[entry.userId] || { userName: entry.userName || entry.userId };
+                            const user = users[entry.userId] || {userName: entry.userName || entry.userId};
                             const position = positions.find(p => p.id === entry.positionId);
                             const isLongTextMode = entry.workData?.['rowType'] === 'longText';
 
@@ -1651,7 +1773,7 @@ const WorkScheduleEditor: React.FC = () => {
                 </div>
 
 
-                {isEditable && (
+                {canManageMembers && (
                     <div className="member-management-buttons">
                         <button onClick={() => setShowAddMemberModal(true)}>
                             + 인원 추가
@@ -1721,16 +1843,16 @@ const WorkScheduleEditor: React.FC = () => {
                 </div>
 
                 {/* 버튼 */}
-                <div className="wse-action-buttons">
-                    <button onClick={() => navigate('/detail/work-schedule')} className="wse-btn-list">
-                        목록
+                <div className="wse-action-buttons editor-footer">
+                    <button onClick={() => navigate('/detail/work-schedule')} className="wse-btn wse-btn-list">
+                        목록으로
                     </button>
 
                     {/* 반려된 상태 - REJECTED */}
                     {schedule.approvalStatus === 'REJECTED' && (
                         <button
                             onClick={() => setViewRejectReasonModalOpen(true)}
-                            className="wse-btn-view-reason"
+                            className="wse-btn wse-btn-reject"
                         >
                             반려 사유 확인
                         </button>
@@ -1741,62 +1863,71 @@ const WorkScheduleEditor: React.FC = () => {
                             {schedule.approvalStatus === 'APPROVED' ? (
                                 <button
                                     onClick={handleTempSave}
-                                    className="wse-btn-edit"
+                                    className="wse-btn wse-btn-save"
                                     disabled={isSaving}
                                 >
-                                    {isSaving ? '저장중...' : '수정'}
+                                    {isSaving ? '저장중...' : '수정하기'}
                                 </button>
                             ) : (
                                 <>
                                     <button
                                         onClick={handleTempSave}
-                                        className="wse-btn-temp-save"
+                                        className="wse-btn wse-btn-save"
                                         disabled={isSaving}
                                     >
                                         {isSaving ? '저장중...' : '임시저장'}
                                     </button>
                                     <button
                                         onClick={handleSubmit}
-                                        className="wse-btn-submit"
+                                        className="wse-btn wse-btn-submit"
                                     >
-                                        제출
+                                        제출하기
+                                    </button>
+                                    <button
+                                        onClick={handleDelete}
+                                        className="wse-btn wse-btn-delete"
+                                    >
+                                        삭제하기
                                     </button>
                                 </>
                             )}
                         </>
                     )}
 
-                    {schedule. approvalStatus === 'SUBMITTED' &&
-                        (() => {
-                            const currentStep = scheduleData?. approvalSteps?.find((step: any) => step.isCurrent);
-                            return currentStep && signedSteps. has(currentStep.stepOrder);
-                        })() && (
-                            <>
-                                <button onClick={() => handleApprovalAction(false)} className="wse-btn-reject">
-                                    반려
-                                </button>
-                                <button onClick={() => handleApprovalAction(true)} className="wse-btn-approve">
-                                    승인
-                                </button>
-                            </>
+                    {schedule.approvalStatus === 'APPROVED' &&
+                        currentUser?.permissions?.includes('WORK_SCHEDULE_MANAGE') && (
+                            <button
+                                onClick={() => setShowRejectModal(true)}
+                                className="wse-btn wse-btn-reject"
+                            >
+                                취소(반려)
+                            </button>
                         )}
 
-                    {/* 승인자 - REVIEWED */}
-                    {schedule.approvalStatus === 'REVIEWED' && currentUser?.userId === schedule.approverId && (
-                        <>
-                            <button onClick={() => handleApprove(false)} className="wse-btn-reject">
-                                반려
-                            </button>
-                            <button onClick={() => handleApprove(true)} className="wse-btn-approve">
-                                최종 승인
-                            </button>
-                        </>
-                    )}
+                    {schedule.approvalStatus === 'SUBMITTED' &&
+                        (() => {
+                            const currentStep = scheduleData?.approvalSteps?.find((step: any) => step.isCurrent);
+                            return currentStep && signedSteps.has(currentStep.stepOrder);
+                        })() && (
+                            <>
+                                <button onClick={() => handleApprovalAction(false)} className="wse-btn wse-btn-reject">
+                                    취소(반려)
+                                </button>
+                                <button onClick={() => handleApprovalAction(true)} className="wse-btn wse-btn-approve">
+                                    승인하기
+                                </button>
+                                {canFinalApprove && (
+                                    <button onClick={handleFinalApprove} className="wse-btn wse-btn-final-approve">
+                                        전결하기
+                                    </button>
+                                )}
+                            </>
+                        )}
 
                     {schedule.approvalStatus === 'APPROVED' && (
                         <button
                             onClick={handlePdfDownload}
-                            className="wse-btn-print"
+                            className="wse-btn wse-btn-print"
                             disabled={isGeneratingPdf}
                         >
                             {isGeneratingPdf ? 'PDF 생성 중...' : 'PDF 다운로드'}
@@ -1976,6 +2107,24 @@ const WorkScheduleEditor: React.FC = () => {
                         isReadOnly={true}
                         title="반려 사유 확인"
                     />
+                )}
+
+                {showCopyModal && (
+                    <div className="wse-modal-overlay" onClick={() => setShowCopyModal(false)}>
+                        <div className="wse-copy-modal-content" onClick={(e) => e.stopPropagation()}>
+                            <h2>이전 달 데이터 불러오기</h2>
+                            <p>승인된 근무표에서 데이터를 가져옵니다.</p>
+                            <input
+                                type="month"
+                                value={copySourceMonth}
+                                onChange={(e) => setCopySourceMonth(e.target.value)}
+                            />
+                            <div className="wse-copy-modal-actions">
+                                <button onClick={() => setShowCopyModal(false)}>취소</button>
+                                <button onClick={handleCopyFromMonth}>불러오기</button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </Layout>

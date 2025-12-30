@@ -54,17 +54,17 @@ const PositionManagement: React.FC = () => {
             });
             const userData = await userRes.json();
             const permissions: string[] = userData.permissions || [];
-            const hasWorkScheduleManage = permissions.includes('WORK_SCHEDULE_MANAGE'); // 근무현황표 관련 권한
-            // 부서장(jobLevel=1) 이상 admin, 근무현황표 권한이 있는 사람만 접근 가능
-            if (!userData.isAdmin || parseInt(userData.jobLevel) < 1)
-            //      || !hasWorkScheduleManage)
-            {
+            // ✅ WORK_SCHEDULE_CREATE 권한 확인
+            const hasCreatePermission = permissions.includes('WORK_SCHEDULE_CREATE');
+            const isSuperAdmin = parseInt(userData.jobLevel) === 6;
+
+            if (!hasCreatePermission && !isSuperAdmin) {
                 alert('직책 관리 권한이 없습니다.');
                 navigate('/detail/main-page');
                 return;
             }
 
-            setCurrentUser(userData);
+            setCurrentUser(userData); 
             await loadData();
         } catch (err) {
             navigate('/detail/main-page');
@@ -193,123 +193,110 @@ const PositionManagement: React.FC = () => {
         }
     };
 
-    if (loading) return <Layout><div className="pm-loading">로딩 중...</div></Layout>;
+    if (loading) return <Layout>
+        <div className="pm-loading">
+            <div className="loading">로딩중...</div>
+        </div>
+    </Layout>;
     if (error) return <Layout><div className="pm-error">{error}</div></Layout>;
 
     return (
         <Layout>
             <div className="position-management">
                 <div className="pm-page-header">
-                    <h1>직책 관리</h1>
-                    <div className="pm-header-info">
-                        <span>부서: {departmentNames[currentUser?.deptCode] || currentUser?.deptCode}</span>
+                    <div>
+                        <h1>직책 관리</h1>
+                        <span className="pm-header-info">
+                            {/* 부서명 등 메타 정보 표시, 없으면 아래 텍스트 */}
+                            근무표 및 결재 라인에 표시될 직책를 관리합니다.
+                        </span>
                     </div>
-                </div>
-
-                <div className="pm-position-actions">
-                <button onClick={handleCreate} className="pm-btn-create">
-                        + 새 직책 추가
+                    {/* 상단 액션 버튼 위치 이동 */}
+                    <button className="pm-btn-create" onClick={() => {
+                        setEditingPosition(null);
+                        setPositionName('');
+                        setDisplayOrder(null);
+                        setShowModal(true);
+                    }}>
+                        {/* + 아이콘 효과 */}
+                        <span style={{ fontSize: '18px', lineHeight: 1 }}>+</span> 직위 추가
                     </button>
                 </div>
 
-                <div className="pm-position-list">
-                    {positions.length === 0 ? (
-                        <div className="pm-empty-state">
-                            <p>등록된 직책이 없습니다.</p>
-                        </div>
-                    ) : (
-                        <table className="pm-position-table">
-                            <thead>
-                            <tr>
-                                <th>순서</th>
-                                <th>직책명</th>
-                                <th>표시 순서</th>
-                                <th>상태</th>
-                                <th>생성일</th>
-                                <th>작업</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {positions.map((position, index) => (
-                                <tr key={position.id}>
-                                    <td>
-                                        <div className="pm-order-controls">
-                                            <button
-                                                onClick={() => moveUp(position, index)}
-                                                disabled={index === 0}
-                                                className="pm-btn-order"
-                                                title="위로"
-                                            >
-                                                ▲
-                                            </button>
-                                            <button
-                                                onClick={() => moveDown(position, index)}
-                                                disabled={index === positions.length - 1}
-                                                className="pm-btn-order"
-                                                title="아래로"
-                                            >
-                                                ▼
-                                            </button>
-                                        </div>
-                                    </td>
-                                    <td className="pm-position-name">{position.positionName}</td>
-                                    <td>{position.displayOrder}</td>
-                                    <td>
-                                            <span className={`pm-status-badge ${position.isActive ? 'active' : 'inactive'}`}>
-                                                {position.isActive ? '활성' : '비활성'}
-                                            </span>
-                                    </td>
-                                    <td>{new Date(position.createdAt).toLocaleDateString()}</td>
-                                    <td>
-                                        <div className="pm-action-buttons">
-                                            <button
-                                                onClick={() => handleEdit(position)}
-                                                className="pm-btn-edit"
-                                            >
-                                                수정
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(position.id)}
-                                                className="pm-btn-delete"
-                                            >
-                                                삭제
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            </tbody>
-                        </table>
-                    )}
-                </div>
+                {loading ? (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                        데이터를 불러오는 중입니다...
+                    </div>
+                ) : error ? (
+                    <div style={{ padding: '16px', background: '#fee2e2', color: '#ef4444', borderRadius: '8px' }}>
+                        {error}
+                    </div>
+                ) : (
+                    <div className="pm-position-list">
+                        {positions.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e7eb' }}>
+                                등록된 직책가 없습니다. '직책 추가' 버튼을 눌러 시작하세요.
+                            </div>
+                        ) : (
+                            positions.map((pos) => (
+                                <div key={pos.id} className="pm-position-card">
+                                    <div className="pm-card-info">
+                                        <h3>{pos.positionName}</h3>
+                                        <p>표시 순서: {pos.displayOrder}</p>
+                                    </div>
+                                    <div className="pm-card-actions">
+                                        <button
+                                            className="pm-btn-edit"
+                                            onClick={() => {
+                                                setEditingPosition(pos);
+                                                setPositionName(pos.positionName);
+                                                setDisplayOrder(pos.displayOrder);
+                                                setShowModal(true);
+                                            }}
+                                        >
+                                            수정
+                                        </button>
+                                        <button
+                                            className="pm-btn-delete"
+                                            onClick={() => handleDelete(pos.id)}
+                                        >
+                                            삭제
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
 
-                {/* 생성/수정 모달 */}
+                {/* 모달 로직 그대로 유지, 클래스 스타일만 CSS에서 변경됨 */}
                 {showModal && (
                     <div className="pm-modal-overlay" onClick={() => setShowModal(false)}>
                         <div className="pm-modal-content" onClick={(e) => e.stopPropagation()}>
                             <h2>{editingPosition ? '직책 수정' : '새 직책 추가'}</h2>
 
                             <div className="pm-form-group">
-                                <label>직책명 *</label>
+                                <label>직책 명칭</label>
                                 <input
                                     type="text"
                                     value={positionName}
                                     onChange={(e) => setPositionName(e.target.value)}
-                                    placeholder="예: 수간호사, 간호사, 팀장 등"
+                                    placeholder="예: 수간호사, 팀장 (필수)"
                                     className="pm-form-input"
+                                    autoFocus
                                 />
                             </div>
 
                             <div className="pm-form-group">
-                                <label>표시 순서 (선택)</label>
+                                <label>표시 순서</label>
                                 <input
                                     type="number"
                                     value={displayOrder || ''}
                                     onChange={(e) => setDisplayOrder(e.target.value ? parseInt(e.target.value) : null)}
-                                    placeholder="숫자가 작을수록 상위 표시"
+                                    placeholder="숫자가 작을수록 상위에 표시됩니다"
                                     className="pm-form-input"
                                 />
-                                <small>비워두면 자동으로 마지막에 추가됩니다.</small>
+                                <small>비워두면 자동으로 목록의 마지막 순서로 지정됩니다.</small>
                             </div>
 
                             <div className="pm-modal-actions">
@@ -317,7 +304,7 @@ const PositionManagement: React.FC = () => {
                                     취소
                                 </button>
                                 <button onClick={handleSave} className="pm-btn-confirm">
-                                    저장
+                                    {editingPosition ? '저장하기' : '추가하기'}
                                 </button>
                             </div>
                         </div>

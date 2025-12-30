@@ -51,13 +51,6 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
     const sigCanvas = useRef<SignatureCanvas>(null);
     const [sigError, setSigError] = useState<string>('');
 
-    // SMS 인증 관련 상태
-    const [verificationCode, setVerificationCode] = useState('');
-    const [isCodeSent, setIsCodeSent] = useState(false);
-    const [isPhoneVerified, setIsPhoneVerified] = useState(false);
-    const [verificationLoading, setVerificationLoading] = useState(false);
-    const [timer, setTimer] = useState(0);
-
     // 개인정보 동의 관련 상태
     const [privacyConsent, setPrivacyConsent] = useState(initialPrivacyConsent);  // 수정: initial 값으로 설정
     const [notificationConsent, setNotificationConsent] = useState(initialNotificationConsent);  // 수정: initial 값으로 설정
@@ -74,11 +67,6 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
         setNewPassword('');
         setConfirmNewPassword('');
         setError('');
-        // SMS 인증 상태 초기화
-        setVerificationCode('');
-        setIsCodeSent(false);
-        setIsPhoneVerified(!!initialPhone); // 기존 전화번호가 있으면 인증된 것으로 간주
-        setTimer(0);
         // 동의 상태 초기화
         setPrivacyConsent(initialPrivacyConsent);
         setNotificationConsent(initialNotificationConsent);
@@ -86,138 +74,14 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
         setShowNotificationModal(false);
     }, [initialPhone, initialAddress, initialDetailAddress, initialPrivacyConsent, initialNotificationConsent, isOpen]);
 
-    // 타이머 효과
-    useEffect(() => {
-        if (timer <= 0) return;
-        const id = setInterval(() => {
-            setTimer(t => {
-                if (t <= 1) {
-                    clearInterval(id);
-                    return 0;
-                }
-                return t - 1;
-            });
-        }, 1000);
-        return () => clearInterval(id);
-    }, [timer]);
 
     if (!isOpen) {
         return null;
     }
+
     const isPhoneValid = (input: string) => {
         const digits = input.replace(/\D/g, '');
         return /^010\d{8}$/.test(digits); // 한국 휴대폰 번호 형식으로 더 엄격하게
-    };
-
-    // 1. SMS 인증번호 발송 함수 수정
-    const handleSendVerificationCode = async () => {
-        const phoneDigits = phone.replace(/\D/g, '');
-
-        if (!phoneDigits) {
-            setError('전화번호를 입력해주세요.');
-            return;
-        }
-
-        if (!isPhoneValid(phone)) {
-            setError('올바른 휴대폰 번호 형식을 입력해주세요. (010-XXXX-XXXX)');
-            return;
-        }
-
-        // 기존 번호와 동일한 경우 체크
-        if (phoneDigits === originalPhone.replace(/\D/g, '')) {
-            setError('현재 등록된 번호와 동일합니다.');
-            return;
-        }
-
-        setVerificationLoading(true);
-        setError('');
-
-        try {
-            const response = await fetch(`/api/v1/user/${userId}/send-verification`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                credentials: 'include',
-                body: new URLSearchParams({
-                    phone: phoneDigits
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || '인증번호 발송에 실패했습니다.');
-            }
-
-            const result = await response.json();
-            setIsCodeSent(true);
-            setTimer(300);
-            alert('인증번호가 발송되었습니다.');
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setVerificationLoading(false);
-        }
-    };
-
-    // 2. SMS 인증번호 확인 함수 수정
-    const handleVerifyCode = async () => {
-        const code = verificationCode.replace(/\D/g, '');
-
-        if (!code || code.length !== 6) {
-            setError('6자리 인증번호를 정확히 입력해주세요.');
-            return;
-        }
-
-        if (timer <= 0) {
-            setError('인증 시간이 만료되었습니다. 다시 요청해주세요.');
-            return;
-        }
-
-        setVerificationLoading(true);
-        setError('');
-
-        try {
-            const response = await fetch(`/api/v1/user/${userId}/verify-code`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                credentials: 'include',
-                body: new URLSearchParams({
-                    phone: phone.replace(/\D/g, ''),
-                    code: code
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || '인증번호가 일치하지 않습니다.');
-            }
-
-            setIsPhoneVerified(true);
-            setTimer(0);
-            setOriginalPhone(phone);
-            setEditingPhone(false);
-            setIsCodeSent(false);
-            setVerificationCode('');
-            alert('전화번호 인증이 완료되었습니다.');
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setVerificationLoading(false);
-        }
-    };
-
-    const handleCancelEdit = () => {
-        setPhone(originalPhone);
-        setEditingPhone(false);
-        setIsCodeSent(false);
-        setVerificationCode('');
-        setIsPhoneVerified(!!originalPhone);
-        setTimer(0);
-        setError('');
-        setVerificationLoading(false);
     };
 
     const formatPhoneNumber = (value: string) => {
@@ -230,19 +94,6 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const formatted = formatPhoneNumber(e.target.value);
         setPhone(formatted);
-
-        // 포맷을 제거한 순수 숫자로 비교
-        const newPhoneDigits = formatted.replace(/\D/g, '');
-        const originalPhoneDigits = originalPhone.replace(/\D/g, '');
-
-        if (newPhoneDigits !== originalPhoneDigits) {
-            setIsPhoneVerified(false);
-            setIsCodeSent(false);
-            setVerificationCode('');
-            setTimer(0);
-        } else if (newPhoneDigits === originalPhoneDigits && originalPhoneDigits) {
-            setIsPhoneVerified(true);
-        }
     };
 
     const formatTime = (seconds: number) => {
@@ -305,11 +156,7 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
             setError('개인정보 수집·이용에 동의해주세요.');
             return;
         }
-        // 전화번호 변경 시 인증 확인
-        if (phone.replace(/\D/g, '') !== originalPhone.replace(/\D/g, '') && !isPhoneVerified) {
-            setError('전화번호 인증을 완료해주세요.');
-            return;
-        }
+
         if (requirePasswordChange || (newPassword && newPassword.length > 0)) {
             if (newPassword !== confirmNewPassword) {
                 setError('새 비밀번호가 일치하지 않습니다.');
@@ -335,7 +182,6 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
                 newPassword?: string;
                 privacyConsent?: boolean;
                 notificationConsent?: boolean;
-                smsVerificationCode?: string;
             } = {};
 
             // phone과 address는 값이 있을 경우에만 포함
@@ -348,12 +194,6 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
 
             // 알림 동의 정보 포함
             requestBody.notificationConsent = notificationConsent;
-
-            // SMS 인증 코드 포함 (전화번호가 변경된 경우)
-            const phoneChanged = phone.replace(/\D/g, '') !== originalPhone.replace(/\D/g, '');
-            if (phoneChanged && verificationCode) {
-                requestBody.smsVerificationCode = verificationCode;
-            }
 
             // newPassword가 입력되었을 때만 currentPassword와 newPassword 포함
             if (newPassword.trim() !== '') {
@@ -394,91 +234,17 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
                 <p>{requirePasswordChange ? '보안을 위해 비밀번호 및 필수 정보를 업데이트해 주세요.' : '필요한 프로필 정보를 업데이트해 주세요.'}</p>
                 {error && <p className="error-message">{error}</p>}
                 <form onSubmit={handleSubmit}>
-                    {/* 전화번호 및 SMS 인증 */}
                     <div className="form-group">
                         <label htmlFor="phone">핸드폰 번호:</label>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                            <input
-                                type="text"
-                                id="phone"
-                                value={phone}
-                                onChange={handlePhoneChange}
-                                placeholder="예: 010-1234-5678"
-                                disabled={isPhoneVerified && phone === originalPhone && !editingPhone}
-                                style={{flex: 1}}
-                            />
-                            {phone === originalPhone && originalPhone && (
-                                <span className="verified-text" style={{color: 'green'}}>✓ 기존번호</span>
-                            )}
-                            {isPhoneVerified && phone !== originalPhone && (
-                                <span className="verified-text" style={{color: 'green'}}>✓ 인증완료</span>
-                            )}
-                            {/* 기존번호일 때: 번호변경 버튼 노출 */}
-                            {phone === originalPhone && originalPhone && isPhoneVerified && !editingPhone && (
-                                <button
-                                    type="button"
-                                    onClick={() => setEditingPhone(true)}
-                                    className="verify-btn"
-                                    style={{ backgroundColor: '#ffc107' }}
-                                >
-                                    번호변경
-                                </button>
-                            )}
-
-                            {/* 편집 중(새번호 입력 중)일 때: 발송 버튼은 기존과 동일하게 보이도록 */}
-                            {(!isPhoneVerified || editingPhone) && (
-                                <button
-                                    type="button"
-                                    onClick={handleSendVerificationCode}
-                                    disabled={verificationLoading || timer > 0}
-                                    className="verify-btn"
-                                >
-                                    {verificationLoading ? '발송중...' : isCodeSent ? `재발송${timer > 0 ? ` (${formatTime(timer)})` : ''}` : '인증번호 발송'}
-                                </button>
-                            )}
-
-                            {/* 편집 중이면 취소 버튼 노출 */}
-                            {editingPhone && (
-                                <button
-                                    type="button"
-                                    onClick={handleCancelEdit}
-                                    className="verify-btn"
-                                    style={{ marginLeft: 8, backgroundColor: '#6c757d' }}
-                                >
-                                    취소
-                                </button>
-                            )}
-                        </div>
+                        <input
+                            type="text"
+                            id="phone"
+                            value={phone}
+                            onChange={handlePhoneChange}
+                            placeholder="예: 010-0000-0000"
+                            style={{flex: 1}}
+                        />
                     </div>
-
-                    {/* 인증번호 입력 */}
-                    {isCodeSent && !isPhoneVerified && (
-                        <div className="form-group">
-                            <label htmlFor="verificationCode">인증번호:</label>
-                            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                                <input
-                                    type="text"
-                                    id="verificationCode"
-                                    value={verificationCode}
-                                    onChange={(e) => setVerificationCode(e.target.value)}
-                                    placeholder="인증번호 6자리"
-                                    maxLength={6}
-                                    style={{flex: 1}}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleVerifyCode}
-                                    disabled={verificationLoading}
-                                    className="verify-btn"
-                                >
-                                    {verificationLoading ? '확인중...' : '인증확인'}
-                                </button>
-                            </div>
-                            {timer > 0 && (
-                                <p className="timer-text">남은 시간: {formatTime(timer)}</p>
-                            )}
-                        </div>
-                    )}
 
                     <div className="form-group">
                         <label htmlFor="address">주소:</label>
@@ -652,7 +418,7 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
                     )}
 
                     {/* 마케팅 수신동의서 모달 */}
-                    {showNotificationModal  && (
+                    {showNotificationModal && (
                         <div className="policy-modal-overlay">
                             <div className="policy-modal-content">
                                 <div className="policy-modal-header">

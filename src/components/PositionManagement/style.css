@@ -1,196 +1,156 @@
-.position-management {
-    max-width: 1000px;
-    margin: 20px auto;
-    padding: 20px;
+:root {
+    --pm-primary: #3b82f6;       /* 모던한 블루 */
+    --pm-primary-hover: #2563eb;
+    --pm-danger: #ef4444;        /* 삭제용 레드 */
+    --pm-danger-bg: #fee2e2;
+    --pm-text-main: #1f2937;
+    --pm-text-sub: #6b7280;
+    --pm-bg-gray: #f9fafb;
+    --pm-border: #e5e7eb;
+    --pm-radius: 8px;
+    --pm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --pm-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
+.position-management {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 20px;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+/* --- 헤더 영역 --- */
 .pm-page-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #e9ecef;
+    align-items: flex-end;
+    margin-bottom: 24px;
+    padding-bottom: 0; /* 보더 제거하고 깔끔하게 */
 }
 
 .pm-page-header h1 {
-    font-size: 24px;
-    color: #2c3e50;
-    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--pm-text-main);
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
 }
 
 .pm-header-info {
-    font-size: 16px;
-    color: #666;
+    font-size: 15px;
+    color: var(--pm-text-sub);
+    font-weight: 400;
 }
 
 .pm-position-actions {
-    margin: 20px 0;
+    margin-bottom: 20px;
     text-align: right;
 }
 
-/* 버튼 스타일 개선 */
+/* --- 버튼 공통 스타일 (Admin 스타일) --- */
+button {
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
 .pm-btn-create {
-    padding: 12px 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
     font-size: 14px;
     font-weight: 600;
-    background: linear-gradient(135deg, var(--blue-500) 0%, var(--blue-600) 100%);
     color: white;
-    border: none;
-    border-radius: 10px;
+    background-color: var(--pm-primary);
+    border: 1px solid transparent;
+    border-radius: var(--pm-radius);
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-soft);
-    position: relative;
-    overflow: hidden;
-}
-
-.pm-btn-create::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-}
-
-.pm-btn-create:hover::before {
-    left: 100%;
+    box-shadow: var(--pm-shadow-sm);
 }
 
 .pm-btn-create:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-medium);
-    background: linear-gradient(135deg, var(--blue-600) 0%, var(--blue-700) 100%);
+    background-color: var(--pm-primary-hover);
+    transform: translateY(-1px);
 }
 
-.pm-position-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.pm-position-table thead {
-    background-color: #f5f5f5;
-}
-
-.pm-position-table th,
-.pm-position-table td {
-    padding: 15px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
-
-.pm-position-table th {
-    font-weight: 600;
-    color: #333;
-}
-
-.pm-position-table tbody tr:hover {
-    background-color: #f9f9f9;
-}
-
-.pm-order-controls {
+/* --- 직위 리스트 (카드 -> 리스트 행 형태) --- */
+.pm-position-list {
     display: flex;
-    gap: 5px;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.pm-btn-order {
-    padding: 4px 8px;
-    background-color: #f0f0f0;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.2s;
+.pm-position-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 16px 24px;
+    border: 1px solid var(--pm-border);
+    border-radius: var(--pm-radius);
+    box-shadow: var(--pm-shadow-sm);
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.pm-btn-order:hover:not(:disabled) {
-    background-color: #e0e0e0;
+.pm-position-card:hover {
+    border-color: #d1d5db;
+    box-shadow: var(--pm-shadow-md);
 }
 
-.pm-btn-order:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-}
-
-.pm-position-name {
+.pm-card-info h3 {
+    margin: 0;
+    font-size: 17px;
     font-weight: 600;
-    color: #333;
+    color: var(--pm-text-main);
 }
 
-.pm-status-badge {
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
+.pm-card-info p {
+    margin: 4px 0 0 0;
+    font-size: 13px;
+    color: var(--pm-text-sub);
 }
 
-.pm-status-badge.active {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.pm-status-badge.inactive {
-    background-color: #f8d7da;
-    color: #721c24;
-}
-
-.pm-action-buttons {
+/* 버튼 그룹 */
+.pm-card-actions {
     display: flex;
     gap: 8px;
 }
 
-.pm-btn-edit,
-.pm-btn-delete {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
+.pm-btn-edit, .pm-btn-delete {
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s;
-}
-
-.pm-btn-edit {
-    background-color: #2196F3;
-    color: white;
+    border: 1px solid var(--pm-border);
+    background: white;
+    color: var(--pm-text-main);
 }
 
 .pm-btn-edit:hover {
-    background-color: #1976D2;
+    background-color: var(--pm-bg-gray);
+    border-color: #d1d5db;
 }
 
 .pm-btn-delete {
-    background-color: #f44336;
-    color: white;
+    color: var(--pm-danger);
+    border-color: #fee2e2;
 }
 
 .pm-btn-delete:hover {
-    background-color: #d32f2f;
+    background-color: var(--pm-danger-bg);
+    border-color: #fecaca;
 }
 
-.pm-empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #999;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-/* 모달 */
+/* --- 모달 (깔끔한 팝업 스타일) --- */
 .pm-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4); /* 조금 더 진하게 */
+    backdrop-filter: blur(4px); /* 블러 효과 추가 */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -199,93 +159,106 @@
 
 .pm-modal-content {
     background: white;
-    border-radius: 8px;
-    padding: 30px;
-    min-width: 500px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border-radius: 12px; /* 둥글게 */
+    padding: 32px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
 
 .pm-modal-content h2 {
-    margin-bottom: 24px;
-    font-size: 22px;
-    color: #333;
+    margin: 0 0 24px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--pm-text-main);
 }
 
+/* 폼 스타일 */
 .pm-form-group {
     margin-bottom: 20px;
 }
 
 .pm-form-group label {
     display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #333;
-}
-
-.pm-form-group small {
-    display: block;
-    margin-top: 4px;
-    color: #666;
-    font-size: 12px;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--pm-text-main);
 }
 
 .pm-form-input {
     width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-    transition: border-color 0.3s;
+    padding: 10px 12px;
+    font-size: 15px;
+    border: 1px solid var(--pm-border);
+    border-radius: 6px;
+    transition: all 0.2s;
+    box-sizing: border-box; /* 패딩 포함 */
 }
 
 .pm-form-input:focus {
     outline: none;
-    border-color: #4CAF50;
+    border-color: var(--pm-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); /* 포커스 링 */
 }
 
+.pm-form-group small {
+    display: block;
+    margin-top: 6px;
+    color: var(--pm-text-sub);
+    font-size: 12px;
+}
+
+/* 모달 하단 버튼 */
 .pm-modal-actions {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    margin-top: 24px;
-}
-
-.pm-btn-cancel,
-.pm-btn-confirm {
-    padding: 10px 24px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    transition: all 0.3s;
+    margin-top: 32px;
 }
 
 .pm-btn-cancel {
-    background-color: #f0f0f0;
-    color: #333;
+    padding: 10px 18px;
+    background: white;
+    border: 1px solid var(--pm-border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--pm-text-main);
+    cursor: pointer;
 }
 
 .pm-btn-cancel:hover {
-    background-color: #e0e0e0;
+    background: var(--pm-bg-gray);
 }
 
 .pm-btn-confirm {
-    background-color: #4CAF50;
+    padding: 10px 24px;
+    background: var(--pm-primary);
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
     color: white;
+    cursor: pointer;
 }
 
 .pm-btn-confirm:hover {
-    background-color: #45a049;
+    background: var(--pm-primary-hover);
 }
 
-.pm-loading,
-.pm-error {
+.pm-loading, .pm-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 40px;
     text-align: center;
-    padding: 60px 20px;
-    font-size: 18px;
-}
-
-.pm-error {
-    color: #d32f2f;
+    color: #6b7280;
+    font-size: 16px;
 }

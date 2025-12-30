@@ -18,8 +18,8 @@ interface User {
     deptCode?: string;
     email?: string;
     signatureUrl?: string | null;
-    signimage?: string | null;  // base64 이미지 문자열
-    signpath?: string | null;   // 이미지 경로 URL
+    signimage?: string | null;
+    signpath?: string | null;
     privacyConsent?: boolean;
     notificationConsent?: boolean;
 }
@@ -43,21 +43,10 @@ const MyPage: React.FC = () => {
         notificationConsent: false
     });
 
-    // 전화번호 인증 관련 state
-    const [isPhoneVerified, setIsPhoneVerified] = useState(false);
-    const [verificationCode, setVerificationCode] = useState('');
-    const [serverCode, setServerCode] = useState('');
-    const [isVerifying, setIsVerifying] = useState(false);
-    const [editingPhone, setEditingPhone] = useState(false);
-    const [isCodeSent, setIsCodeSent] = useState(false);
-    const [timer, setTimer] = useState(0);
-
-    // 마케팅 정책 모달 상태 추가
-    const [showNotificationPolicyModal, setShowNotificationPolicyModal] = useState(false); // ✅ 상태 변수 이름을 변경합니다.
+    const [showNotificationPolicyModal, setShowNotificationPolicyModal] = useState(false);
     const [showSignatureModal, setShowSignatureModal] = useState(false);
     const [sigError, setSigError] = useState('');
     const sigCanvas = useRef<SignatureCanvas>(null);
-
     const [departmentNames, setDepartmentNames] = useState<Record<string, string>>({});
 
     const formatPhoneNumber = (value: string) => {
@@ -67,28 +56,16 @@ const MyPage: React.FC = () => {
         return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`;
     };
 
-    const isPhoneValid = (phone: string) => {
-        const digits = phone.replace(/\D/g, '');
-        return /^010\d{8}$/.test(digits);
-    };
-
     const getPositionByJobLevel = (jobLevel: string | number | undefined): string => {
         const level = String(jobLevel);
         switch (level) {
-            case '0':
-                return '사원';
-            case '1':
-                return '부서장';
-            case '2':
-                return '진료센터장';
-            case '3':
-                return '원장';
-            case '4':
-                return '행정원장';
-            case '5':
-                return '대표원장';
-            default:
-                return '';
+            case '0': return '사원';
+            case '1': return '부서장';
+            case '2': return '진료센터장';
+            case '3': return '원장';
+            case '4': return '행정원장';
+            case '5': return '대표원장';
+            default: return '';
         }
     };
 
@@ -104,26 +81,7 @@ const MyPage: React.FC = () => {
             }
         };
         fetchDepartmentNames();
-    }, []);
-
-    // 분:초 형태로 변환
-    const formatTime = (time: number) => {
-        const minutes = Math.floor(time / 60);
-        const seconds = time % 60;
-        return `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
-    };
-
-    useEffect(() => {
-        let interval: NodeJS.Timeout | null = null;
-        if (isCodeSent && timer > 0) {
-            interval = setInterval(() => {
-                setTimer(prev => prev - 1);
-            }, 1000);
-        }
-        return () => {
-            if (interval) clearInterval(interval);
-        };
-    }, [isCodeSent, timer]);
+    }, [cookies.accessToken]);
 
     useEffect(() => {
         fetchMyProfile();
@@ -141,7 +99,7 @@ const MyPage: React.FC = () => {
             });
             if (!res.ok) throw new Error('사용자 정보를 불러올 수 없습니다.');
             const data = await res.json();
-            console.log('profile data:', data);
+
             const userData = {
                 id: data.id || data.userId,
                 userId: data.userId || data.id,
@@ -154,8 +112,8 @@ const MyPage: React.FC = () => {
                 deptCode: data.deptCode,
                 email: data.email,
                 signatureUrl: data.signatureUrl || '',
-                signimage: data.signimage || null, // 서버 응답의 signimage 필드 사용
-                signpath: data.signpath || null,   // 서버 응답의 signpath 필드 사용
+                signimage: data.signimage || null,
+                signpath: data.signpath || null,
                 privacyConsent: data.privacyConsent ?? false,
                 notificationConsent: data.notificationConsent ?? false,
             };
@@ -178,140 +136,21 @@ const MyPage: React.FC = () => {
 
     const handleAddressSearch = () => {
         if (typeof window.daum === 'undefined' || !window.daum.Postcode) {
-            alert('주소 검색 스크립트를 불러오지 못했습니다. `public/index.html` 파일을 확인해주세요.');
+            alert('주소 검색 스크립트 로드 실패');
             return;
         }
-
         new window.daum.Postcode({
             oncomplete: function(data: any) {
-                // 도로명 주소를 formData.address에 저장
                 setFormData(prev => ({ ...prev, address: data.roadAddress, detailAddress: '' }));
-                // 상세 주소 입력 필드로 포커스 이동
-                const detailAddressInput = document.getElementById('detail-address');
-                if (detailAddressInput) {
-                    detailAddressInput.focus();
-                }
+                document.getElementById('detail-address')?.focus();
             }
         }).open();
     };
 
-    // 인증번호 요청
-    const handleSendVerificationCode = async () => {
-        const phoneDigits = formData.phone.replace(/\D/g, '');
-
-        if (!phoneDigits) {
-            alert('전화번호를 입력하세요.');
-            return;
-        }
-
-        if (!isPhoneValid(formData.phone)) {
-            alert('올바른 휴대폰 번호 형식을 입력해주세요. (010-XXXX-XXXX)');
-            return;
-        }
-
-        // 기존 번호와 동일한 경우 체크
-        const originalPhoneDigits = user?.phone?.replace(/\D/g, '') || '';
-        if (phoneDigits === originalPhoneDigits) {
-            alert('현재 등록된 번호와 동일합니다.');
-            return;
-        }
-
-        try {
-            setIsVerifying(true);
-            const res = await fetch('/api/v1/auth/send-sms', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: phoneDigits }), // 숫자만 전송
-                credentials: 'include'
-            });
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || '인증번호 발송 실패');
-            }
-            const data = await res.json();
-            setServerCode(data.code);
-            setIsCodeSent(true);
-            setTimer(300);
-            alert('인증번호가 발송되었습니다.');
-        } catch (e: any) {
-            alert(e.message);
-        } finally {
-            setIsVerifying(false);
-        }
-    };
-
-    const handleVerifyCode = async () => {
-        const code = verificationCode.replace(/\D/g, '');
-
-        if (!code || code.length !== 6) {
-            alert('6자리 인증번호를 정확히 입력해주세요.');
-            return;
-        }
-
-        if (timer <= 0) {
-            alert('인증 시간이 만료되었습니다. 다시 요청해주세요.');
-            return;
-        }
-
-        try {
-            setIsVerifying(true);
-            const response = await fetch('/api/v1/auth/verify-sms', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    phone: formData.phone.replace(/\D/g, ''),
-                    code: code
-                }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || '인증번호가 일치하지 않습니다.');
-            }
-
-            setIsPhoneVerified(true);
-            setTimer(0);
-            setIsCodeSent(false);
-            setVerificationCode('');
-            setEditingPhone(false);
-            alert('전화번호 인증이 완료되었습니다.');
-        } catch (err: any) {
-            alert(err.message);
-        } finally {
-            setIsVerifying(false);
-        }
-    };
-
-    const handleCancelPhoneEdit = () => {
-        setFormData(prev => ({...prev, phone: user?.phone || ''}));
-        setEditingPhone(false);
-        setIsCodeSent(false);
-        setVerificationCode('');
-        setIsPhoneVerified(true);
-        setTimer(0);
-        setIsVerifying(false);
-    };
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const {name, value} = e.target;
-
         if (name === 'phone') {
-            const formatted = formatPhoneNumber(value);
-            setFormData(prev => ({...prev, [name]: formatted}));
-
-            // 전화번호가 변경되면 인증 상태 리셋
-            const originalPhoneDigits = user?.phone?.replace(/\D/g, '') || '';
-            const newPhoneDigits = formatted.replace(/\D/g, '');
-
-            if (newPhoneDigits !== originalPhoneDigits) {
-                setIsPhoneVerified(false);
-                setIsCodeSent(false);
-                setVerificationCode('');
-                setTimer(0);
-            } else if (newPhoneDigits === originalPhoneDigits && originalPhoneDigits) {
-                setIsPhoneVerified(true);
-            }
+            setFormData(prev => ({...prev, [name]: formatPhoneNumber(value)}));
         } else if (name === 'notificationConsent') {
             setFormData(prev => ({...prev, [name]: e.target.checked}));
         } else {
@@ -325,13 +164,7 @@ const MyPage: React.FC = () => {
             return;
         }
         if (formData.newPassword && formData.newPassword.length < 4) {
-            alert('새 비밀번호는 최소 4자 이상이어야 합니다.');
-            return;
-        }
-
-        // 📌 번호가 변경되었는데 인증이 안 됐으면 저장 불가
-        if (formData.phone !== user?.phone && !isPhoneVerified) {
-            alert('휴대폰 번호 인증을 완료해주세요.');
+            alert('새 비밀번호는 4자 이상이어야 합니다.');
             return;
         }
 
@@ -363,6 +196,7 @@ const MyPage: React.FC = () => {
             const updated = await res.json();
             setUser(prev => prev ? {...prev, ...updated} : updated);
             setIsEditMode(false);
+            alert('프로필이 성공적으로 업데이트되었습니다.');
         } catch (e: any) {
             alert(e.message);
         }
@@ -370,11 +204,10 @@ const MyPage: React.FC = () => {
 
     const handleSaveSignature = async () => {
         if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
-            setSigError('서명을 해주세요.');
+            setSigError('서명을 입력해주세요.');
             return;
         }
         setSigError('');
-        // 캔버스를 Blob으로 변환
         sigCanvas.current.getCanvas().toBlob(async (blob) => {
             if (!blob) return;
             const form = new FormData();
@@ -397,316 +230,240 @@ const MyPage: React.FC = () => {
 
     return (
         <Layout>
-            <div className="mypage-container">
-                <div className="mypage-header">
-                    <h1 className="mypage-title">내 프로필</h1>
-                    <div className="button-group">
+            <div className="mypage-wrapper">
+                <div className="page-header">
+                    <div className="page-title">
+                        <h1>마이 페이지</h1>
+                        <p>계정 정보와 개인 설정을 관리하세요.</p>
+                    </div>
+                    <div className="action-buttons">
                         {!isEditMode ? (
-                            <button className="create-button" onClick={() => setIsEditMode(true)}>
-                                프로필 수정
+                            <button className="btn btn-primary" onClick={() => setIsEditMode(true)}>
+                                정보 수정
                             </button>
                         ) : (
-                            <>
-                                <button className="create-button" onClick={handleSave}>
-                                    저장
-                                </button>
-                                <button className="cancel-button" onClick={() => setIsEditMode(false)}>
+                            <div className="header-btn-group">
+                                <button className="btn btn-secondary" onClick={() => setIsEditMode(false)}>
                                     취소
                                 </button>
-                            </>
+                                <button className="btn btn-primary" onClick={handleSave}>
+                                    저장하기
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>
 
                 {loading ? (
-                    <div className="loading-state">로딩 중...</div>
+                    <div className="state-message">
+                        <div className="loading">로딩중...</div>
+                    </div>
                 ) : error ? (
-                    <div className="error-state">{error}</div>
+                    <div className="state-message error-text">{error}</div>
                 ) : user ? (
-                    <div className="profile-content">
-                        <div className="profile-grid">
-                            <div className="profile-field">
-                                <div className="field-label">이름</div>
-                                <div className="field-value">
-                                    {user.userName || '-'}
+                    <div className="dashboard-grid">
+                        <aside className="card profile-summary-card">
+                            <div className="avatar-circle">
+                                {user.userName ? user.userName.charAt(0) : 'U'}
+                            </div>
+                            <div className="user-name">{user.userName}</div>
+                            <div className="user-role">
+                                {user?.deptCode ? (departmentNames[user.deptCode] ?? user.deptCode) : '-'} / {getPositionByJobLevel(user.jobLevel)}
+                            </div>
+
+                            <div className="summary-stats">
+                                <div className="stat-item">
+                                    <span className="stat-label">사번</span>
+                                    <span className="stat-value">{user.userId}</span>
+                                </div>
+                            </div>
+                        </aside>
+
+                        <main className="card detail-card">
+                            <div className="section-header">
+                                <h3 className="section-title">기본 정보</h3>
+                            </div>
+                            <div className="section-body">
+                                <div className="form-grid">
+                                    <div className="form-group full-width">
+                                        <label className="label">핸드폰 번호</label>
+                                        {isEditMode ? (
+                                            <input
+                                                className="input-control"
+                                                name="phone"
+                                                value={formData.phone}
+                                                onChange={handleChange}
+                                                placeholder="010-0000-0000"
+                                            />
+                                        ) : (
+                                            <div className="value-display">{user.phone || '-'}</div>
+                                        )}
+                                    </div>
+
+                                    <div className="form-group full-width">
+                                        <label className="label">주소</label>
+                                        {isEditMode ? (
+                                            <div className="input-group">
+                                                <input
+                                                    className="input-control"
+                                                    value={formData.address}
+                                                    readOnly
+                                                    placeholder="주소 검색"
+                                                />
+                                                <button type="button" className="btn-addon" onClick={handleAddressSearch}>
+                                                    검색
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="value-display">{user.address || '-'}</div>
+                                        )}
+                                    </div>
+
+                                    <div className="form-group full-width">
+                                        <label className="label">상세 주소</label>
+                                        {isEditMode ? (
+                                            <input
+                                                id="detail-address"
+                                                className="input-control"
+                                                name="detailAddress"
+                                                value={formData.detailAddress}
+                                                onChange={handleChange}
+                                                placeholder="상세 주소 입력"
+                                            />
+                                        ) : (
+                                            <div className="value-display">{user.detailAddress || '-'}</div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="profile-field">
-                                <div className="field-label">아이디</div>
-                                <div className="field-value">{user.userId || '-'}</div>
+                            <div className="section-header">
+                                <h3 className="section-title">전자 서명</h3>
                             </div>
-
-                            <div className="profile-field">
-                                <div className="field-label">핸드폰</div>
-                                <div className="field-value">
-                                    {isEditMode ? (
-                                        <div className="phone-edit-container">
-                                            {!editingPhone ? (
-                                                <div className="current-phone-display">
-                                                    <span>{formData.phone || '-'}</span>
-                                                    <button
-                                                        type="button"
-                                                        className="phone-button phone-change-btn"
-                                                        onClick={() => setEditingPhone(true)}
-                                                    >
-                                                        번호변경
-                                                    </button>
-                                                </div>
+                            <div className="section-body">
+                                <div className="form-group full-width">
+                                    <div className="up-signature-box">
+                                        <div className="up-signature-display">
+                                            {user.signimage ? (
+                                                <img
+                                                    src={`data:image/png;base64,${user.signimage.replace(/\s/g, '')}`}
+                                                    alt="서명"
+                                                    className="up-signature-img"
+                                                />
+                                            ) : user.signpath ? (
+                                                <img
+                                                    src={`${process.env.REACT_APP_SERVER_URL || ''}${user.signpath}`}
+                                                    alt="서명"
+                                                    className="up-signature-img"
+                                                />
                                             ) : (
-                                                <>
-                                                    {/* 전화번호 입력 및 버튼이 한 줄에 */}
-                                                    <div className="phone-input-row">
-                                                        <input
-                                                            className="profile-input"
-                                                            name="phone"
-                                                            value={formData.phone}
-                                                            onChange={handleChange}
-                                                            placeholder="새 전화번호 입력 (010-0000-0000)"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            className="phone-button phone-verify-btn"
-                                                            onClick={handleSendVerificationCode}
-                                                            disabled={isVerifying || timer > 0}
-                                                        >
-                                                            {isVerifying ? '발송중...' : isCodeSent ? `재발송${timer > 0 ? ` (${formatTime(timer)})` : ''}` : '인증번호 발송'}
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            className="phone-button phone-cancel-btn"
-                                                            onClick={handleCancelPhoneEdit}
-                                                        >
-                                                            취소
-                                                        </button>
-                                                    </div>
-
-                                                    {/* 인증번호 입력 (코드가 발송되었을 때만 표시) */}
-                                                    {isCodeSent && !isPhoneVerified && (
-                                                        <div className="verification-input-container">
-                                                            <input
-                                                                className="profile-input"
-                                                                value={verificationCode}
-                                                                onChange={(e) => setVerificationCode(e.target.value)}
-                                                                placeholder="인증번호 6자리"
-                                                                maxLength={6}
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                className="phone-button phone-verify-btn"
-                                                                onClick={handleVerifyCode}
-                                                                disabled={isVerifying}
-                                                            >
-                                                                {isVerifying ? '확인중...' : '인증확인'}
-                                                            </button>
-                                                            {timer > 0 && (
-                                                                <span
-                                                                    className="timer">남은 시간: {formatTime(timer)}</span>
-                                                            )}
-                                                        </div>
-                                                    )}
-
-                                                    {/* 인증완료 표시 */}
-                                                    {isPhoneVerified && formData.phone !== user?.phone && (
-                                                        <span className="verified-text">✓ 인증완료</span>
-                                                    )}
-                                                </>
+                                                <span className="up-no-signature">등록된 서명이 없습니다.</span>
                                             )}
                                         </div>
-                                    ) : (
-                                        user.phone || '-'
-                                    )}
-                                </div>
-                            </div>
 
-                            <div className="profile-field">
-                                <div className="field-label">주소</div>
-                                <div className="field-value">
-                                    {isEditMode ? (
-                                        <div style={{display: 'flex', alignItems: 'center'}}>
-                                            <input
-                                                className="profile-input"
-                                                name="address"
-                                                value={formData.address}
-                                                readOnly // 주소를 직접 입력할 수 없도록 수정
-                                                style={{flex: 1, marginRight: '10px'}}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={handleAddressSearch} // 주소 검색 함수 호출
-                                                className="address-search-btn"
-                                            >
-                                                주소 검색
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        user.address || '-'
-                                    )}
-                                </div>
-                            </div>
-                            <div className="profile-field">
-                                <div className="field-label">상세 주소</div>
-                                <div className="field-value">
-                                    {isEditMode ? (
-                                        <input
-                                            className="profile-input"
-                                            name="detailAddress"
-                                            value={formData.detailAddress}
-                                            onChange={handleChange}
-                                        />
-                                    ) : (
-                                        user.detailAddress || '-' // <-- user 객체에도 detailAddress 필드가 있어야 함
-                                    )}
-                                </div>
-                            </div>
-                            <div className="profile-field">
-                                <div className="field-label">부서 / 직급</div>
-                                <div className="field-value">
-                                    {user?.deptCode ? (departmentNames[user.deptCode] ?? user.deptCode) : '-'}
-                                    {user.jobLevel ? ` / ${getPositionByJobLevel(user.jobLevel)}` : ''}
-                                </div>
-                            </div>
-
-                            <div className="profile-field signature-field">
-                                <div className="field-label">서명</div>
-                                <div className="field-value mypage-signature-container">
-                                    {user.signimage ? (
-                                        <img
-                                            src={`data:image/png;base64,${user.signimage.replace(/\s/g, '')}`}
-                                            alt="signature"
-                                            className="mypage-signature-image"
-                                            style={{
-                                                borderRadius: 4,
-                                                border: "solid 1  #ddd",
-                                                backgroundColor: "#fff"
-                                            }}
-                                            onError={(e) => {
-                                                (e.target as HTMLImageElement).src = '';
-                                                console.error('base64 이미지 로드 실패');
-                                                alert('서명 이미지 로드에 실패했습니다.');
-                                            }}
-                                        />
-                                    ) : user.signpath ? (
-                                        <img
-                                            src={`${process.env.REACT_APP_SERVER_URL || ''}${user.signpath}`}
-                                            alt="signature"
-                                            className="mypage-signature-image signature-path"
-                                            style={{
-                                                borderRadius: 4,
-                                                border: "solid 1  #ddd",
-                                                backgroundColor: "#fff"
-                                            }}
-                                            onError={(e) => {
-                                                (e.target as HTMLImageElement).src = '';
-                                                console.error('서버 이미지 로드 실패');
-                                                alert('서명 이미지 로드에 실패했습니다.');
-                                            }}
-                                        />
-                                    ) : (
-                                        <div className="mypage-no-signature">등록된 서명이 없습니다.</div>
-                                    )}
-                                    {isEditMode && (
-                                        <button
-                                            className="mypage-signature-button"
-                                            onClick={() => setShowSignatureModal(true)}
-                                        >
-                                            서명 등록/수정
-                                        </button>
-                                    )}
+                                        {isEditMode && (
+                                            <div className="up-signature-action">
+                                                <button
+                                                    className="btn btn-secondary up-signature-manage-btn"
+                                                    onClick={() => setShowSignatureModal(true)}
+                                                >
+                                                    서명 관리
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
                             {isEditMode && (
                                 <>
-                                    <div className="profile-field">
-                                        <div className="field-label">현재 비밀번호</div>
-                                        <div className="field-value">
-                                            <input
-                                                className="profile-input"
-                                                type="password"
-                                                name="currentPassword"
-                                                value={formData.currentPassword}
-                                                onChange={handleChange}
-                                            />
-                                        </div>
+                                    <div className="section-header">
+                                        <h3 className="section-title">보안 설정</h3>
                                     </div>
-
-                                    <div className="profile-field">
-                                        <div className="field-label">새 비밀번호</div>
-                                        <div className="field-value">
-                                            <input
-                                                className="profile-input"
-                                                type="password"
-                                                name="newPassword"
-                                                value={formData.newPassword}
-                                                onChange={handleChange}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="profile-field">
-                                        <div className="field-label">새 비밀번호 확인</div>
-                                        <div className="field-value">
-                                            <input
-                                                className="profile-input"
-                                                type="password"
-                                                name="confirmNewPassword"
-                                                value={formData.confirmNewPassword}
-                                                onChange={handleChange}
-                                            />
+                                    <div className="section-body">
+                                        <div className="form-grid">
+                                            <div className="form-group full-width">
+                                                <label className="label">현재 비밀번호</label>
+                                                <input
+                                                    type="password"
+                                                    className="input-control"
+                                                    name="currentPassword"
+                                                    value={formData.currentPassword}
+                                                    onChange={handleChange}
+                                                    placeholder="비밀번호 변경 시 입력"
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="label">새 비밀번호</label>
+                                                <input
+                                                    type="password"
+                                                    className="input-control"
+                                                    name="newPassword"
+                                                    value={formData.newPassword}
+                                                    onChange={handleChange}
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="label">비밀번호 확인</label>
+                                                <input
+                                                    type="password"
+                                                    className="input-control"
+                                                    name="confirmNewPassword"
+                                                    value={formData.confirmNewPassword}
+                                                    onChange={handleChange}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </>
                             )}
 
-                            {/* 마케팅 수신동의 필드 추가 */}
-                            <div className="profile-field marketing-consent-field">
-                                <div className="field-label">문서 알림 수신동의</div>
-                                <div className="field-value">
-                                    {isEditMode ? (
-                                        <div className="marketing-consent-container">
-                                            <label className="marketing-consent-label">
-                                                <input
-                                                    type="checkbox"
-                                                    name="notificationConsent"
-                                                    checked={formData.notificationConsent}
-                                                    onChange={handleChange}
-                                                    className="marketing-consent-checkbox"
-                                                />
-                                                <span>SMS/알림톡을 통한 문서 알림 수신에 동의합니다.</span>
-                                            </label>
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowNotificationPolicyModal(true)}
-                                                className="marketing-policy-btn"
-                                            >
-                                                자세히 보기
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <span
-                                            className={`marketing-status ${user.notificationConsent ? 'agreed' : 'declined'}`}>
-                                            {user.notificationConsent ? '✓ 수신동의' : '✗ 수신거부'}
-                                        </span>
-                                    )}
-                                </div>
+                            <div className="section-header">
+                                <h3 className="section-title">알림 설정</h3>
                             </div>
-                        </div>
+                            <div className="section-body">
+                                {isEditMode ? (
+                                    <div className="consent-box">
+                                        <label className="checkbox-wrapper">
+                                            <input
+                                                type="checkbox"
+                                                name="notificationConsent"
+                                                checked={formData.notificationConsent}
+                                                onChange={handleChange}
+                                            />
+                                            <span>SMS/알림톡 문서 도착 알림 수신 동의</span>
+                                        </label>
+                                        <button
+                                            type="button"
+                                            className="link-btn"
+                                            onClick={() => setShowNotificationPolicyModal(true)}
+                                        >
+                                            약관 보기
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="form-group">
+                                        <span className={`badge ${user.notificationConsent ? 'success' : 'error'}`}>
+                                            {user.notificationConsent ? '🔔 알림 수신 동의 중' : '🔕 알림 수신 거부 중'}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </main>
                     </div>
                 ) : (
-                    <div className="empty-state">
-                        <p>사용자 정보를 찾을 수 없습니다.</p>
-                    </div>
+                    <div className="state-message">사용자 정보를 찾을 수 없습니다.</div>
                 )}
             </div>
 
             {showSignatureModal && (
-                <div className="popup-overlay">
-                    <div className="popup-content">
-                        <div className="popup-header">
-                            <h3 className="popup-title">서명 등록</h3>
+                <div className="modal-overlay">
+                    <div className="modal-container">
+                        <div className="modal-header">
+                            <h3>서명 등록</h3>
+                            <button className="close-btn" onClick={() => setShowSignatureModal(false)}>×</button>
                         </div>
-                        <div className="signature-canvas-container">
+                        <div className="modal-signature-canvas">
                             <SignatureCanvas
                                 ref={sigCanvas}
                                 penColor="black"
@@ -717,36 +474,26 @@ const MyPage: React.FC = () => {
                                 }}
                             />
                         </div>
-                        {sigError && <div className="error-message">{sigError}</div>}
-                        <div className="popup-buttons">
-                            <button className="secondary-button" onClick={() => sigCanvas.current?.clear()}>
-                                지우기
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => sigCanvas.current?.clear()}>
+                                초기화
                             </button>
-                            <button className="primary-button" onClick={handleSaveSignature}>
+                            <button className="btn btn-primary" onClick={handleSaveSignature}>
                                 저장
-                            </button>
-                            <button className="cancel-button" onClick={() => setShowSignatureModal(false)}>
-                                취소
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* 마케팅 정책 모달 */}
             {showNotificationPolicyModal && (
-                <div className="policy-modal-overlay">
-                    <div className="policy-modal-content">
-                        <div className="policy-modal-header">
-                            <button
-                                type="button"
-                                onClick={() => setShowNotificationPolicyModal(false)}
-                                className="policy-modal-close-btn"
-                            >
-                                ×
-                            </button>
+                <div className="modal-overlay">
+                    <div className="modal-container modal-container-large">
+                        <div className="modal-header">
+                            <h3>알림 수신 약관</h3>
+                            <button className="close-btn" onClick={() => setShowNotificationPolicyModal(false)}>×</button>
                         </div>
-                        <div className="policy-modal-body">
+                        <div className="modal-body-scroll">
                             <NotificationPolicy />
                         </div>
                     </div>

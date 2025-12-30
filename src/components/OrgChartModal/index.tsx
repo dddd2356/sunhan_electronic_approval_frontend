@@ -55,7 +55,7 @@ const OrgChartModal: React.FC<OrgChartModalProps> = ({
                         selectedUserId={multiSelect ? undefined : selectedUsers[0]?.id}
                         selectedUserIds={selectedUsers.map(u => u.id)}
                         multiSelect={multiSelect}
-                        allDepartments={allDepartments}  // ✅ prop 전달
+                        allDepartments={allDepartments}
                     />
                     {multiSelect && selectedUsers.length > 0 && (
                         <div className="org-selected-info">

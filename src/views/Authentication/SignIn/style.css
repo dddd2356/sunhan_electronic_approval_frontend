@@ -1,72 +1,129 @@
-#sign-in-wrapper{
+/* SignIn Page Enterprise UI - style.css */
+:root {
+    --primary-blue: #2563eb;
+    --primary-hover: #1d4ed8;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --bg-light: #f8fafc;
+    --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+#sign-in-wrapper {
     width: 100vw;
-    min-width: 1440px;
     height: 100vh;
-    min-height: 1024px;
-
     display: flex;
+    background-color: #ffffff;
+    overflow: hidden;
+    font-family: 'Pretendard', -apple-system, sans-serif;
 }
 
-.sign-in-image{
-    width: 830px;
-    background-position: 50% 50%;
-    background-size: 100% 100%;
-    background-image: url("assets/images/sign-in-image.png");
+/* 왼쪽 이미지 영역 - 기하학적 패턴이나 의료 신뢰감을 주는 이미지 권장 */
+.sign-in-image {
+    flex: 1.2;
+    background-position: center;
+    background-size: cover;
+    background-image: linear-gradient(rgba(37, 99, 235, 0.1), rgba(30, 41, 59, 0.4)), url("assets/images/sign-in-image.png");
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.sign-in-container{
+@media (max-width: 1024px) {
+    .sign-in-image { display: none; } /* 태블릿 이하에서는 이미지 숨김 */
+}
+
+/* 오른쪽 폼 컨테이너 */
+.sign-in-container {
     flex: 1;
-
     display: flex;
     justify-content: center;
     align-items: center;
+    background-color: var(--bg-light);
+    padding: 40px;
 }
 
-.sign-in-box{
-    width: 380px;
-
+.sign-in-box {
+    width: 100%;
+    max-width: 420px;
+    background: #ffffff;
+    padding: 48px;
+    border-radius: 24px;
+    box-shadow: var(--card-shadow);
     display: flex;
     flex-direction: column;
+}
 
+/* 타이틀 및 헤더 영역 */
+.sign-in-header {
+    margin-bottom: 32px;
+    text-align: left;
+}
+
+.sign-in-title {
+    color: var(--text-main);
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+    justify-content: flex-start; /* 기존 중앙정렬 해제 */
+}
+
+.sign-in-subtitle {
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.sign-in-content-box {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
     gap: 24px;
 }
 
-.sign-in-title{
-    color: rgba(64,64,64,1);
-
+.sign-in-content-input-box {
+    width: 100%;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    gap: 18px;
+}
 
-    font-size: 30px;
+/* 버튼 스타일링 */
+.sign-in-content-button-box {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.primary-button-lg {
+    width: 100%;
+    height: 52px;
+    background-color: var(--primary-blue);
+    color: white;
+    border-radius: 12px;
+    font-size: 16px;
     font-weight: 700;
-    line-height: 173%;
-}
-
-.sign-in-content-box{
     display: flex;
-    flex-direction: column;
-
     align-items: center;
-
-    gap: 24px;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
 }
 
-.sign-in-content-divider{
-    border-top: 1px solid rgba(238,238,238,1);
-    width: 64px;
+.primary-button-lg:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
-.sign-in-content-input-box{
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+.primary-button-lg:active {
+    transform: translateY(0);
 }
 
-.sign-in-content-button-box{
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-
-    gap: 16px;
+/* 푸터 링크 (옵션) */
+.sign-in-footer {
+    margin-top: 32px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
 }

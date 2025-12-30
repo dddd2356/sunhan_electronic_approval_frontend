@@ -15,6 +15,7 @@ interface User {
 interface VacationStatus {
     userId: string;
     userName: string;
+    deptName: string;
     totalVacationDays: number;
     usedVacationDays: number;
     remainingVacationDays: number;
@@ -32,10 +33,13 @@ const AdminVacationManagement: React.FC = () => {
     const [updating, setUpdating] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    const [deptNameMap, setDeptNameMap] = useState<Map<string, string>>(new Map());
 
     useEffect(() => {
+        fetchDepartmentNames();
         fetchUsers();
     }, []);
+
 
     useEffect(() => {
         const filtered = users.filter(user =>
@@ -70,6 +74,38 @@ const AdminVacationManagement: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const fetchDepartmentNames = async () => {
+        try {
+            const response = await fetch('/api/v1/departments/names', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${cookies.accessToken}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setDeptNameMap(new Map(Object.entries(data)));
+            }
+        } catch (err: any) {
+            console.error('부서 이름 조회 실패:', err);
+        }
+    };
+
+// ✅ baseCode 추출 함수 추가
+    const getBaseDeptCode = (deptCode: string): string => {
+        if (!deptCode) return deptCode;
+        return deptCode.replace(/[_\-]?\d+$/, '');
+    };
+
+// ✅ getDeptName 함수 수정
+    const getDeptName = (deptCode: string | undefined): string => {
+        if (!deptCode) return '미설정';
+        const baseCode = getBaseDeptCode(deptCode);
+        return deptNameMap.get(baseCode) || deptCode;
     };
 
     const fetchVacationStatus = async (userId: string) => {
@@ -246,7 +282,7 @@ const AdminVacationManagement: React.FC = () => {
                                 >
                                     <div className="vacation-user-name">{user.userName}</div>
                                     <div className="vacation-user-info">
-                                        {user.deptCode} / {getPositionByJobLevel(user.jobLevel)}
+                                        {getDeptName(user.deptCode)} / {getPositionByJobLevel(user.jobLevel)}
                                     </div>
                                     <div className="vacation-user-stats">
                                         <span className="vacation-user-stat total">
@@ -284,7 +320,7 @@ const AdminVacationManagement: React.FC = () => {
                                             {selectedUser.userName}
                                         </h4>
                                         <p className="vacation-selected-user-info">
-                                            {selectedUser.deptCode} / {getPositionByJobLevel(selectedUser.jobLevel)}
+                                            {vacationStatus.deptName} / {getPositionByJobLevel(selectedUser.jobLevel)}
                                         </p>
 
                                         <div className="vacation-selected-user-current">
@@ -315,7 +351,7 @@ const AdminVacationManagement: React.FC = () => {
                                             <div className="vacation-progress-bar">
                                                 <div
                                                     className={getProgressBarClass()}
-                                                    style={{ width: `${Math.min(getUsagePercentage(), 100)}%` }}
+                                                    style={{width: `${Math.min(getUsagePercentage(), 100)}%`}}
                                                 ></div>
                                             </div>
                                         </div>

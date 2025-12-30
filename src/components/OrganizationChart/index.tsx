@@ -39,6 +39,7 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
     const [employees, setEmployees] = useState<Record<string, Employee[]>>({});
     const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
+    const getBaseDeptCode = (code: string) => code.replace(/\d+$/, '');
 
     useEffect(() => {
         fetchDepartments();
@@ -66,22 +67,32 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
                 headers: { Authorization: `Bearer ${cookies.accessToken}` }
             });
             const data = await response.json();
-            setDeptNames(data);
+
+            const normalized: Record<string, string> = {};
+            Object.entries(data).forEach(([code, name]) => {
+                const baseCode = getBaseDeptCode(code);
+                if (!normalized[baseCode]) {
+                    normalized[baseCode] = name as string;
+                }
+            });
+
+            setDeptNames(normalized);
         } catch (error) {
             console.error('부서 이름 조회 실패:', error);
         }
     };
 
     const fetchEmployees = async (deptCode: string) => {
-        if (employees[deptCode]) return;
+        const baseCode = getBaseDeptCode(deptCode);
+        if (employees[baseCode]) return;
 
         try {
             const isBaseDept = !/\d+$/.test(deptCode);
 
             // ✅ allDepartments prop에 따라 엔드포인트 선택
             const endpoint = allDepartments
-                ? `/api/v1/user/department/${deptCode}/all${isBaseDept ? '?includeSubDepts=true' : ''}`
-                : `/api/v1/user/department/${deptCode}${isBaseDept ? '?includeSubDepts=true' : ''}`;
+                ? `/api/v1/user/department/${baseCode}/all?includeSubDepts=true`
+                : `/api/v1/user/department/${baseCode}?includeSubDepts=true`;
 
             const response = await fetch(endpoint, {
                 headers: { Authorization: `Bearer ${cookies.accessToken}` }
@@ -147,12 +158,14 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
     };
 
     const toggleDepartment = (deptCode: string) => {
+        const baseCode = getBaseDeptCode(deptCode);
         const newExpanded = new Set(expandedDepts);
-        if (newExpanded.has(deptCode)) {
-            newExpanded.delete(deptCode);
+
+        if (newExpanded.has(baseCode)) {
+            newExpanded.delete(baseCode);
         } else {
-            newExpanded.add(deptCode);
-            fetchEmployees(deptCode);
+            newExpanded.add(baseCode);
+            fetchEmployees(baseCode);
         }
         setExpandedDepts(newExpanded);
     };
@@ -171,15 +184,16 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
     };
 
     const renderDepartment = (dept: Department, level: number = 0) => {
-        const isExpanded = expandedDepts.has(dept.deptCode);
-        const deptEmployees = employees[dept.deptCode] || [];
-        const displayName = deptNames[dept.deptCode] || dept.deptCode;
+        const baseCode = getBaseDeptCode(dept.deptCode);
+        const isExpanded = expandedDepts.has(baseCode);
+        const deptEmployees = employees[baseCode] || [];
+        const displayName = deptNames[baseCode] || baseCode;
 
         return (
             <div key={dept.deptCode} className="org-dept-container">
                 <div
                     className={`org-dept-item level-${level}`}
-                    onClick={() => toggleDepartment(dept.deptCode)}
+                    onClick={() => toggleDepartment(baseCode)}
                 >
                     <div className="org-dept-header">
                         {isExpanded ? (

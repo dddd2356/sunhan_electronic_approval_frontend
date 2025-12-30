@@ -15,6 +15,8 @@ export interface ApprovalStepInfo {
     rejectionReason?: string;
     rejectedAt?: string;
     rejectedBy?: string;
+    isFinalApproved?: boolean;
+    finalApprovedBy?: string;
 }
 
 export interface DeptDutyConfig {
@@ -211,6 +213,21 @@ export const approveWorkSchedule = async (
     await axios.post(
         `${API_BASE}/${scheduleId}/approve`,
         { approve },
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+};
+
+/**
+ * 특정 달 데이터 불러오기
+ */
+export const copyFromSpecificMonth = async (
+    scheduleId: number,
+    sourceYearMonth: string,
+    token: string
+): Promise<void> => {
+    await axios.post(
+        `${API_BASE}/${scheduleId}/copy-from`,
+        { sourceYearMonth },
         { headers: { Authorization: `Bearer ${token}` } }
     );
 };

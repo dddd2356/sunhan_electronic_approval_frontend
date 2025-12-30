@@ -7,6 +7,7 @@ import {
     fetchLeaveApplications,
     createLeaveApplication
 } from '../../apis/leaveApplications';
+import dayjs from "dayjs";
 
 // 타입 정의
 interface LeaveApplication {
@@ -99,6 +100,20 @@ const LeaveApplicationBoard: React.FC = () => {
         }
     };
 
+    const getLeaveTypeLabel = (type?: string) => {
+        if (!type) return '-';
+        switch (type) {
+            case 'ANNUAL_LEAVE':      return '연차휴가';
+            case 'FAMILY_EVENT_LEAVE': return '경조휴가';
+            case 'SPECIAL_LEAVE':     return '특별휴가';
+            case 'MENSTRUAL_LEAVE':   return '생리휴가';
+            case 'MATERNITY_LEAVE':   return '보민휴가'; // Java에 정의된 대로
+            case 'MISCARRIAGE_LEAVE': return '유산사산휴가';
+            case 'SICK_LEAVE':        return '병가';
+            case 'OTHER':             return '기타';
+            default:                  return type; // 매칭되지 않으면 원래 값 출력
+        }
+    };
 
 // 검색 필터링된 목록을 계산하는 useMemo
     const filteredApplications = useMemo(() => {
@@ -287,17 +302,41 @@ const LeaveApplicationBoard: React.FC = () => {
 
     const getTotalDaysFromFormData = (app: LeaveApplication): number => {
         // 먼저 API에서 받은 totalDays 사용 (null/undefined가 아닌 경우)
-        if (app.totalDays !== undefined && app.totalDays !== null) {
+        if (app.totalDays !== undefined && app.totalDays !== null && app.totalDays > 0) {  // 0 초과인 경우만 우선
             return app.totalDays;
         }
 
-        // formDataJson이 있다면 파싱해서 totalDays 가져오기
+        // formDataJson이 있다면 파싱해서 totalDays 가져오기 또는 재계산
         if (app.formDataJson) {
             try {
                 const formData = JSON.parse(app.formDataJson);
-                if (formData.totalDays !== undefined && formData.totalDays !== null) {
+                if (formData.totalDays !== undefined && formData.totalDays !== null && formData.totalDays > 0) {  // 0 초과인 경우만
                     return formData.totalDays;
                 }
+                // 재계산 로직 (calculateTotalDays와 유사)
+                let total = 0;
+                // flexiblePeriods 계산
+                if (formData.flexiblePeriods && formData.flexiblePeriods.length > 0) {
+                    formData.flexiblePeriods.forEach((period: any) => {
+                        if (period.startDate && period.endDate) {
+                            const start = dayjs(period.startDate);
+                            const end = dayjs(period.endDate);
+                            let days = end.diff(start, 'day') + 1;
+                            if (period.halfDayOption === 'morning' || period.halfDayOption === 'afternoon') {
+                                days *= 0.5;
+                            }
+                            total += days;
+                        }
+                    });
+                }
+                // consecutivePeriod 계산
+                if (formData.consecutivePeriod && formData.consecutivePeriod.startDate && formData.consecutivePeriod.endDate) {
+                    const start = dayjs(formData.consecutivePeriod.startDate);
+                    const end = dayjs(formData.consecutivePeriod.endDate);
+                    const days = end.diff(start, 'day') + 1;
+                    total += days;
+                }
+                return total;
             } catch (e) {
                 console.error('formDataJson 파싱 실패:', e);
             }
@@ -410,7 +449,7 @@ const LeaveApplicationBoard: React.FC = () => {
 
     const canViewCompleted = Boolean(currentUser && (
         // 인사담당자: ADMIN이면서 jobLevel 0이고 deptCode가 'AD'
-        (currentUser.role === 'ADMIN' && currentUser.permissions?.includes('HR_LEAVE_APPLICATION') && (currentUser.jobLevel === '0' || currentUser.jobLevel === '1')) ||
+        (currentUser.permissions?.includes('HR_LEAVE_APPLICATION') && (currentUser.jobLevel === '0' || currentUser.jobLevel === '1')) ||
         // 진료지원센터장: ADMIN이면서 jobLevel 2
         (currentUser.role === 'ADMIN' && currentUser.jobLevel && parseInt(currentUser.jobLevel) === 2) ||
         //최고 관리자(superAdmin)
@@ -466,6 +505,7 @@ const LeaveApplicationBoard: React.FC = () => {
         }
         return date.toLocaleDateString('ko-KR'); // 한국 표준으로 포맷팅
     };
+
     return (
         <Layout>
             <div className="leave-board">
@@ -484,7 +524,7 @@ const LeaveApplicationBoard: React.FC = () => {
                         }}
                         className={tab === 'my' ? 'active' : ''}
                     >
-                        내 휴가원
+                        작성중 및 진행중
                     </button>
 
                     {/* 2) 승인 대기 탭 (모든 사용자) */}
@@ -573,7 +613,11 @@ const LeaveApplicationBoard: React.FC = () => {
                                         className="leave-application-item-applicant">{app.applicantName || app.applicantId}</div>
                                     <div
                                         className="leave-application-item-substitute">{getSubstituteNameFromFormData(app)}</div>
-                                    <div className="leave-application-item-type">{getLeaveTypeFromFormData(app)}</div>
+                                    <div className="leave-application-item-type">
+                                        {getLeaveTypeLabel(getLeaveTypeFromFormData(app) !== '-'
+                                            ? getLeaveTypeFromFormData(app)
+                                            : app.leaveType)}
+                                    </div>
                                     <div className="leave-application-item-start">{getStartDateFromFormData(app)}</div>
                                     <div className="leave-application-item-end">{getEndDateFromFormData(app)}</div>
                                     <div className="leave-application-item-days">

@@ -161,3 +161,8 @@ export const deleteContract = async (contractId: number, token: string): Promise
         },
     });
 };
+
+/** 완료된 계약서 반려 (관리자 전용) */
+export const rejectCompletedContract = async (id: number, reason: string, token?: string): Promise<AxiosResponse<any>> => {
+    return axios.put(`${API_BASE}/employment-contract/${id}/reject-completed`, {reason}, authHeader(token));
+};

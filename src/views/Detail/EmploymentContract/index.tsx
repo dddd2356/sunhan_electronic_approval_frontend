@@ -7,7 +7,7 @@ import {useNavigate, useParams} from "react-router-dom";
 import Layout from "../../../components/Layout";
 import {
     returnToAdmin, sendContract, signContract, updateContract,
-    fetchContract, fetchCurrentUser, fetchUserSignature, downloadContract, deleteContract
+    fetchContract, fetchCurrentUser, fetchUserSignature, downloadContract, deleteContract, rejectCompletedContract
 } from "../../../apis/contract";
 import RejectModal from "../../../components/RejectModal";
 import CeoDirectorSignImage from './assets/images/선한병원직인.png';
@@ -29,6 +29,7 @@ interface User {
     phone?: string | null;
     address?: string | null;
     detailAddress?: string | null;
+    permissions?: string[];
 }
 
 interface Contract {
@@ -385,13 +386,16 @@ const EmploymentContract = () => {
 
         try {
             // 🚨 returnToAdmin 헬퍼 함수를 사용하도록 변경하고, 응답 처리 방식 수정
-            const response = await returnToAdmin(contract.id, reason, token);
-
+            let response;
+            if (status === 'COMPLETED') {
+                response = await rejectCompletedContract(contract.id, reason, token);
+            } else {
+                response = await returnToAdmin(contract.id, reason, token);
+            }
             if (response.status >= 200 && response.status < 300) {
                 const updated: Contract = response.data; // 🚨 .data 사용 및 타입 명시
                 setContract(updated);
                 setRejectModalOpen(false);
-
                 alert('계약서가 반려되었습니다.');
                 navigate('/detail/employment-contract'); // 목록으로 이동
             } else {
@@ -430,6 +434,7 @@ const EmploymentContract = () => {
             try {
                 const contractData = await fetchContract(parseInt(id!), token);
                 setContract(contractData);
+                setStatus(contractData.status);
             } catch (error) {
                 console.error('계약서 데이터를 불러오는 데 실패했습니다.', error);
             }
@@ -1407,7 +1412,7 @@ const EmploymentContract = () => {
                                                 <div style={{
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    justifyContent: 'center',  // ← 수평 중앙 정렬
+                                                    justifyContent: 'center',
                                                     gap: '10px'
                                                 }} className="checkbox-section">
                                                     <label className="checkbox-item">
@@ -1709,6 +1714,15 @@ const EmploymentContract = () => {
                     {status === 'COMPLETED' && (
                         <>
                             <button onClick={goToList} className="btn-list">목록으로</button>
+                            {(currentUser?.jobLevel === '6' || currentUser?.permissions?.includes('HR_CONTRACT')) && (
+                                <button
+                                    onClick={() => setRejectModalOpen(true)}
+                                    className="btn-reject"
+                                    style={{ backgroundColor: '#dc3545', color: 'white', marginLeft: '10px', marginRight: '10px' }}
+                                >
+                                    취소(반려)
+                                </button>
+                            )}
                             <button
                                 onClick={() => handleDownload('pdf')}
                                 className="btn-print"

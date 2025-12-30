@@ -1,102 +1,44 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useCookies } from 'react-cookie';
+import axios from 'axios';
 import './style.css';
 import defaultProfileImage from './assets/images/profile.png';
-import axios from 'axios';
-import { useCookies } from 'react-cookie';
+
+// 아이콘 라이브러리 도입
+import {
+    Home,
+    FileText,
+    Calendar,
+    ClipboardList,
+    Users,
+    ShieldCheck,
+    BarChart3,
+    RefreshCcw,
+    UserCircle,
+    LogOut
+} from 'lucide-react';
 
 interface SidebarProps {
     isOpen: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
-    const [isOrganizationMenuOpen, setIsOrganizationMenuOpen] = useState(false);
-    const [isMessageMenuOpen, setIsMessageMenuOpen] = useState(false);
-    const [cookies, setCookie, removeCookie] = useCookies([
-        "accessToken"
-    ]);
-    const [profileName, setProfileName] = useState<string>('홍길동'); // 초기값 빈 문자열
+    const navigate = useNavigate();
+    const location = useLocation(); // 현재 URL 경로 파악용
+    const [cookies, , removeCookie] = useCookies(["accessToken"]);
+
+    const [profileName, setProfileName] = useState<string>('사용자');
     const [profileDepartment, setProfileDepartment] = useState<string>('');
     const [profileImage, setProfileImage] = useState<string>('');
-    const [role, setRole] = useState<string>('');
-    const navigate = useNavigate();
-    // ===== 관리자 여부를 저장할 상태 추가 =====
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
     const [jobLevel, setJobLevel] = useState<number>(0);
     const [permissions, setPermissions] = useState<string[]>([]);
+
     const API_BASE_URL = process.env.REACT_APP_API_URL;
-    const fetchProfileData = (user_id: string) => {
-        // ✅ administrator 계정 특별 처리
-        if (user_id === 'administrator') {
-            console.log('Administrator 계정 - 프로필 조회 스킵');
-            setProfileImage(defaultProfileImage);
-            return;
-        }
 
-        axios
-            .get(`${API_BASE_URL}/user/${user_id}`, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` },
-                withCredentials: true,
-            })
-            .then((employeeRes) => {
-                const employeeData = employeeRes.data;
-                if (employeeData) {
-                    const imageData = employeeData.profile_image;
-                    setProfileImage(imageData ? `data:image/png;base64,${imageData}` : defaultProfileImage);
-                }
-            })
-            .catch((error) => {
-                console.error('직원 프로필 정보 가져오기 실패:', error.response?.data || error.message);
-                setProfileImage(defaultProfileImage);
-            });
-    };
-
-    const fetchProfile = () => {
-        if (cookies.accessToken) {
-            checkUserStatus(); // accessToken만 있는 경우 바로 user 확인
-        }
-    };
-
-    // 3. checkUserStatus 함수 수정
-    const checkUserStatus = () => {
-        axios
-            .get(`${API_BASE_URL}/user/me`, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` },
-            })
-            .then((res) => {
-                const userData = res.data;
-                const user_id = userData.userId; // userId 사용
-                const userName = userData.userName; // userName 사용
-                const dept = userData.dept; // 부서 정보 추가
-                const userJobLevel = userData.jobLevel;
-                const userPermissions = userData.permissions;
-                if (userName) {
-                    setProfileName(userName);
-                }
-                if (dept) {
-                    setProfileDepartment(dept); // 부서 정보 설정
-                }
-                if (userJobLevel !== undefined && userJobLevel !== null) {
-                    setJobLevel(userJobLevel);
-                }
-                // ===== 사용자의 role이 'ADMIN'인지 확인하여 상태 업데이트 =====
-                // UserEntity의 role 필드를 직접 확인합니다.
-                if (userData.role === 'ADMIN') {
-                    setIsAdmin(true);
-                    console.log("✅ Admin user detected.");
-                } else {
-                    setIsAdmin(false);
-                }
-
-                if (userPermissions && Array.isArray(userPermissions)) {
-                    setPermissions(userPermissions); // permissions 상태 저장
-                }
-                if (user_id) fetchProfileData(user_id);
-            })
-            .catch((error) => {
-                console.error('웹 사용자 정보 가져오기 실패', error);
-            });
-    };
+    // 현재 페이지 활성화 체크 함수
+    const isActive = (path: string) => location.pathname === path;
 
     useEffect(() => {
         if (cookies.accessToken) {
@@ -104,104 +46,150 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
         }
     }, [cookies.accessToken]);
 
-    useEffect(() => {
-        console.log("🔍 Profile Name Change Detected:", {
-            newName: profileName,
-            stackTrace: new Error().stack
-        });
-    }, [profileName]);
+    const checkUserStatus = () => {
+        axios.get(`${API_BASE_URL}/user/me`, {
+            headers: { Authorization: `Bearer ${cookies.accessToken}` },
+        })
+            .then((res) => {
+                const userData = res.data;
+                setProfileName(userData.userName || '사용자');
+                setProfileDepartment(userData.dept || '');
+                setJobLevel(userData.jobLevel || 0);
+                setIsAdmin(userData.role === 'ADMIN');
+                setPermissions(userData.permissions || []);
+
+                if (userData.userId) fetchProfileImage(userData.userId);
+            })
+            .catch((err) => console.error('사용자 정보 로드 실패', err));
+    };
+
+    const fetchProfileImage = (userId: string) => {
+        if (userId === 'administrator') {
+            setProfileImage(defaultProfileImage);
+            return;
+        }
+        axios.get(`${API_BASE_URL}/user/${userId}`, {
+            headers: { Authorization: `Bearer ${cookies.accessToken}` },
+        })
+            .then((res) => {
+                const imageData = res.data?.profile_image;
+                setProfileImage(imageData ? `data:image/png;base64,${imageData}` : defaultProfileImage);
+            })
+            .catch(() => setProfileImage(defaultProfileImage));
+    };
 
     const handleLogout = async () => {
-        const loginMethod = "web";
-        const logoutUrl = `${API_BASE_URL}/auth/logout/${loginMethod}`;
-        const accessToken = cookies.accessToken;
         try {
-            const response = await axios.post(logoutUrl, {}, {
-                withCredentials: true,
-                headers: { "Authorization": `Bearer ${accessToken}` },
+            await axios.post(`${API_BASE_URL}/auth/logout/web`, {}, {
+                headers: { "Authorization": `Bearer ${cookies.accessToken}` },
+                withCredentials: true
             });
-            console.log("✅ 서버 로그아웃 응답:", response.data);
+        } finally {
             removeCookie("accessToken", { path: "/", secure: true, sameSite: "none" });
-
-            console.log("✅ 클라이언트 쿠키 삭제 완료");
-            navigate("/");
-        } catch (error: any) {
-            console.error("❌ 로그아웃 실패:", error.response?.data || error.message);
-            removeCookie("accessToken", { path: "/", secure: true, sameSite: "none" });
-            console.log("✅ 클라이언트 쿠키 삭제 완료 (실패 시)");
             navigate("/");
         }
     };
 
-    //휴가원 관리할 수 있는 사람(휴가원 권한이 있는 사람, 관리자)
-    const canViewVacationAdmin = (((jobLevel == 0 || jobLevel == 1) && permissions.includes('HR_LEAVE_APPLICATION')) || jobLevel == 6);
+    // 권한 계산
+    const canViewVacationAdmin = (permissions.includes('HR_LEAVE_APPLICATION')) || jobLevel === 6;
+    const canCreatePositionAdmin = jobLevel === 6 || permissions.includes("WORK_SCHEDULE_CREATE");
 
-    const handleMypage = () => navigate("/detail/my-page");
+
+    useEffect(() => {
+        console.log("현재 직급(jobLevel):", jobLevel, typeof jobLevel);
+        console.log("보유 권한(permissions):", permissions);
+        console.log("관리자 여부(isAdmin):", isAdmin);
+    }, [jobLevel, permissions, isAdmin]);
+
     return (
         <div className={`sidebar ${isOpen ? "active" : ""}`}>
+            {/* 1. 프로필 섹션 */}
             <div className="profile-section">
                 <div className="profile-header">
                     <img src={profileImage || defaultProfileImage} alt="Profile" className="profile-img"/>
                     <div className="profile-info">
                         <div className="profile-name">{profileName}</div>
-                        {profileDepartment && <div className="profile-title">{profileDepartment}</div>}
+                        <div className="profile-title">{profileDepartment}</div>
                     </div>
                 </div>
                 <div className="profile-buttons">
-                    <button className="info-button" onClick={handleMypage}>나의 정보</button>
-                    <button className="logout-button" onClick={handleLogout}>로그아웃</button>
+                    <button className="info-button" onClick={() => navigate("/detail/my-page")}>
+                        <UserCircle size={14} style={{marginRight: '4px'}} /> 정보
+                    </button>
+                    <button className="logout-button" onClick={handleLogout}>
+                        <LogOut size={14} style={{marginRight: '4px'}} /> 로그아웃
+                    </button>
                 </div>
             </div>
-            <hr className="divider"/>
+
+            {/* 2. 메인 메뉴 섹션 */}
             <ul className="main-menu">
-                <li onClick={() => navigate('/detail/main-page')} className="menu-title cursor-pointer">메인 화면</li>
+                <div className="menu-section-label">General</div>
+
+                <li onClick={() => navigate('/detail/main-page')}
+                    className={`menu-item ${isActive('/detail/main-page') ? 'active' : ''}`}>
+                    <Home size={18}/> <span>메인 화면</span>
+                </li>
 
                 <li onClick={() => navigate('/detail/employment-contract')}
-                    className="menu-title cursor-pointer">근로계약서
+                    className={`menu-item ${isActive('/detail/employment-contract') ? 'active' : ''}`}>
+                    <FileText size={18}/> <span>근로계약서</span>
                 </li>
-                <li onClick={() => navigate('/detail/leave-application')} className="menu-title cursor-pointer">휴가원</li>
+
+                <li onClick={() => navigate('/detail/leave-application')}
+                    className={`menu-item ${isActive('/detail/leave-application') ? 'active' : ''}`}>
+                    <Calendar size={18}/> <span>휴가원</span>
+                </li>
+
                 <li onClick={() => navigate('/detail/work-schedule')}
-                    className="menu-title cursor-pointer">
-                    근무현황표
+                    className={`menu-item ${isActive('/detail/work-schedule') ? 'active' : ''}`}>
+                    <ClipboardList size={18}/> <span>근무현황표</span>
                 </li>
-                <li
-                    onClick={() => navigate('/detail/approval-lines')}
-                    className="menu-title cursor-pointer font-bold text-purple-600"
-                >
-                    결재라인 관리
+
+                <li onClick={() => navigate('/detail/approval-lines')}
+                    className={`menu-item ${isActive('/detail/approval-lines') ? 'active' : ''}`}>
+                    <ShieldCheck size={18}/> <span>결재라인 관리</span>
                 </li>
-                {/* 부서장 이상만 */}
-                {/*{isAdmin && jobLevel >= 1 && (*/}
-                    <li onClick={() => navigate('/detail/positions')}
-                        className="menu-title cursor-pointer">
-                        직책 관리
-                    </li>
-                {/*)}*/}
-                {/* ===== isAdmin 상태가 true일 때만 관리자 페이지 메뉴를 렌더링 ===== */}
-                {isAdmin && jobLevel >= 1 && (
-                    <li onClick={() => navigate('/admin/dashboard')}
-                        className="menu-title cursor-pointer font-bold text-purple-600">
-                        권한 관리자 페이지
-                    </li>
-                )}
-                {/* 휴가원 관리자 페이지는 새로운 조건에 따라 렌더링 */}
-                {canViewVacationAdmin && (
-                    <li onClick={() => navigate('/admin/vacation')}
-                        className="menu-title cursor-pointer font-bold text-purple-600">
-                        휴가원 관리자 페이지
-                    </li>
-                )}
-                {canViewVacationAdmin && (
-                    <li onClick={() => navigate('/admin/vacation-statistics')}
-                        className="menu-title cursor-pointer font-bold text-purple-600">
-                        휴가원 통계 페이지
-                    </li>
-                )}
-                {isAdmin && (
-                    <li onClick={() => navigate('/admin/sync-management-dashboard')}
-                        className="menu-title cursor-pointer font-bold text-purple-600">
-                        동기화 페이지
-                    </li>
+
+                {/* 3. 관리자 메뉴 섹션 (조건부 렌더링) */}
+                {(isAdmin || canViewVacationAdmin || canCreatePositionAdmin) && (
+                    <>
+                        <div className="menu-section-label">Administration</div>
+
+                        {isAdmin && jobLevel >= 1 && (
+                            <li onClick={() => navigate('/admin/dashboard')}
+                                className={`menu-item admin ${isActive('/admin/dashboard') ? 'active' : ''}`}>
+                                <ShieldCheck size={18}/> <span>권한 관리자</span>
+                            </li>
+                        )}
+
+                        {canViewVacationAdmin && (
+                            <>
+                                <li onClick={() => navigate('/admin/vacation')}
+                                    className={`menu-item admin ${isActive('/admin/vacation') ? 'active' : ''}`}>
+                                    <BarChart3 size={18}/> <span>휴가원 관리</span>
+                                </li>
+                                <li onClick={() => navigate('/admin/vacation-statistics')}
+                                    className={`menu-item admin ${isActive('/admin/vacation-statistics') ? 'active' : ''}`}>
+                                    <BarChart3 size={18}/> <span>휴가 통계</span>
+                                </li>
+                            </>
+                        )}
+
+                        {canCreatePositionAdmin && (
+                            <li onClick={() => navigate('/detail/positions')}
+                                className={`menu-item admin ${isActive('/detail/positions') ? 'active' : ''}`}>
+                                <Users size={18}/> <span>직책 관리</span>
+                            </li>
+                        )}
+
+                        {isAdmin && (
+                            <li onClick={() => navigate('/admin/sync-management-dashboard')}
+                                className={`menu-item admin ${isActive('/admin/sync-management-dashboard') ? 'active' : ''}`}>
+                                <RefreshCcw size={18}/> <span>데이터 동기화</span>
+                            </li>
+                        )}
+                    </>
                 )}
             </ul>
         </div>

@@ -16,10 +16,12 @@ interface ApprovalLine {
     description?: string;
     steps: ApprovalStep[] | null | undefined;
 }
+
 // onConfirm이 선택된 라인 ID와 필터링된 단계를 반환하도록 타입 변경
 interface ConfirmedApprovalLineData {
     id: number;
     steps: ApprovalStep[]; // 최종적으로 포함될 단계 목록
+    hasSubstitute: boolean; // 대직자가 있는지 여부
 }
 
 interface ApprovalLineSelectorProps {
@@ -80,10 +82,13 @@ const ApprovalLineSelector: React.FC<ApprovalLineSelectorProps> = ({
             return !!includedOptionalSteps[step.stepOrder];
         });
 
+        const hasSubstitute = finalSteps.some(step => step.approverType === 'SUBSTITUTE');  // SUBSTITUTE 포함 여부 계산
+
         // 최종 결과 전달 (FinalApprovalLineData 형식)
         onConfirm({
             id: selectedLineId,
             steps: finalSteps, // 필터링된 최종 단계 목록
+            hasSubstitute,
         });
     };
 
@@ -108,7 +113,7 @@ const ApprovalLineSelector: React.FC<ApprovalLineSelectorProps> = ({
                 <div className="selector-header">
                     <div>
                         <h3>결재라인 선택</h3>
-                        <p>이 휴가원에 적용할 결재라인을 선택하세요</p>
+                        <p>이 문서에 적용할 결재라인을 선택하세요</p>
                     </div>
                     <button className="close-btn" onClick={onCancel}>
                         <X />
@@ -120,7 +125,7 @@ const ApprovalLineSelector: React.FC<ApprovalLineSelectorProps> = ({
                         <div className="empty-state">
                             <p>사용 가능한 결재라인이 없습니다.</p>
                             <p className="empty-hint">
-                                관리자에게 문의하여 결재라인을 생성해주세요.
+                                결재라인 관리에 들어가서 결재라인을 생성해주세요.
                             </p>
                         </div>
                     ) : (

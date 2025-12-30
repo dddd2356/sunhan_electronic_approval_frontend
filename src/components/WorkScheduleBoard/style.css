@@ -63,6 +63,7 @@
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    align-content: center;
 }
 .wsb-schedule-table thead {
     background-color: #f5f5f5;
@@ -71,8 +72,11 @@
 .wsb-schedule-table th,
 .wsb-schedule-table td {
     padding: 15px;
-    text-align: left;
+    text-align: center;
     border-bottom: 1px solid #ddd;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
 }
 
 .wsb-schedule-table th {
@@ -196,10 +200,15 @@
 }
 
 .wsb-loading, .wsb-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 40px;
     text-align: center;
-    padding: 40px;
-    font-size: 18px;
+    color: #6b7280;
+    font-size: 16px;
 }
+
 
 .wsb-error {
     color: #d32f2f;
@@ -329,25 +338,25 @@
     color: #495057;
 }
 
-.selected-members-list button {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-    border: none;
-    color: white;
-    font-size: 18px;
+.selected-members-list > div button {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%) !important;
+    border: none !important;
+    color: white !important;
+    font-size: 16px !important;  /* 원하는 크기로 변경 */
     cursor: pointer;
-    padding: 4px 8px;
-    width: 28px;
-    height: 28px;
-    line-height: 18px;
-    border-radius: 50%;
+    padding: 2px 6px !important;
+    width: 24px !important;  /* 원하는 크기로 변경 */
+    height: 24px !important;  /* 원하는 크기로 변경 */
+    line-height: 16px !important;
+    border-radius: 50% !important;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.selected-members-list button:hover {
-    background: linear-gradient(135deg, #ff5252 0%, #d32f2f 100%);
+.selected-members-list > div button:hover {
+    background: linear-gradient(135deg, #ff5252 0%, #d32f2f 100%) !important;
     transform: rotate(90deg) scale(1.1);
     box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
 }
@@ -462,6 +471,17 @@
 .wsb-btn-confirm:active,
 .wsb-btn-cancel:active {
     transform: translateY(0);
+}
+
+.badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background-color: #ff4444;
+    color: white;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
 }
 
 /* 모달 애니메이션 */

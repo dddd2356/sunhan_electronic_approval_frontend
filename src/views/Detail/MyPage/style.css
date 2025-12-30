@@ -1,930 +1,465 @@
-/* MyPage 컨테이너 - 헤더/사이드바와 조화되는 색상 */
 :root {
-    /* 기존 헤더/사이드바와 조화되는 색상 */
-    --clean-50: #f0f4f8;
-    --clean-100: #e1e8ed;
-    --clean-200: #c7d2dd;
-    --clean-300: #9fb3c8;
-    --clean-400: #8a9fb5;
-    --clean-500: #7591a8;
+    /* Brand Colors */
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-light: #eff6ff;
 
-    /* 중성 그레이 */
-    --neutral-50: #f7f8fa;
-    --neutral-100: #e8ebf0;
-    --neutral-200: #d1d6dd;
-    --neutral-300: #b4bcc8;
-    --neutral-400: #8b95a6;
-    --neutral-500: #6b7785;
-    --neutral-600: #545d6a;
-    --neutral-700: #3d4551;
-    --neutral-800: #2a303c;
-    --neutral-900: #1a1f2e;
+    /* Semantic Colors */
+    --danger: #ef4444;
+    --success: #10b981;
+    --warning: #f59e0b;
 
-    /* 조화로운 블루 */
-    --blue-50: #eff6ff;
-    --blue-100: #dbeafe;
-    --blue-200: #bfdbfe;
-    --blue-300: #93c5fd;
-    --blue-400: #60a5fa;
-    --blue-500: #3b82f6;
-    --blue-600: #2563eb;
-    --blue-700: #1d4ed8;
+    /* Neutrals */
+    --bg-page: #f8fafc;
+    --bg-card: #ffffff;
+    --text-main: #0f172a;
+    --text-sub: #64748b;
+    --border: #e2e8f0;
 
-    /* 그림자 */
-    --shadow-soft: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    --shadow-medium: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-large: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    /* Effects */
+    --radius-lg: 16px;
+    --radius-md: 8px;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-.mypage-container {
-    max-width: 1000px;
-    margin: 20px auto;
-    padding: 32px;
-    background: linear-gradient(135deg, #ffffff 0%, var(--clean-50) 50%, var(--clean-100) 100%);
-    border-radius: 20px;
-    box-shadow: var(--shadow-large);
-    position: relative;
-    overflow: hidden;
-    border: 1px solid var(--clean-200);
+/* 레이아웃 컨테이너 */
+.mypage-wrapper {
+    max-width: 1024px;
+    margin: 40px auto;
+    padding: 0 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-.mypage-container::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(240, 244, 248, 0.2) 100%);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    z-index: 0;
-}
-
-.mypage-container > * {
-    position: relative;
-    z-index: 1;
-}
-
-/* 헤더 영역 */
-.mypage-header {
+/* 상단 헤더 영역 */
+.page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 40px;
-    padding: 24px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    border-radius: 16px;
-    box-shadow: var(--shadow-medium);
-    border: 1px solid var(--clean-200);
+    margin-bottom: 32px;
 }
 
-.mypage-title {
+.page-title h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-main);
     margin: 0;
-    color: var(--neutral-800);
-    font-size: 28px;
-    font-weight: 700;
-    background: linear-gradient(135deg, var(--blue-600) 0%, var(--clean-500) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
-.button-group {
-    display: flex;
-    gap: 12px;
-}
-
-/* 버튼 스타일 개선 */
-.create-button {
-    padding: 12px 24px;
+.page-title p {
     font-size: 14px;
-    font-weight: 600;
-    background: linear-gradient(135deg, var(--blue-500) 0%, var(--blue-600) 100%);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-soft);
-    position: relative;
-    overflow: hidden;
+    color: var(--text-sub);
+    margin: 4px 0 0 0;
 }
 
-.create-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-}
-
-.create-button:hover::before {
-    left: 100%;
-}
-
-.create-button:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-medium);
-    background: linear-gradient(135deg, var(--blue-600) 0%, var(--blue-700) 100%);
-}
-
-.cancel-button {
-    padding: 12px 24px;
-    font-size: 14px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-soft);
-    position: relative;
-    overflow: hidden;
-}
-
-.cancel-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-}
-
-.cancel-button:hover::before {
-    left: 100%;
-}
-
-.cancel-button:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-medium);
-}
-
-/* 상태 표시 */
-.loading-state, .error-state, .empty-state {
-    text-align: center;
-    padding: 60px 40px;
-    font-size: 18px;
-    font-weight: 500;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    border-radius: 16px;
-    box-shadow: var(--shadow-medium);
-    border: 1px solid var(--clean-200);
-}
-
-.loading-state {
-    color: var(--blue-600);
-    background: linear-gradient(135deg, var(--blue-50) 0%, rgba(255, 255, 255, 0.8) 100%);
-}
-
-.error-state {
-    color: #dc2626;
-    background: linear-gradient(135deg, #fef2f2 0%, rgba(255, 255, 255, 0.8) 100%);
-}
-
-.empty-state {
-    color: var(--neutral-500);
-    background: linear-gradient(135deg, var(--neutral-50) 0%, rgba(255, 255, 255, 0.8) 100%);
-}
-
-/* 프로필 컨텐츠 */
-.profile-content {
-    padding: 32px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    border-radius: 20px;
-    box-shadow: var(--shadow-medium);
-    border: 1px solid var(--clean-200);
-}
-
-.profile-grid {
-    display: grid;
-    grid-template-columns: 180px 1fr;
-    row-gap: 28px;
-    column-gap: 32px;
-    align-items: start;
-}
-
-.profile-field {
-    display: contents;
-}
-
-/* 필드 레이블 */
-.field-label {
-    font-weight: 700;
-    color: var(--neutral-800);
-    font-size: 15px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    position: relative;
-    align-self: center;
-}
-
-.field-label::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    bottom: -4px;
-    width: 30px;
-    height: 2px;
-    background: linear-gradient(135deg, var(--blue-500) 0%, var(--clean-400) 100%);
-    border-radius: 1px;
-}
-
-.field-value {
-    padding: 12px 0;
-    color: var(--neutral-600);
-    font-size: 15px;
-    font-weight: 500;
-}
-
-/* 입력 필드 */
-.profile-input {
-    width: 100%;
-    max-width: 400px;
-    padding: 12px 16px;
-    font-size: 15px;
-    border: 2px solid var(--clean-200);
-    border-radius: 12px;
-    outline: none;
-    transition: all 0.3s ease;
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(10px);
-    font-weight: 500;
-    color: var(--neutral-700);
-}
-
-.profile-input:focus {
-    border-color: var(--blue-500);
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-    background: rgba(255, 255, 255, 0.95);
-    transform: translateY(-1px);
-}
-
-/* 서명 관련 스타일 */
-.mypage-signature-field {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: 180px 1fr;
-    gap: 32px;
-    align-items: start;
-    padding: 24px;
-    background: linear-gradient(135deg, var(--blue-50) 0%, var(--clean-50) 100%);
-    border-radius: 16px;
-    border: 1px solid var(--blue-200);
-}
-
-.mypage-signature-container {
+.header-btn-group {
     display: flex;
+    gap: 8px;
+}
+
+/* 버튼 스타일 시스템 */
+.btn {
+    display: inline-flex;
     align-items: center;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.mypage-signature-image {
-    max-width: 150px;
-    max-height: 80px;
-    padding: 8px;
-    border: 2px solid var(--clean-200);
-    border-radius: 12px;
-    background: white;
-    box-shadow: var(--shadow-soft);
-    transition: all 0.3s ease;
-}
-
-.mypage-signature-image:hover {
-    transform: scale(1.05);
-    box-shadow: var(--shadow-medium);
-}
-
-.mypage-signature-image.signature-path {
-    max-width: 300px;
-    max-height: 120px;
-}
-
-.mypage-no-signature {
-    color: var(--neutral-400);
-    font-style: italic;
-    font-size: 15px;
-    font-weight: 500;
-    padding: 20px;
-    background: rgba(180, 188, 200, 0.1);
-    border-radius: 12px;
-    border: 2px dashed var(--neutral-300);
-}
-
-.mypage-signature-button {
-    padding: 10px 20px;
-    font-size: 14px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-soft);
-    white-space: nowrap;
-    position: relative;
-    overflow: hidden;
-    
-}
-
-.mypage-signature-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-}
-
-.mypage-signature-button:hover::before {
-    left: 100%;
-}
-
-.mypagesignature-button:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-medium);
-}
-
-/* 팝업 스타일 */
-.popup-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(42, 48, 60, 0.7);
-    backdrop-filter: blur(5px);
-    display: flex;
     justify-content: center;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: white;
+}
+.btn-primary:hover { background-color: var(--primary-hover); }
+
+.btn-secondary {
+    background-color: white;
+    border-color: var(--border);
+    color: var(--text-main);
+}
+.btn-secondary:hover { background-color: var(--bg-page); }
+
+.btn-danger {
+    background-color: white;
+    border-color: var(--border);
+    color: var(--danger);
+}
+.btn-danger:hover { background-color: #fef2f2; border-color: #fca5a5; }
+
+/* 메인 그리드 레이아웃 */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 24px;
+}
+
+/* 공통 카드 스타일 */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+/* 좌측 프로필 요약 카드 */
+.profile-summary-card {
+    padding: 32px 24px;
+    text-align: center;
+    height: fit-content;
+}
+
+.avatar-circle {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, var(--primary-light) 0%, #dbeafe 100%);
+    color: var(--primary);
+    font-size: 36px;
+    font-weight: 700;
+    border-radius: 50%;
+    display: flex;
     align-items: center;
-    z-index: 1000;
-    animation: fadeIn 0.3s ease;
+    justify-content: center;
+    margin: 0 auto 16px;
+    border: 4px solid white;
+    box-shadow: 0 0 0 1px var(--border);
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+.user-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 4px;
 }
 
-.popup-content {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
+.user-role {
+    font-size: 14px;
+    color: var(--text-sub);
+    background-color: var(--bg-page);
+    padding: 4px 12px;
     border-radius: 20px;
-    box-shadow: var(--shadow-large);
-    max-width: 550px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-    border: 1px solid var(--clean-200);
-    animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.popup-content::-webkit-scrollbar {
-    width: 6px;
-}
-
-.popup-content::-webkit-scrollbar-track {
-    background: var(--clean-100);
-}
-
-.popup-content::-webkit-scrollbar-thumb {
-    background: var(--clean-300);
-    border-radius: 3px;
-}
-
-.popup-content::-webkit-scrollbar-thumb:hover {
-    background: var(--clean-400);
-}
-
-.popup-header {
-    padding: 24px 24px 0;
-    border-bottom: 1px solid var(--clean-200);
+    display: inline-block;
     margin-bottom: 24px;
 }
 
-.popup-title {
-    margin: 0 0 20px;
-    color: var(--neutral-800);
-    font-size: 22px;
-    font-weight: 700;
-    background: linear-gradient(135deg, var(--blue-600) 0%, var(--clean-500) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-align: center;
+.summary-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
 }
 
-.signature-canvas-container {
-    padding: 0 24px;
-    text-align: center;
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+}
+.stat-label { color: var(--text-sub); }
+.stat-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+/* 우측 상세 정보 카드 */
+.detail-card {
+    padding: 0;
+}
+
+.section-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background-color: #fcfcfc;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+}
+
+.section-body {
+    padding: 24px;
+}
+
+/* 폼 그리드 */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.form-group.full-width { grid-column: span 2; }
+
+.label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-sub);
+}
+
+.value-display {
+    font-size: 15px;
+    color: var(--text-main);
+    font-weight: 500;
+    padding: 10px 0;
+    border-bottom: 1px solid transparent;
+}
+
+/* 입력 필드 스타일 */
+.input-control {
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    color: var(--text-main);
+    transition: all 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.input-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.input-control:read-only {
+    background-color: var(--bg-page);
+    color: var(--text-sub);
+    cursor: default;
+}
+
+/* 주소 검색 등 그룹형 인풋 */
+.input-group {
+    display: flex;
+    gap: 8px;
+}
+.input-group .input-control { flex: 1; }
+.btn-addon {
+    height: 42px;
+    padding: 0 16px;
+    font-size: 13px;
+    background: var(--text-main);
+    color: white;
+    border-radius: var(--radius-md);
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+/* User Profile 서명 영역 (up- prefix) */
+.up-signature-box {
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    background: var(--bg-page);
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 20px;
+    min-height: 160px;
+}
+
+.up-signature-display {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: var(--radius-md);
+    padding: 20px;
+}
+
+.up-signature-img {
+    max-height: 140px;
+    max-width: 100%;
+    height: auto;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
+
+.up-no-signature {
+    font-size: 14px;
+    color: var(--text-sub);
+}
+
+.up-signature-action {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.up-signature-manage-btn {
+    font-size: 14px !important;
+    height: 40px !important;
+    padding: 0 20px !important;
+    white-space: nowrap;
+}
+
+/* 수신 동의 체크박스 */
+.consent-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background-color: var(--primary-light);
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-md);
+}
+
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+}
+.checkbox-wrapper input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+.link-btn {
+    background: none;
+    border: none;
+    color: var(--primary);
+    text-decoration: underline;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+/* 배지 스타일 */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.badge.success { background: #dcfce7; color: #166534; }
+.badge.error { background: #fee2e2; color: #991b1b; }
+
+/* 모달 */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+}
+
+.modal-container {
+    background: white;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 { margin: 0; font-size: 18px; }
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+/* 모달 서명 캔버스 영역 */
+.modal-signature-canvas {
+    padding: 24px;
+    background: #f8fafc;
+    display: flex;
+    justify-content: center;
 }
 
 .signature-canvas {
-    border: 3px solid var(--clean-200);
-    border-radius: 12px;
     background: white;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
-    transition: all 0.3s ease;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-md);
 }
 
-.signature-canvas:hover {
-    border-color: var(--blue-500);
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06), 0 0 0 4px rgba(59, 130, 246, 0.1);
-}
-
-.popup-buttons {
+/* 모달 푸터 */
+.modal-footer {
+    padding: 16px 24px;
     display: flex;
-    justify-content: center;
-    gap: 12px;
-    padding: 24px;
-    border-top: 1px solid var(--clean-200);
-    margin-top: 24px;
-}
-
-/* 팝업 버튼 스타일 */
-.primary-button {
-    padding: 12px 24px;
-    font-size: 14px;
-    font-weight: 600;
-    background: linear-gradient(135deg, var(--blue-500) 0%, var(--blue-600) 100%);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-soft);
-    position: relative;
-    overflow: hidden;
-}
-
-.primary-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-}
-
-.primary-button:hover::before {
-    left: 100%;
-}
-
-.primary-button:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-medium);
-}
-
-.secondary-button {
-    padding: 12px 24px;
-    font-size: 14px;
-    font-weight: 600;
-    background: linear-gradient(135deg, var(--neutral-500) 0%, var(--neutral-600) 100%);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-soft);
-    position: relative;
-    overflow: hidden;
-}
-
-.secondary-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-}
-
-.secondary-button:hover::before {
-    left: 100%;
-}
-
-.secondary-button:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-medium);
-}
-
-/* 에러 메시지 */
-.error-message {
-    color: #dc2626;
-    font-size: 14px;
-    font-weight: 600;
-    margin: 16px 24px 0;
-    text-align: center;
-    padding: 12px;
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    border-radius: 8px;
-}
-
-/* 반응형 디자인 */
-@media (max-width: 768px) {
-    .mypage-container {
-        margin: 10px;
-        padding: 20px;
-        border-radius: 16px;
-    }
-
-    .mypage-header {
-        flex-direction: column;
-        gap: 20px;
-        align-items: flex-start;
-        padding: 20px;
-    }
-
-    .mypage-title {
-        font-size: 24px;
-    }
-
-    .profile-content {
-        padding: 24px;
-    }
-
-    .profile-grid {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
-
-    .field-label {
-        padding-top: 0;
-        margin-bottom: 8px;
-        font-size: 14px;
-    }
-
-    .signature-field {
-        grid-template-columns: 1fr;
-        padding: 20px;
-    }
-
-    .popup-content {
-        width: 95%;
-        margin: 20px;
-        border-radius: 16px;
-    }
-
-    .signature-canvas {
-        max-width: 100%;
-    }
-
-    .popup-buttons {
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-
-    .create-button, .cancel-button, .primary-button, .secondary-button, .signature-button {
-        padding: 10px 18px;
-        font-size: 13px;
-    }
-}
-
-/* 마케팅 수신동의 필드 스타일 */
-.marketing-consent-field {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    background: #f8f9fa;
-}
-
-.marketing-consent-container {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-
-.marketing-consent-label {
-    display: flex;
-    align-items: center;
+    justify-content: flex-end;
     gap: 8px;
-    cursor: pointer;
-    font-size: 0.9em;
-    flex: 0 1 auto;
+    border-top: 1px solid var(--border);
 }
 
-.marketing-consent-checkbox {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-}
-
-/* 기본 컨테이너 (앞서 추천한 값이며 필요시 조정하세요) */
-.marketing-consent-field {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    background: #f8f9fa;
-    padding: 8px;
-}
-.marketing-consent-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: nowrap; /* 한 줄에 고정 */
-}
-
-/* 라벨 및 체크박스 */
-.marketing-consent-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    font-size: 0.9em;
-    flex: 0 1 auto;
-}
-.marketing-consent-checkbox {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-}
-
-/* --- 자세히보기 버튼 (address-search-btn 스타일을 반영) --- */
-.marketing-policy-btn {
-    background: linear-gradient(135deg, var(--blue-500) 0%, var(--blue-600) 100%);
-    color: white;
-    border: none;
-    padding: 8px 12px;     /* 라벨 텍스트와 잘 어울리도록 약간 작게 */
-    height: 34px;          /* input 높이에 맞추기 좋음 (필요시 조정) */
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.18s ease;
-    box-shadow: var(--shadow-soft, 0 4px 8px rgba(0,0,0,0.08));
-    position: relative;
-    overflow: hidden;
-    flex-shrink: 0;        /* flex에서 줄어들지 않음 */
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* hover / focus 상태 */
-.marketing-policy-btn:hover,
-.marketing-policy-btn:focus {
-    background: linear-gradient(135deg, var(--blue-600) 0%, var(--blue-700) 100%);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-medium, 0 8px 20px rgba(0,0,0,0.12));
-    outline: none; /* focus 시 별도 스타일 원하면 추가 */
-}
-
-.marketing-status {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.85em;
-    font-weight: bold;
-}
-
-.marketing-status.agreed {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.marketing-status.declined {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f1aeb5;
-}
-
-/* 핸드폰 번호 편집 컨테이너 */
-.phone-edit-container {
+/* 정책 모달 크기 조정 */
+.modal-container-large {
+    max-width: 600px;
+    height: 80vh;
     display: flex;
     flex-direction: column;
-    gap: 16px;
 }
 
-/* 핸드폰 번호 입력 및 버튼이 한 줄에 오도록 */
-.phone-input-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.phone-input-row .profile-input {
+.modal-body-scroll {
     flex: 1;
-    min-width: 200px;
-    max-width: 300px;
+    overflow: auto;
+    padding: 24px;
 }
 
-/* 핸드폰 번호 관련 버튼들 */
-.phone-button {
-    padding: 12px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-soft);
-    position: relative;
-    overflow: hidden;
-    white-space: nowrap;
-    height: 44px; /* input과 같은 높이 */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+/* 상태 메시지 */
+.state-message {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-sub);
 }
 
-.phone-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
+.error-text {
+    color: red;
 }
 
-.phone-button:hover::before {
-    left: 100%;
-}
-
-.phone-button:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-medium);
-}
-
-/* 번호변경 버튼 (노란색) */
-.phone-change-btn {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: white;
-}
-
-.phone-change-btn:hover {
-    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-}
-
-/* 인증번호 발송 버튼 (파란색) */
-.phone-verify-btn {
-    background: linear-gradient(135deg, var(--blue-500) 0%, var(--blue-600) 100%);
-    color: white;
-}
-
-.phone-verify-btn:hover {
-    background: linear-gradient(135deg, var(--blue-600) 0%, var(--blue-700) 100%);
-}
-
-.phone-verify-btn:disabled {
-    background: var(--neutral-300);
-    cursor: not-allowed;
-    transform: none;
-}
-
-.phone-verify-btn:disabled:hover {
-    transform: none;
-    box-shadow: var(--shadow-soft);
-}
-
-/* 취소 버튼 (회색) */
-.phone-cancel-btn {
-    background: linear-gradient(135deg, var(--neutral-500) 0%, var(--neutral-600) 100%);
-    color: white;
-}
-
-.phone-cancel-btn:hover {
-    background: linear-gradient(135deg, var(--neutral-600) 0%, var(--neutral-700) 100%);
-}
-
-/* 인증번호 입력 컨테이너 */
-.verification-input-container {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    padding: 16px;
-    background: rgba(239, 246, 255, 0.6);
-    border-radius: 12px;
-    border: 1px solid var(--blue-200);
-}
-
-.verification-input-container .profile-input {
-    flex: 1;
-    min-width: 150px;
-    max-width: 200px;
-}
-
-/* 타이머 스타일 */
-.timer {
-    color: var(--blue-600);
-    font-weight: 600;
-    font-size: 14px;
-    padding: 8px 12px;
-    background: rgba(59, 130, 246, 0.1);
-    border-radius: 8px;
-    border: 1px solid var(--blue-200);
-    white-space: nowrap;
-}
-
-/* 인증완료 텍스트 */
-.verified-text {
-    color: #10b981;
-    font-weight: 600;
-    font-size: 14px;
-    padding: 8px 12px;
-    background: rgba(16, 185, 129, 0.1);
-    border-radius: 8px;
-    border: 1px solid #10b981;
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-
-/* 현재 번호 표시 */
-.current-phone-display {
-    color: var(--neutral-600);
-    font-weight: 500;
-    padding: 12px 0;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-/* 반응형 디자인 */
+/* 반응형 */
 @media (max-width: 768px) {
-    .phone-input-row {
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .page-header { flex-direction: column; align-items: flex-start; gap: 16px; }
+    .btn { width: 100%; }
+    .header-btn-group { width: 100%; }
+
+    .up-signature-box {
         flex-direction: column;
-        align-items: stretch;
+        min-height: auto;
     }
 
-    .phone-input-row .profile-input {
-        max-width: 100%;
-        margin-bottom: 8px;
-    }
-
-    .verification-input-container {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
-    }
-
-    .verification-input-container .profile-input {
-        max-width: 100%;
-        margin-bottom: 8px;
-    }
-
-    .phone-button {
-        height: 40px;
-        padding: 10px 14px;
-        font-size: 13px;
-    }
-
-    .timer, .verified-text {
-        text-align: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .phone-input-row {
-        gap: 8px;
-    }
-
-    .verification-input-container {
-        padding: 12px;
-        gap: 8px;
-    }
-
-    .phone-button {
-        padding: 8px 12px;
-        font-size: 12px;
-        height: 36px;
+    .up-signature-action {
+        justify-content: flex-end;
     }
 }

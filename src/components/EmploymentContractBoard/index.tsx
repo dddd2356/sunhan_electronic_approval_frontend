@@ -28,6 +28,7 @@ interface User {
     userId: string;
     userName: string;
     deptCode: string;
+    deptName?: string;
     jobType: string;
     jobLevel: string;
     phone: string;
@@ -93,7 +94,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen, onClo
                                 <div className="user-info">
                                     <div className="user-name">{user.userName}</div>
                                     <div className="user-details">
-                                        {user.userId} | {user.deptCode}
+                                        {user.userId} | {user.deptName || user.deptCode}
                                     </div>
                                 </div>
                             </div>

@@ -15,7 +15,6 @@ interface ApprovalStep {
     jobLevel?: string;
     deptCode?: string;
     isOptional?: boolean;
-    canSkip?: boolean;
     isFinalApprovalAvailable?: boolean;
 }
 
@@ -121,7 +120,6 @@ const MyApprovalLines: React.FC = () => {
                     jobLevel: s.jobLevel ?? null,
                     deptCode: s.deptCode ?? null,
                     isOptional: !!s.isOptional,
-                    canSkip: !!s.canSkip,
                     isFinalApprovalAvailable: !!s.isFinalApprovalAvailable
                 })) : []
             };
@@ -159,7 +157,6 @@ const MyApprovalLines: React.FC = () => {
                         jobLevel: (s as any).jobLevel ?? null,
                         deptCode: (s as any).deptCode ?? null,
                         isOptional: !!(s as any).isOptional,
-                        canSkip: !!(s as any).canSkip,
                         isFinalApprovalAvailable: !!(s as any).isFinalApprovalAvailable
                     }))
                 })

@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useMemo} from 'react';
+import React, {useState, useEffect, useMemo, useRef} from 'react';
 import { useCookies } from 'react-cookie';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../Layout';
@@ -17,7 +17,8 @@ const WorkScheduleBoard: React.FC = () => {
     const [selectedYearMonth, setSelectedYearMonth] = useState('');
     const [canCreate, setCanCreate] = useState(false);
     const [hasApprovalPermission, setHasApprovalPermission] = useState(false); // ✅ 결재 권한 (pending 탭 표시용)
-    const [tab, setTab] = useState<'list' | 'pending'>('list');
+    const [tab, setTab] = useState<'my-drafts' | 'pending' | 'completed' | null>(null);
+    const [isInitializing, setIsInitializing] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
     const itemsPerPage = 10;
@@ -33,6 +34,10 @@ const WorkScheduleBoard: React.FC = () => {
     const removeSelectedMember = (userId: string) => {
         setSelectedMembers(prev => prev.filter(u => u.id !== userId));
     };
+    const [pendingCount, setPendingCount] = useState(0);
+// 추가: 초기화 완료 플래그와 사용자 클릭 플래그
+    const initializedRef = useRef(false);            // 초기화 루틴이 끝났는지
+    const userClickedTabRef = useRef(false);         // 사용자가 탭을 직접 클릭했는지
 
 // 템플릿 로드
     const loadTemplates = async () => {
@@ -110,28 +115,72 @@ const WorkScheduleBoard: React.FC = () => {
     };
 
     useEffect(() => {
-        checkPermissions();
-        loadSchedules();
-    }, [tab, currentPage]);
+        const initializeTab = async () => {
+            try {
+                const hasCreate = await checkPermissions();      // boolean 반환
+                await checkPendingApprovals();
+
+                // 사용자가 탭을 이미 클릭했다면 초기화가 탭을 덮어쓰지 않음
+                if (!userClickedTabRef.current) {
+                    if (!hasCreate) {
+                        setTab('completed');
+                    } else {
+                        setTab('my-drafts');
+                    }
+                }
+            } catch (e) {
+                console.error('초기화 중 오류:', e);
+                // 안전하게 기본 탭 설정
+                if (!userClickedTabRef.current) setTab('completed');
+            } finally {
+                setIsInitializing(false);    // 초기화 끝
+                initializedRef.current = true;
+            }
+        };
+
+        initializeTab();
+        fetchDepartmentNames();
+    }, []);
+
 
     useEffect(() => {
-        fetchDepartmentNames();
-    }, []); // 최초 1회만 실행
+        // tab이 아직 결정되지 않았으면 로딩/무시
+        if (tab === null) return;
 
-    const checkPermissions = async () => {
+        checkPendingApprovals();
+        loadSchedules();
+    }, [tab, currentPage, canCreate]);
+
+    const checkPermissions = async (): Promise<boolean> => {
         try {
             const permRes = await fetch('/api/v1/user/me/permissions', {
                 headers: { Authorization: `Bearer ${cookies.accessToken}` }
             });
             const permData = await permRes.json();
 
-            // ✅ WORK_SCHEDULE_MANAGE 권한 확인
-            const hasWorkSchedulePermission = permData.permissions?.includes('WORK_SCHEDULE_MANAGE');
-            const isDeptHeadOrAbove = permData.isAdmin && parseInt(permData.jobLevel) >= 1;
-
-            setCanCreate(hasWorkSchedulePermission || isDeptHeadOrAbove);
+            const hasCreatePermission = permData.permissions?.includes('WORK_SCHEDULE_CREATE') ?? false;
+            setCanCreate(hasCreatePermission);
+            return hasCreatePermission;
         } catch (err) {
             console.error('권한 확인 실패:', err);
+            setCanCreate(false);
+            return false;
+        }
+    };
+
+
+    const checkPendingApprovals = async () => {
+        try {
+            const response = await axios.get(
+                '/api/v1/work-schedules/pending-approvals',
+                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+            );
+            setPendingCount(response.data.length);
+            setHasApprovalPermission(response.data.length > 0);
+        } catch (err) {
+            console.error('결재 대기 확인 실패:', err);
+            setPendingCount(0);
+            setHasApprovalPermission(false);
         }
     };
 
@@ -139,61 +188,35 @@ const WorkScheduleBoard: React.FC = () => {
         try {
             setLoading(true);
 
-            if (tab === 'list') {
-                // 전체 목록 조회
-                const data = await fetchMyWorkSchedules(cookies.accessToken);
-                const userRes = await fetch('/api/v1/user/me', {
+            if (tab === 'my-drafts') {
+                // ✅ 생성 권한 없으면 접근 불가
+                if (!canCreate) {
+                    setSchedules([]);
+                    setLoading(false);
+                    return;
+                }
+
+                // 내 작성 문서: DRAFT, SUBMITTED, REJECTED 상태만
+                const response = await axios.get('/api/v1/work-schedules/my-documents', {
                     headers: { Authorization: `Bearer ${cookies.accessToken}` }
                 });
-                const userData = await userRes.json();
+                setSchedules(response.data);
 
-                const inProgressStatuses = ['SUBMITTED', 'REVIEWED']; // 진행중으로 취급할 상태들 (필요시 조정)
-                const completedStatuses = ['APPROVED']; // 완료로 취급할 상태들 (필요시 조정)
-
-                const filteredData = data.filter((schedule: WorkSchedule) => {
-                    // 1) DRAFT: 작성자만
-                    if (schedule.approvalStatus === 'DRAFT') {
-                        return schedule.createdBy === userData.userId;
-                    }
-
-                    // 2) 작성자는 항상 모든 진행 상황을 볼 수 있도록 허용
-                    if (schedule.createdBy === userData.userId) return true;
-
-                    // helper: approvalSteps에서 현재 단계의 approver id들 추출
-                    const currentSteps = (schedule.approvalSteps || []).filter((s:any) => s.isCurrent);
-                    // approverId가 배열로 올 수도 있고 단일값일 수도 있음 — 둘 다 처리
-                    const currentApproverIds = currentSteps.flatMap((s:any) => {
-                        if (!s.approverId) return [];
-                        return Array.isArray(s.approverId) ? s.approverId : [s.approverId];
-                    });
-
-                    // 3) 진행중 상태일 때: 작성자(위에서 이미 허용) 또는 '현재 단계의 결재자'만 허용
-                    if (inProgressStatuses.includes(schedule.approvalStatus)) {
-                        return currentApproverIds.includes(userData.userId);
-                    }
-
-                    // 4) 완료 상태일 때: 같은 부서원 모두 볼 수 있게 허용
-                    if (completedStatuses.includes(schedule.approvalStatus)) {
-                        return schedule.deptCode === userData.deptCode
-                            || currentApproverIds.includes(userData.userId); // 또는 결재자도 허용
-                    }
-
-                    // 5) 그 외 상태 (REJECTED 등): 기본적으로 작성자 + 현재 결재자만 보이게 함
-                    return currentApproverIds.includes(userData.userId);
-                });
-
-                filteredData.sort((a, b) =>
-                    b.scheduleYearMonth.localeCompare(a.scheduleYearMonth)
+            } else if (tab === 'completed') {
+                // 완료 문서: APPROVED 상태 (모두 조회 가능)
+                const data = await fetchMyWorkSchedules(cookies.accessToken);
+                const completedData = data.filter((schedule: WorkSchedule) =>
+                    schedule.approvalStatus === 'APPROVED'
                 );
-                setSchedules(filteredData);
+                setSchedules(completedData);
 
-            } else if (tab === 'pending') {
-                // 결재 대기 목록 조회
+            }  else if (tab === 'pending') {
                 const response = await axios.get(
                     '/api/v1/work-schedules/pending-approvals',
                     { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
                 );
                 setSchedules(response.data);
+                setPendingCount(response.data.length);
             }
 
         } catch (err: any) {
@@ -296,7 +319,15 @@ const WorkScheduleBoard: React.FC = () => {
         }
     };
 
-    if (loading) return <Layout><div className="wsb-loading">로딩 중...</div></Layout>;
+    if (isInitializing || loading) {
+        return (
+            <Layout>
+                <div className="wsb-loading">
+                    <div className="loading">로딩중...</div>
+                </div>
+            </Layout>
+        );
+    }
     if (error) return <Layout><div className="wsb-error">{error}</div></Layout>;
 
     return (
@@ -313,17 +344,46 @@ const WorkScheduleBoard: React.FC = () => {
 
                 {/* 탭 추가 */}
                 <div className="tabs">
+                    {/* ✅ 생성 권한 있을 때만 표시 */}
+                    {canCreate && (
+                        <button
+                            onClick={() => {
+                                userClickedTabRef.current = true;
+                                setTab('my-drafts');
+                                setCurrentPage(1);
+                            }}
+                            className={tab === 'my-drafts' ? 'active' : ''}
+                        >
+                            내 작성 문서
+                        </button>
+                    )}
+
+                    {/* ✅ 수정: 조건 단순화 */}
+                    {hasApprovalPermission && (
+                        <button
+                            onClick={() => {
+                                userClickedTabRef.current = true;
+                                setTab('pending');
+                                setCurrentPage(1);
+                            }}
+                            className={tab === 'pending' ? 'active' : ''}
+                        >
+                            결재 대기
+                            {pendingCount > 0 && (
+                                <span className="badge">{pendingCount}</span>
+                            )}
+                        </button>
+                    )}
+
                     <button
-                        onClick={() => { setTab('list'); setCurrentPage(1); }}
-                        className={tab === 'list' ? 'active' : ''}
+                        onClick={() => {
+                            userClickedTabRef.current = true;
+                            setTab('completed');
+                            setCurrentPage(1);
+                        }}
+                        className={tab === 'completed' ? 'active' : ''}
                     >
-                        목록
-                    </button>
-                    <button
-                        onClick={() => { setTab('pending'); setCurrentPage(1); }}
-                        className={tab === 'pending' ? 'active' : ''}
-                    >
-                        결재 대기
+                        완료됨
                     </button>
 
                     {/* 검색 */}

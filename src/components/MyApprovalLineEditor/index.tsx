@@ -24,8 +24,6 @@ interface ApprovalStepData {
     jobLevel?: string | null;
     deptCode?: string | null;
     isOptional: boolean;
-    canSkip: boolean;
-    isFinalApprovalAvailable: boolean;
 }
 
 interface ApproverCandidate {
@@ -70,8 +68,6 @@ const emptyStep = (index: number): ApprovalStepData => ({
     jobLevel: undefined,
     deptCode: undefined,
     isOptional: false,
-    canSkip: false,
-    isFinalApprovalAvailable: false
 });
 
 const MyApprovalLineEditor: React.FC = () => {
@@ -162,8 +158,6 @@ const MyApprovalLineEditor: React.FC = () => {
                     jobLevel: s.jobLevel ?? undefined,
                     deptCode: s.deptCode ?? undefined,
                     isOptional: !!s.isOptional,
-                    canSkip: !!s.canSkip,
-                    isFinalApprovalAvailable: !!s.isFinalApprovalAvailable
                 }));
                 setSteps(loadedSteps.length ? loadedSteps : [emptyStep(1)]);
             } catch (e) {
@@ -184,8 +178,6 @@ const MyApprovalLineEditor: React.FC = () => {
             stepName: `단계 ${steps.length + 1}`,
             approverType: 'SPECIFIC_USER',
             isOptional: false,
-            canSkip: false,
-            isFinalApprovalAvailable: false
         };
         setSteps(prev => [...prev, newStep]);
     };
@@ -267,8 +259,6 @@ const MyApprovalLineEditor: React.FC = () => {
             jobLevel: s.jobLevel ?? null,
             deptCode: s.deptCode ?? null,
             isOptional: !!s.isOptional,
-            canSkip: !!s.canSkip,
-            isFinalApprovalAvailable: !!s.isFinalApprovalAvailable
         }))
     });
 
@@ -455,6 +445,7 @@ const MyApprovalLineEditor: React.FC = () => {
                                 onChange={(e) => setLineName(e.target.value)}
                                 placeholder="예: 일반 사원 휴가 결재라인"
                                 className={errors.lineName ? 'error' : ''}
+                                style={{width: '98%'}}
                             />
                             {errors.lineName && (
                                 <span className="approval-line-error-message">{errors.lineName}</span>
@@ -468,6 +459,7 @@ const MyApprovalLineEditor: React.FC = () => {
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="결재라인에 대한 설명을 입력하세요"
                                 rows={3}
+                                style={{width: '98%'}}
                             />
                         </div>
 
@@ -547,6 +539,7 @@ const MyApprovalLineEditor: React.FC = () => {
                                                         updateStep(index, 'stepName', e.target.value)
                                                     }
                                                     placeholder="예: 부서장 승인"
+                                                    style={{width: '95%'}}
                                                 />
                                             </div>
 
@@ -612,29 +605,7 @@ const MyApprovalLineEditor: React.FC = () => {
                                                         updateStep(index, 'isOptional', e.target.checked)
                                                     }
                                                 />
-                                                <span>선택적 단계 (생략 가능)</span>
-                                            </label>
-
-                                            <label className="approval-line-checkbox-label">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={step.canSkip}
-                                                    onChange={(e) =>
-                                                        updateStep(index, 'canSkip', e.target.checked)
-                                                    }
-                                                />
-                                                <span>건너뛰기 허용</span>
-                                            </label>
-
-                                            <label className="approval-line-checkbox-label">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={step.isFinalApprovalAvailable}
-                                                    onChange={(e) =>
-                                                        updateStep(index, 'isFinalApprovalAvailable', e.target.checked)
-                                                    }
-                                                />
-                                                <span>전결 승인 가능</span>
+                                                <span>검토 단계 (생략 가능)</span>
                                             </label>
                                         </div>
                                     </div>
