@@ -49,7 +49,7 @@ export interface ContractSignatures {
     signatures: SignatureState;
     agreements: { [page: string]: 'agree' | 'disagree' | '' };
 }
-const API_BASE = process.env.REACT_APP_API_URL || '/api/v1';
+const API_BASE = process.env.REACT_APP_API_URL;
 // 사용자의 DB 저장 서명을 가져오는 함수 추가
 export async function fetchUserSignatureFromDB(
     token: string,

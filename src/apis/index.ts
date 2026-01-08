@@ -17,7 +17,7 @@ const errorHandler = (error: any) => {
     return responseBody;
 }
 
-const DOMAIN = 'http://localhost:8080';
+const DOMAIN = 'http://localhost:9090';
 
 const API_DOMAIN = `${DOMAIN}/api/v1`;
 

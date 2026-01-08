@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'ax
 import Cookies from 'universal-cookie';
 
 const cookies = new Cookies();
-const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:9090";
 
 const axiosInstance = axios.create({
     baseURL: BASE_URL,

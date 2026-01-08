@@ -46,7 +46,8 @@ export interface ContractSignatures {
     signatures: SignatureState;
     agreements: { [page: string]: 'agree' | 'disagree' | '' };
 }
-const API_BASE = process.env.REACT_APP_API_URL || '/api/v1';
+
+const API_BASE = '';
 
 /** 유틸: 토큰이 있으면 Authorization 헤더 반환 */
 const authHeader = (token?: string) =>

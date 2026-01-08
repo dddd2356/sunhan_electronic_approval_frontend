@@ -6,7 +6,21 @@ import { useCookies } from "react-cookie";
 import VacationHistoryPopup from "../../../components/VacationHistoryPopup";
 import ReportsModal from "../../../components/ReportsModal";
 import axios from "axios";
-import { RefreshCw, Calendar, User, ClipboardList, Settings, FileText, Bell, Clock, AlertTriangle, Home, Smartphone } from 'lucide-react';
+import {
+    RefreshCw,
+    Calendar,
+    User,
+    ClipboardList,
+    Settings,
+    FileText,
+    Bell,
+    Clock,
+    AlertTriangle,
+    Home,
+    Smartphone,
+    Megaphone, CheckCircle2
+} from 'lucide-react';
+import {ContractMemo, getMyMemos} from "../../../apis/contractMemo";
 
 // --- 원본 인터페이스 유지 ---
 interface UserProfile {
@@ -90,6 +104,9 @@ const MainPage: React.FC = () => {
     const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
     const [departmentNames, setDepartmentNames] = useState<Record<string, string>>({});
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [memos, setMemos] = useState<ContractMemo[]>([]);
+    const [loadingMemos, setLoadingMemos] = useState(true);
+    const [memosError, setMemosError] = useState('');
 
     // --- 원본 헬퍼 함수 유지 ---
     const handleRefreshVacation = () => setRefreshTrigger(prev => prev + 1);
@@ -175,6 +192,24 @@ const MainPage: React.FC = () => {
     }, [cookies.accessToken]);
 
     useEffect(() => {
+        const fetchMemos = async () => {
+            if (!cookies.accessToken) return;
+            try {
+                // getMyMemos는 본인의 메모만 가져오는 API 함수라고 가정
+                const data = await getMyMemos(cookies.accessToken);
+                // 최신순 정렬
+                const sortedData = data.sort((a: ContractMemo, b: ContractMemo) =>
+                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                );
+                setMemos(sortedData.slice(0, 3));
+            } catch (error) {
+                console.error('메모 로딩 실패:', error);
+                setMemosError('안내사항을 불러올 수 없습니다.');
+            } finally {
+                setLoadingMemos(false);
+            }
+        };
+        fetchMemos();
         const fetchVacationData = async () => {
             if (!cookies.accessToken || !userProfile) return;
             try {
@@ -278,7 +313,8 @@ const MainPage: React.FC = () => {
                                         <div className="info-icon-circle"><User size={18}/></div>
                                         <div className="info-content">
                                             <span className="label">성명 / 사번</span>
-                                            <span className="value">{userProfile?.userName} ({userProfile?.userId})</span>
+                                            <span
+                                                className="value">{userProfile?.userName} ({userProfile?.userId})</span>
                                         </div>
                                     </div>
                                     <div className="mp-info-item">
@@ -309,15 +345,54 @@ const MainPage: React.FC = () => {
                                     <div className="mp-alert-body">
                                         <h3 className="mp-alert-title">필수 정보 업데이트 필요</h3>
                                         <p className="mp-alert-msg">누락된 개인정보 등록 또는 비밀번호 변경이 필요합니다.</p>
-                                        <button className="mp-alert-btn" onClick={() => setShowProfilePopup(true)}>수정하기</button>
+                                        <button className="mp-alert-btn"
+                                                onClick={() => setShowProfilePopup(true)}>수정하기
+                                        </button>
                                     </div>
                                 </section>
                             )}
 
+                            {/* --- 관리자 작성 메모(공지사항) 표시 카드 --- */}
+                            <section className="mp-card">
+                                <h2 className="mp-card-title">
+                                    <Megaphone size={20} className="icon-blue"/> 인사/계약 주요 안내
+                                </h2>
+
+                                {loadingMemos ? (
+                                    <div className="inner-loader">안내사항 로딩 중...</div>
+                                ) : memosError ? (
+                                    <div className="empty-msg">{memosError}</div>
+                                ) : memos.length > 0 ? (
+                                    <div className="mp-memo-card-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto' }}>
+                                        {memos.map(memo => (
+                                            <div key={memo.id} className="mp-memo-item-box" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #0ea5e9', borderRadius: '8px', padding: '16px' }}>
+                                                <div className="mp-memo-header-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#0ea5e9', background: '#e0f2fe', padding: '2px 8px', borderRadius: '10px' }}>
+                                                    From 인사팀
+                                                </span>
+                                                                            <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                                                    {new Date(memo.createdAt).toLocaleDateString('ko-KR')}
+                                                </span>
+                                                </div>
+                                                <div style={{ fontSize: '14px', color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                                                    {memo.memoText}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="empty-msg" style={{ padding: '30px 0', textAlign: 'center', color: '#94a3b8' }}>
+                                        <CheckCircle2 size={32} style={{ marginBottom: '8px', opacity: 0.5 }} />
+                                        <p>등록된 안내사항이 없습니다.</p>
+                                    </div>
+                                )}
+                            </section>
+
                             {/* 연차 관리 카드 */}
                             <section className="mp-card mp-vacation-card">
                                 <div className="mp-vacation-header">
-                                    <h2 className="mp-card-title"><Calendar size={20} className="icon-green"/> 연차 현황</h2>
+                                    <h2 className="mp-card-title"><Calendar size={20} className="icon-green"/> 연차 현황
+                                    </h2>
                                     <button
                                         className={`mp-refresh-btn ${loadingVacation ? 'spinning' : ''}`}
                                         onClick={handleRefreshVacation}
@@ -352,7 +427,8 @@ const MainPage: React.FC = () => {
                                                 <span className="fw-bold">{Math.round(usagePercent)}%</span>
                                             </div>
                                             <div className="progress-bar-bg">
-                                                <div className="progress-bar-fill" style={{ width: `${Math.min(usagePercent, 100)}%` }}></div>
+                                                <div className="progress-bar-fill"
+                                                     style={{width: `${Math.min(usagePercent, 100)}%`}}></div>
                                             </div>
                                         </div>
 
@@ -365,9 +441,11 @@ const MainPage: React.FC = () => {
                                                 {vacationHistory.length > 0 ? (
                                                     vacationHistory.slice(0, 3).map((v, i) => (
                                                         <div key={i} className="history-item">
-                                                            <span className="h-date">{formatDateRange(v.startDate, v.endDate)}</span>
+                                                            <span
+                                                                className="h-date">{formatDateRange(v.startDate, v.endDate)}</span>
                                                             <span className="h-days">{v.days}일</span>
-                                                            <span className={`h-status ${v.status}`}>{mapStatusToSimpleKorean(v.status)}</span>
+                                                            <span
+                                                                className={`h-status ${v.status}`}>{mapStatusToSimpleKorean(v.status)}</span>
                                                         </div>
                                                     ))
                                                 ) : <div className="empty-msg">기록이 없습니다.</div>}
@@ -384,11 +462,11 @@ const MainPage: React.FC = () => {
                                 <h2 className="mp-card-title"><ClipboardList size={20}/> 퀵 액션</h2>
                                 <div className="mp-action-grid">
                                     <button className="mp-action-btn" onClick={() => setShowProfilePopup(true)}>
-                                        <Settings size={22} />
+                                        <Settings size={22}/>
                                         <span>정보 수정</span>
                                     </button>
                                     <button className="mp-action-btn" onClick={() => setIsReportsModalOpen(true)}>
-                                        <FileText size={22} />
+                                        <FileText size={22}/>
                                         <span>문서 관리</span>
                                     </button>
                                     <button className="mp-action-btn" onClick={handleShowHistoryPopup}>

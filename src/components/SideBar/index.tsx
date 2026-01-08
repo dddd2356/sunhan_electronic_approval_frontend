@@ -91,6 +91,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     };
 
     // 권한 계산
+    const canViewContractMemoAdmin = (permissions.includes('HR_CONTRACT')) || jobLevel === 6;
     const canViewVacationAdmin = (permissions.includes('HR_LEAVE_APPLICATION')) || jobLevel === 6;
     const canCreatePositionAdmin = jobLevel === 6 || permissions.includes("WORK_SCHEDULE_CREATE");
 
@@ -160,6 +161,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
                             <li onClick={() => navigate('/admin/dashboard')}
                                 className={`menu-item admin ${isActive('/admin/dashboard') ? 'active' : ''}`}>
                                 <ShieldCheck size={18}/> <span>권한 관리자</span>
+                            </li>
+                        )}
+
+                        {canViewContractMemoAdmin && (
+                            <li onClick={() => navigate('/admin/memo-management')}
+                                className={`menu-item admin ${isActive('/admin/memo-management') ? 'active' : ''}`}>
+                                <BarChart3 size={18}/> <span>근로계약서 메모 관리</span>
                             </li>
                         )}
 

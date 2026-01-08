@@ -285,11 +285,23 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.vs-table-header-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
 .vs-table-title {
     font-size: 1rem;
     font-weight: 600;
-    margin-bottom: 1rem;
     color: #111827;
+
+    /* 중요: 세로 정렬을 방해하는 요소 제거 */
+    margin: 0 !important;
+    line-height: 1.2; /* 줄 간격을 타이트하게 조절하여 버튼과 맞춤 */
+    display: flex;
+    align-items: center; /* 텍스트 자체를 내부에서 한 번 더 중앙 정렬 */
 }
 
 .vs-table-wrapper {
@@ -312,14 +324,61 @@
     font-weight: 600;
     color: #6b7280;
     border-bottom: 2px solid #e5e7eb;
+    cursor: pointer;
 }
 
-.vs-table th:nth-child(3),
-.vs-table th:nth-child(4),
+.vs-table th:hover {
+    background-color: #f3f4f6;
+}
+
+.vs-excel-btn {
+    margin-bottom: 0 !important;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background-color: #059669; /* 엑셀 느낌의 초록색 */
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: fit-content;
+}
+
+.vs-excel-btn:hover {
+    background-color: #047857;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* 정렬 아이콘 스타일 */
+.vs-sort-icon {
+    display: inline-block;
+    margin-left: 4px;
+    color: #d1d5db; /* 평소에는 연한 회색 */
+    font-size: 0.75rem;
+    transition: color 0.2s;
+}
+
+/* 활성화된 정렬 아이콘 */
+.vs-sort-icon.active {
+    color: #3b82f6; /* 정렬 적용 시 파란색 */
+    font-weight: bold;
+}
+
+/* th 호버 시 아이콘 강조 */
+.vs-table th:hover .vs-sort-icon {
+    color: #9ca3af;
+}
+
 .vs-table th:nth-child(5),
-.vs-table th:nth-child(6) {
+.vs-table th:nth-child(6),
+.vs-table th:nth-child(7),
+.vs-table th:nth-child(8) {
     text-align: center;
 }
+
 
 .vs-table tbody tr {
     border-bottom: 1px solid #e5e7eb;
@@ -336,12 +395,17 @@
 }
 
 .vs-table-name {
+    font-weight: 600;
     color: #111827;
-    font-weight: 500;
 }
 
 .vs-table-position {
     color: #6b7280;
+}
+
+.vs-table-dept {
+    color: #6b7280;
+    font-size: 0.875rem;
 }
 
 .vs-table-total,
@@ -386,8 +450,50 @@
 }
 
 .vs-rate-badge.high {
-    background-color: #fef2f2;
-    color: #ef4444;
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.vs-rate-badge.medium {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.vs-rate-badge.low {
+    background-color: #dcfce7;
+    color: #16a34a;
+}
+
+.vs-no-data {
+    text-align: center;
+    color: #6b7280;
+    font-size: 1rem;
+    padding: 3rem 0;
+}
+
+/* ✅ 직원 선택 버튼 호버 효과 */
+.vs-select-employee-btn {
+    transition: all 0.2s ease-in-out;
+}
+
+.vs-select-employee-btn:hover {
+    background-color: #2563eb !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.vs-select-employee-btn:active {
+    transform: translateY(0) !important;
+}
+
+@media (max-width: 768px) {
+    .vs-chart-card {
+        padding: 1rem;
+    }
+
+    .vs-chart-card .recharts-responsive-container {
+        height: 250px !important;
+    }
 }
 
 /* 반응형 */

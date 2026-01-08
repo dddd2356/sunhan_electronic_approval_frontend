@@ -62,12 +62,12 @@ export const SyncManagementDashboard: React.FC = () => {
 
     // 전체 동기화 핸들러
     const handleSyncAll = () => {
-        handleSync('/api/admin/sync/useflag/all', '전체 사용자의 상태를 동기화하시겠습니까? 데이터 양에 따라 시간이 소요될 수 있습니다.');
+        handleSync('/api/admin/sync/users/all', '전체 사용자의 정보를 동기화하시겠습니까? 데이터 양에 따라 시간이 소요될 수 있습니다.');
     };
 
     // 변경된 내역만 동기화 핸들러
     const handleSyncChanged = () => {
-        handleSync('/api/admin/sync/useflag/changed', '변경된 사용자 정보만 동기화하시겠습니까?');
+        handleSync('/api/admin/sync/users/changed', '변경된 사용자 정보만 동기화하시겠습니까?');
     };
 
     // 개별 사용자 동기화 핸들러
@@ -76,7 +76,7 @@ export const SyncManagementDashboard: React.FC = () => {
             setError('동기화할 사용자의 ID를 입력해주세요.');
             return;
         }
-        handleSync(`/api/admin/sync/useflag/${userIdInput.trim()}`, `'${userIdInput.trim()}' 사용자의 상태를 동기화하시겠습니까?`);
+        handleSync(`/api/admin/sync/users/${userIdInput.trim()}`, `'${userIdInput.trim()}' 사용자의 정보를 동기화하시겠습니까?`);
     };
 
     // ## Render Logic ##

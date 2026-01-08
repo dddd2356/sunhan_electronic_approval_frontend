@@ -679,7 +679,8 @@ export const AdminDashboard: React.FC = () => {
 
                 <div className={`admin-drawer ${isDrawerOpen ? 'open' : ''}`}>
                     {selectedUser && (
-                        <div className="drawer-content" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <div className="drawer-content"
+                             style={{height: '100%', display: 'flex', flexDirection: 'column'}}>
                             {/* Drawer Header */}
                             <div className="drawer-header">
                                 <h2>사용자 상세 관리</h2>
@@ -696,80 +697,109 @@ export const AdminDashboard: React.FC = () => {
                                     <div className="profile-details">
                                         <h3>{selectedUser.userName}</h3>
                                         <p>{selectedUser.userId}</p>
-                                        <p style={{ fontSize: '0.8rem', color: '#6B7280' }}>
+                                        <p style={{fontSize: '0.8rem', color: '#6B7280'}}>
                                             {selectedUser.deptCode} • {selectedUser.useFlag === '1' ? '재직중' : '퇴사'}
                                         </p>
                                     </div>
                                 </div>
 
-                                {/* Basic Settings */}
-                                <div className="drawer-section">
-                                    <h4 className="section-title">기본 설정</h4>
-
-                                    {/* Job Level */}
-                                    <div className="form-group" style={{ marginBottom: '1rem' }}>
-                                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.875rem', fontWeight: 600 }}>
-                                            직급 (Job Level)
-                                        </label>
-                                        <div className="input-with-button">
-                                            <input
-                                                type="number"
-                                                min="0" max="6"
-                                                value={newJobLevel}
-                                                onChange={(e) => setNewJobLevel(e.target.value)}
-                                            />
-                                            <button onClick={handleUpdateJobLevel} className="btn-save-mini">저장</button>
+                                {/* ✅ 시스템 관리자는 권한 관리 UI 숨김 */}
+                                {selectedUser.deptCode === '000' ? (
+                                    <div className="drawer-section">
+                                        <div style={{
+                                            padding: '2rem',
+                                            textAlign: 'center',
+                                            background: '#f0f9ff',
+                                            borderRadius: '8px',
+                                            border: '1px solid #3b82f6'
+                                        }}>
+                                            <Shield size={48} style={{color: '#3b82f6', marginBottom: '1rem'}}/>
+                                            <h4 style={{color: '#1e40af', marginBottom: '0.5rem'}}>시스템 관리자 계정</h4>
+                                            <p style={{color: '#6b7280', fontSize: '0.875rem'}}>
+                                                이 계정은 모든 권한을 자동으로 보유하며,<br/>
+                                                권한 수정이 불가능합니다.
+                                            </p>
                                         </div>
                                     </div>
+                                ) : (
+                                    <>
+                                        {/* 기본 설정 */}
+                                        <div className="drawer-section">
+                                            <h4 className="section-title">기본 설정</h4>
 
-                                    {/* Admin Role */}
-                                    <div className="permission-item" style={{ marginTop: '1rem' }}>
-                                        <div className="perm-info">
-                                            <span className="perm-name">시스템 관리자 (Admin)</span>
-                                            <span className="perm-code">전체 시스템 접근 권한</span>
-                                        </div>
-                                        <label className="toggle-switch">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedUser.role === 'ADMIN'}
-                                                onChange={handleToggleAdminRole}
-                                            />
-                                            <span className="slider round"></span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div className="drawer-divider"></div>
-
-                                {/* HR Permissions */}
-                                <div className="drawer-section">
-                                    <h4 className="section-title">HR 접근 권한</h4>
-                                    <p className="section-desc">
-                                        해당 사용자에게 부여할 개별 HR 시스템 권한을 설정하세요.
-                                    </p>
-
-                                    <div className="permission-list">
-                                        {permissionTypes.map(perm => {
-                                            const isGranted = selectedUserCurrentPermissions.includes(perm.name);
-                                            return (
-                                                <div key={perm.name} className="permission-item">
-                                                    <div className="perm-info">
-                                                        <span className="perm-name">{perm.displayName}</span>
-                                                        <span className="perm-code">{perm.name}</span>
-                                                    </div>
-                                                    <label className="toggle-switch">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={isGranted}
-                                                            onChange={() => handleTogglePermission(perm.name, isGranted)}
-                                                        />
-                                                        <span className="slider round"></span>
-                                                    </label>
+                                            {/* Job Level */}
+                                            <div className="form-group" style={{marginBottom: '1rem'}}>
+                                                <label style={{
+                                                    display: 'block',
+                                                    marginBottom: '4px',
+                                                    fontSize: '0.875rem',
+                                                    fontWeight: 600
+                                                }}>
+                                                    직급 (Job Level)
+                                                </label>
+                                                <div className="input-with-button">
+                                                    <input
+                                                        type="number"
+                                                        min="0" max="6"
+                                                        value={newJobLevel}
+                                                        onChange={(e) => setNewJobLevel(e.target.value)}
+                                                    />
+                                                    <button onClick={handleUpdateJobLevel}
+                                                            className="btn-save-mini">저장
+                                                    </button>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
+                                            </div>
+
+                                            {/* Admin Role */}
+                                            <div className="permission-item" style={{marginTop: '1rem'}}>
+                                                <div className="perm-info">
+                                                    <span className="perm-name">시스템 관리자 (Admin)</span>
+                                                    <span className="perm-code">전체 시스템 접근 권한</span>
+                                                </div>
+                                                <label className="toggle-switch">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedUser.role === 'ADMIN'}
+                                                        onChange={handleToggleAdminRole}
+                                                    />
+                                                    <span className="slider round"></span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="drawer-divider"></div>
+
+                                        {/* HR Permissions */}
+                                        <div className="drawer-section">
+                                            <h4 className="section-title">HR 접근 권한</h4>
+                                            <p className="section-desc">
+                                                해당 사용자에게 부여할 개별 HR 시스템 권한을 설정하세요.
+                                            </p>
+
+                                            <div className="permission-list">
+                                                {permissionTypes.map(perm => {
+                                                    const isGranted = selectedUserCurrentPermissions.includes(perm.name);
+                                                    return (
+                                                        <div key={perm.name} className="permission-item">
+                                                            <div className="perm-info">
+                                                                <span className="perm-name">{perm.displayName}</span>
+                                                                <span className="perm-code">{perm.name}</span>
+                                                            </div>
+                                                            <label className="toggle-switch">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isGranted}
+                                                                    onChange={() => handleTogglePermission(perm.name, isGranted)}
+                                                                />
+                                                                <span className="slider round"></span>
+                                                            </label>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
@@ -780,20 +810,22 @@ export const AdminDashboard: React.FC = () => {
                    ========================================== */}
                 {isDeptModalOpen && (
                     <div className="admin-modal-overlay">
-                        <div className="admin-modal-content" style={{ maxWidth: '600px', width: '95%' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                                <h2 className="admin-modal-title" style={{ margin: 0, fontSize: '1.25rem' }}>부서 권한 관리</h2>
-                                <button onClick={() => setIsDeptModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                                    <X size={24} />
+                        <div className="admin-modal-content" style={{maxWidth: '600px', width: '95%'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem'}}>
+                                <h2 className="admin-modal-title" style={{margin: 0, fontSize: '1.25rem'}}>부서 권한 관리</h2>
+                                <button onClick={() => setIsDeptModalOpen(false)}
+                                        style={{background: 'none', border: 'none', cursor: 'pointer'}}>
+                                    <X size={24}/>
                                 </button>
                             </div>
 
                             {/* Add Permission Form */}
-                            <div className="hr-permission-form-section" style={{ padding: '1rem', marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>새 권한 추가</h3>
-                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <div className="hr-permission-form-section"
+                                 style={{padding: '1rem', marginBottom: '1.5rem'}}>
+                                <h3 style={{fontSize: '1rem', marginBottom: '1rem'}}>새 권한 추가</h3>
+                                <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
                                     <select
-                                        className="form-select" style={{ flex: 1 }}
+                                        className="form-select" style={{flex: 1}}
                                         value={selectedTargetDept}
                                         onChange={(e) => setSelectedTargetDept(e.target.value)}
                                     >
@@ -803,7 +835,7 @@ export const AdminDashboard: React.FC = () => {
                                         ))}
                                     </select>
                                     <select
-                                        className="form-select" style={{ flex: 1 }}
+                                        className="form-select" style={{flex: 1}}
                                         value={selectedDeptPermission}
                                         onChange={(e) => setSelectedDeptPermission(e.target.value)}
                                     >
@@ -815,7 +847,7 @@ export const AdminDashboard: React.FC = () => {
                                     <button
                                         onClick={handleGrantDeptPermission}
                                         className="submit-button"
-                                        style={{ height: '42px' }}
+                                        style={{height: '42px'}}
                                     >
                                         추가
                                     </button>
@@ -823,7 +855,8 @@ export const AdminDashboard: React.FC = () => {
                             </div>
 
                             {/* Existing Permissions List */}
-                            <div className="permissions-table-container" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                            <div className="permissions-table-container"
+                                 style={{maxHeight: '300px', overflowY: 'auto'}}>
                                 <table className="permissions-table">
                                     <thead>
                                     <tr>
@@ -837,7 +870,7 @@ export const AdminDashboard: React.FC = () => {
                                         deptPermissions.map((dp, idx) => (
                                             <tr key={idx}>
                                                 <td>{dp.deptCode.replace(/\d+$/, '')}</td>
-                                                <td style={{ fontSize: '0.8rem' }}>
+                                                <td style={{fontSize: '0.8rem'}}>
                                                     {dp.permissionType.split(',').map(t => PERMISSION_DISPLAY_MAP[t.trim()] || t).join(', ')}
                                                 </td>
                                                 <td>

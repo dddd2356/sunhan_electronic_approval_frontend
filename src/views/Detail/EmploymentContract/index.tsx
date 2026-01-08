@@ -48,6 +48,7 @@ interface Contract {
 }
 
 interface FormDataFields {
+    contractTitle: string;
     employerName: string;
     employerAddress: string;
     employerPhone: string;
@@ -66,7 +67,6 @@ interface FormDataFields {
     licenseAllowance: string;
     hazardPay: string;
     treatmentImprovementExpenses: string;
-    specialAllowance: string;
     adjustmentAllowance: string;
     overtime:string;
     nDuty:string;
@@ -95,6 +95,7 @@ const EmploymentContract = () => {
     const [userSignatureImage, setUserSignatureImage] = useState<string | null>(null);
     const createdDate = contract?.createdAt?.slice(0, 10) || '';
     const [formData, setFormData] = useState<FormDataFields>({
+        contractTitle: '',
         employerName: '',
         employerAddress: '',
         employerPhone: '',
@@ -113,7 +114,6 @@ const EmploymentContract = () => {
         licenseAllowance: '',
         hazardPay: '',
         treatmentImprovementExpenses: '',
-        specialAllowance: '',
         adjustmentAllowance: '',
         overtime:'',
         nDuty:'',
@@ -663,7 +663,15 @@ const EmploymentContract = () => {
             content:
                 <>
                     <div className="contract-header">
-                        <h1>근로계약서【연봉제】</h1>
+                        <input
+                            type="text"
+                            name="contractTitle"
+                            value={formData.contractTitle}
+                            onChange={handleInputChange}
+                            placeholder="근로계약서【연봉제】"
+                            disabled={!isDraft}
+                            className="ec-contract-title-input"
+                        />
                     </div>
                     <div style={{textAlign: "left"}}>
                         선한병원(이하 '사용자'라 한다)와(과)
@@ -698,7 +706,7 @@ const EmploymentContract = () => {
                                 </td>
                                 <th className="field-header">대표자</th>
                                 <td className="input-cell">
-                                    최철훈외 6명
+                                    최민선외 6명
                                 </td>
                             </tr>
                             <tr>
@@ -940,7 +948,7 @@ const EmploymentContract = () => {
                                 <table>
                                     <thead>
                                     <tr>
-                                        <th className="section-header" colSpan={3}>항목</th>
+                                    <th className="section-header" colSpan={3}>항목</th>
                                         <th className="content-header" colSpan={1}>금액</th>
                                         <th className="content-header" colSpan={3}>산정근거</th>
                                     </tr>
@@ -966,10 +974,10 @@ const EmploymentContract = () => {
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th rowSpan={12} className="party-header">연봉</th>
+                                        <th rowSpan={11} className="party-header">연봉</th>
                                     </tr>
                                     <tr>
-                                        <th style={{fontWeight: "bolder"}} rowSpan={8} className="party-header">표준<br/>연봉총액
+                                        <th style={{fontWeight: "bolder"}} rowSpan={7} className="party-header">표준<br/>연봉총액
                                         </th>
                                     </tr>
                                     <tr>
@@ -985,8 +993,10 @@ const EmploymentContract = () => {
                                             />
 
                                         </td>
-                                        <td colSpan={1} rowSpan={7} className="input-cell">209시간</td>
-                                        <td colSpan={2} rowSpan={7} className="section-body">소정근로시간 x 통상시급 x 1.0</td>
+                                        <td colSpan={1} rowSpan={6} className="input-cell">209시간</td>
+                                        <td colSpan={2} rowSpan={6} className="section-body"
+                                            style={{textAlign: "center"}}>소정근로시간 x 통상시급 x 1.0
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th className="party-header">직책수당</th>
@@ -1040,18 +1050,7 @@ const EmploymentContract = () => {
                                             />
                                         </td>
                                     </tr>
-                                    <tr>
-                                        <th className="party-header">특별수당</th>
-                                        <td className="input-cell">
-                                            <input
-                                                type="text"
-                                                name="specialAllowance"
-                                                value={formData.specialAllowance}
-                                                onChange={handleInputChange}
-                                                placeholder=""
-                                            />
-                                        </td>
-                                    </tr>
+
                                     <tr>
                                         <th className="party-header">조정수당</th>
                                         <td className="input-cell">
@@ -1079,7 +1078,7 @@ const EmploymentContract = () => {
                                                 placeholder="연장/야간수당(고정)"
                                                 disabled={!isDraft}
                                             />
-                                            </th>
+                                        </th>
                                         <td className="input-cell">
                                             <input
                                                 type="text"
@@ -1138,17 +1137,15 @@ const EmploymentContract = () => {
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th colSpan={3} rowSpan={3} className="party-header">통상시급</th>
-                                    </tr>
-                                    <tr>
+                                        <th colSpan={3} className="party-header">통상시급</th>
                                         <td className="input-cell">
-                                        <input
+                                            <input
                                                 type="text"
                                                 name="regularHourlyWage"
                                                 value={formData.regularHourlyWage}
                                                 onChange={handleInputChange}
                                                 placeholder=""
-                                                disabled={!isDraft} // ← DRAFT가 아니면 편집 금지
+                                                disabled={!isDraft}
                                             />
                                         </td>
                                         <td colSpan={3} className="section-body">통상시급은 표준연봉총액을 기준으로 한다.</td>
@@ -1580,7 +1577,7 @@ const EmploymentContract = () => {
                                     선한병원 <br/> 대표원장
                                 </span>
                                 <span style={{fontWeight: "bolder"}} className="signature-label">
-                                    최철훈외 6명
+                                    최민선외 6명
                                 </span>
                                 <span className="signature-suffix-container">
                                 {formData.ceoSignatureUrl ? (

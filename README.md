@@ -59,7 +59,7 @@
 
 ## ⚙️ 환경 변수 (.env)
 
--   `VITE_API_BASE_URL`: localhost:8080/api/v1
+-   `VITE_API_BASE_URL`: localhost:9090/api/v1
 
 ---
 
