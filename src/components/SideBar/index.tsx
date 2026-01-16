@@ -16,7 +16,7 @@ import {
     BarChart3,
     RefreshCcw,
     UserCircle,
-    LogOut
+    LogOut, Shield, FileSignature
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -34,6 +34,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
     const [jobLevel, setJobLevel] = useState<number>(0);
     const [permissions, setPermissions] = useState<string[]>([]);
+    const [canCreateConsent, setCanCreateConsent] = useState<boolean>(false);
+    const [canManageConsent, setCanManageConsent] = useState<boolean>(false);
 
     const API_BASE_URL = process.env.REACT_APP_API_URL;
 
@@ -43,6 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     useEffect(() => {
         if (cookies.accessToken) {
             checkUserStatus();
+            checkConsentPermissions();
         }
     }, [cookies.accessToken]);
 
@@ -94,7 +97,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     const canViewContractMemoAdmin = (permissions.includes('HR_CONTRACT')) || jobLevel === 6;
     const canViewVacationAdmin = (permissions.includes('HR_LEAVE_APPLICATION')) || jobLevel === 6;
     const canCreatePositionAdmin = jobLevel === 6 || permissions.includes("WORK_SCHEDULE_CREATE");
+// ✅ 동의서 권한 체크 추가
+    const checkConsentPermissions = async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/consents/permissions`, {
+                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+            });
 
+            setCanCreateConsent(response.data.canCreate);
+            setCanManageConsent(response.data.canManage);
+        } catch (error) {
+            console.error('동의서 권한 확인 실패:', error);
+        }
+    };
 
     useEffect(() => {
         console.log("현재 직급(jobLevel):", jobLevel, typeof jobLevel);
@@ -132,6 +147,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
                     <Home size={18}/> <span>메인 화면</span>
                 </li>
 
+                {/* ✅ 동의서 메뉴 추가 */}
+                <li onClick={() => navigate('/detail/consent/my-list')}
+                    className={`menu-item ${isActive('/detail/consent/my-list') ? 'active' : ''}`}>
+                    <FileSignature size={18}/> <span>동의서</span>
+                </li>
+
                 <li onClick={() => navigate('/detail/employment-contract')}
                     className={`menu-item ${isActive('/detail/employment-contract') ? 'active' : ''}`}>
                     <FileText size={18}/> <span>근로계약서</span>
@@ -153,21 +174,49 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
                 </li>
 
                 {/* 3. 관리자 메뉴 섹션 (조건부 렌더링) */}
-                {(isAdmin || canViewVacationAdmin || canCreatePositionAdmin) && (
+                {(isAdmin) && (
                     <>
-                        <div className="menu-section-label">Administration</div>
+                    <div className="menu-section-label">Administration</div>
 
-                        {isAdmin && jobLevel >= 1 && (
-                            <li onClick={() => navigate('/admin/dashboard')}
-                                className={`menu-item admin ${isActive('/admin/dashboard') ? 'active' : ''}`}>
-                                <ShieldCheck size={18}/> <span>권한 관리자</span>
+                    {isAdmin && jobLevel >= 1 && (
+                        <li onClick={() => navigate('/admin/dashboard')}
+                            className={`menu-item admin ${isActive('/admin/dashboard') ? 'active' : ''}`}>
+                            <ShieldCheck size={18}/> <span>권한 관리자</span>
+                        </li>
+                    )}
+
+                    {/* ✅ 동의서 발송 메뉴 (생성 권한) */}
+                    {canCreateConsent && (
+                        <>
+                            <li onClick={() => navigate('/admin/consent/issue')}
+                                className={`menu-item admin ${isActive('/admin/consent/issue') ? 'active' : ''}`}>
+                                <FileSignature size={18}/> <span>동의서 발송</span>
                             </li>
+                            <li onClick={() => navigate('/admin/consent/my-issued')}
+                                className={`menu-item admin ${isActive('/admin/consent/my-issued') ? 'active' : ''}`}>
+                                <FileText size={18}/> <span>발송 현황</span>
+                            </li>
+                        </>
+                )}
+
+                {/* ✅ 동의서 관리 메뉴 (관리 권한) */}
+                {canManageConsent && (
+                    <>
+                        <li onClick={() => navigate('/admin/consent/management')}
+                            className={`menu-item admin ${isActive('/admin/consent/management') ? 'active' : ''}`}>
+                                    <BarChart3 size={18}/> <span>동의서 관리</span>
+                                </li>
+                                <li onClick={() => navigate('/admin/consent/preview')}
+                                    className={`menu-item admin ${isActive('/admin/consent/preview') ? 'active' : ''}`}>
+                                    <FileText size={18}/> <span>동의서 템플릿 미리보기</span>
+                                </li>
+                            </>
                         )}
 
                         {canViewContractMemoAdmin && (
                             <li onClick={() => navigate('/admin/memo-management')}
                                 className={`menu-item admin ${isActive('/admin/memo-management') ? 'active' : ''}`}>
-                                <BarChart3 size={18}/> <span>근로계약서 메모 관리</span>
+                            <BarChart3 size={18}/> <span>근로계약서 메모 관리</span>
                             </li>
                         )}
 

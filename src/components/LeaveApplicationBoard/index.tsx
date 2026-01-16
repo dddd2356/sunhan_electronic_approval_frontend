@@ -5,7 +5,7 @@ import Layout from "../Layout";
 import {
     fetchCurrentUser as apiFetchCurrentUser,
     fetchLeaveApplications,
-    createLeaveApplication
+    createLeaveApplication, searchCompletedApplications, searchMyApplications, searchPendingApplications
 } from '../../apis/leaveApplications';
 import dayjs from "dayjs";
 
@@ -53,7 +53,11 @@ const LeaveApplicationBoard: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [searchType, setSearchType] = useState<'all'|'applicant'|'substitute'|'status'>('all');
     const [hasHrLeavePermission, setHasHrLeavePermission] = useState(false);
-// 탭에 따른 플레이스홀더 텍스트 함수
+    const [searchStartDate, setSearchStartDate] = useState('');
+    const [searchEndDate, setSearchEndDate] = useState('');
+    const [isSearchMode, setIsSearchMode] = useState(false);
+
+    // 탭에 따른 플레이스홀더 텍스트 함수
     const getSearchPlaceholder = () => {
         switch (tab) {
             case 'my':
@@ -301,34 +305,39 @@ const LeaveApplicationBoard: React.FC = () => {
     };
 
     const getTotalDaysFromFormData = (app: LeaveApplication): number => {
-        // 먼저 API에서 받은 totalDays 사용 (null/undefined가 아닌 경우)
-        if (app.totalDays !== undefined && app.totalDays !== null && app.totalDays > 0) {  // 0 초과인 경우만 우선
+        // ✅ DB의 totalDays를 최우선으로 사용 (이제 계산값이므로 정확함)
+        if (app.totalDays !== undefined && app.totalDays !== null) {
             return app.totalDays;
         }
 
-        // formDataJson이 있다면 파싱해서 totalDays 가져오기 또는 재계산
+        // ✅ formDataJson 파싱은 백업용으로만 유지
         if (app.formDataJson) {
             try {
                 const formData = JSON.parse(app.formDataJson);
-                if (formData.totalDays !== undefined && formData.totalDays !== null && formData.totalDays > 0) {  // 0 초과인 경우만
+                if (formData.totalDays !== undefined && formData.totalDays !== null) {
                     return formData.totalDays;
                 }
-                // 재계산 로직 (calculateTotalDays와 유사)
+
                 let total = 0;
+
                 // flexiblePeriods 계산
                 if (formData.flexiblePeriods && formData.flexiblePeriods.length > 0) {
                     formData.flexiblePeriods.forEach((period: any) => {
                         if (period.startDate && period.endDate) {
                             const start = dayjs(period.startDate);
                             const end = dayjs(period.endDate);
-                            let days = end.diff(start, 'day') + 1;
+
+                            // ✅ 반차 처리
                             if (period.halfDayOption === 'morning' || period.halfDayOption === 'afternoon') {
-                                days *= 0.5;
+                                total += 0.5;
+                            } else {
+                                const days = end.diff(start, 'day') + 1;
+                                total += days;
                             }
-                            total += days;
                         }
                     });
                 }
+
                 // consecutivePeriod 계산
                 if (formData.consecutivePeriod && formData.consecutivePeriod.startDate && formData.consecutivePeriod.endDate) {
                     const start = dayjs(formData.consecutivePeriod.startDate);
@@ -336,6 +345,7 @@ const LeaveApplicationBoard: React.FC = () => {
                     const days = end.diff(start, 'day') + 1;
                     total += days;
                 }
+
                 return total;
             } catch (e) {
                 console.error('formDataJson 파싱 실패:', e);
@@ -347,7 +357,7 @@ const LeaveApplicationBoard: React.FC = () => {
 
 // 탭 변경 시 검색 초기화를 위한 useEffect 수정
     useEffect(() => {
-        if (currentUser) {
+        if (currentUser  && !isSearchMode) {
             fetchApplications();
         }
     }, [currentUser, tab, currentPage]); // currentPage 추가
@@ -356,6 +366,9 @@ const LeaveApplicationBoard: React.FC = () => {
         setSearchTerm('');
         setSearchType('all');
         setCurrentPage(1);
+        setIsSearchMode(false);
+        setSearchStartDate('');
+        setSearchEndDate('');
     }, [tab]);
 
 // 검색어나 검색 타입이 변경될 때만 페이지 초기화
@@ -408,11 +421,6 @@ const LeaveApplicationBoard: React.FC = () => {
                 filtered = data.content.filter(app => app.status === 'APPROVED');
             }
 
-            // 'createdAt' 기준 정렬 (이 로직도 백엔드에서 처리하는 게 더 효율적)
-            filtered.sort((a, b) =>
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
-
             setApplications(filtered);
 
         } catch (err: any) {
@@ -445,6 +453,113 @@ const LeaveApplicationBoard: React.FC = () => {
     const handleSearchReset = () => {
         setSearchTerm('');
         setSearchType('all');
+        setIsSearchMode(false);
+        setSearchStartDate('');
+        setSearchEndDate('');
+        setCurrentPage(1);
+        if (currentUser) {
+            fetchApplications(); // 일반 조회로 복귀
+        }
+    };
+
+    const handleSearch = async () => {
+        if (!searchStartDate || !searchEndDate) {
+            alert('시작일과 종료일을 모두 입력해주세요.');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setIsSearchMode(true);
+            setCurrentPage(1);
+
+            const apiPage = 0;
+
+            // ✅ 탭별로 다른 API 호출
+            let result: PaginationData;
+
+            if (tab === 'my') {
+                result = await searchMyApplications(
+                    cookies.accessToken,
+                    searchStartDate,
+                    searchEndDate,
+                    apiPage,
+                    itemsPerPage
+                ) as PaginationData;
+            } else if (tab === 'pending') {
+                result = await searchPendingApplications(
+                    cookies.accessToken,
+                    searchStartDate,
+                    searchEndDate,
+                    apiPage,
+                    itemsPerPage
+                ) as PaginationData;
+            } else {
+                result = await searchCompletedApplications(
+                    cookies.accessToken,
+                    searchStartDate,
+                    searchEndDate,
+                    apiPage,
+                    itemsPerPage
+                ) as PaginationData;
+            }
+
+            setPaginationData(result);
+            setApplications(result.content || []);
+
+        } catch (err: any) {
+            console.error('검색 실패:', err);
+            setError(err.message || '검색에 실패했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+// 페이지 변경 핸들러 추가
+    const handlePageChange = async (newPage: number) => {
+        setCurrentPage(newPage);
+
+        if (isSearchMode && searchStartDate && searchEndDate) {
+            try {
+                setLoading(true);
+                const apiPage = newPage - 1;
+
+                let result: PaginationData;
+
+                if (tab === 'my') {
+                    result = await searchMyApplications(
+                        cookies.accessToken,
+                        searchStartDate,
+                        searchEndDate,
+                        apiPage,
+                        itemsPerPage
+                    ) as PaginationData;
+                } else if (tab === 'pending') {
+                    result = await searchPendingApplications(
+                        cookies.accessToken,
+                        searchStartDate,
+                        searchEndDate,
+                        apiPage,
+                        itemsPerPage
+                    ) as PaginationData;
+                } else {
+                    result = await searchCompletedApplications(
+                        cookies.accessToken,
+                        searchStartDate,
+                        searchEndDate,
+                        apiPage,
+                        itemsPerPage
+                    ) as PaginationData;
+                }
+
+                setPaginationData(result);
+                setApplications(result.content || []);
+            } catch (err: any) {
+                console.error('페이지 변경 실패:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
     };
 
     const canViewCompleted = Boolean(currentUser && (
@@ -482,17 +597,18 @@ const LeaveApplicationBoard: React.FC = () => {
     const startPage = Math.floor((currentPage - 1) / pageGroupSize) * pageGroupSize + 1;
     const endPage = Math.min(startPage + pageGroupSize - 1, safeTotalPages);
 
-    const handleNextGroup = () => {
+    const handleNextGroup = async () => {
         if (endPage < totalPages) {
-            setCurrentPage(endPage + 1);
+            await handlePageChange(endPage + 1);
         }
     };
 
-    const handlePrevGroup = () => {
+    const handlePrevGroup = async () => {
         if (startPage > 1) {
-            setCurrentPage(startPage - 1);
+            await handlePageChange(startPage - 1);
         }
     };
+
     const formatDate = (dateString: string | undefined): string => {
         if (!dateString) {
             return '-';
@@ -540,12 +656,15 @@ const LeaveApplicationBoard: React.FC = () => {
 
                     {/* 3) 완료된 휴가원 탭 (권한이 있을 때만) */}
                     {/* 완료된 휴가원: 모든 사용자에게 보여주기 */}
-                     <button
-                       onClick={() => { setTab('completed'); setCurrentPage(1); }}
-                       className={tab === 'completed' ? 'active' : ''}
-                     >
-                       완료된 휴가원
-                     </button>
+                    <button
+                        onClick={() => {
+                            setTab('completed');
+                            setCurrentPage(1);
+                        }}
+                        className={tab === 'completed' ? 'active' : ''}
+                    >
+                        완료된 휴가원
+                    </button>
                     {/* 모든 탭에서 검색 기능 표시 */}
                     <span className="inline-search-section">
                         <select
@@ -567,21 +686,41 @@ const LeaveApplicationBoard: React.FC = () => {
                             className="inline-search-input"
                         />
 
-                        {searchTerm && (
-                            <button
-                                onClick={handleSearchReset}
-                                className="inline-search-reset"
-                                title="검색 초기화"
-                            >
-                                ×
-                            </button>
-                        )}
+                                            {searchTerm && (
+                                                <button
+                                                    onClick={handleSearchReset}
+                                                    className="inline-search-reset"
+                                                    title="검색 초기화"
+                                                >
+                                                    ×
+                                                </button>
+                                            )}
 
-                        {searchTerm && (
-                            <span className="inline-search-count">
+                                            <div className="search-filters">
+                            <input
+                                type="date"
+                                value={searchStartDate}
+                                onChange={(e) => setSearchStartDate(e.target.value)}
+                                className="date-input"
+                            />
+                            <span className="date-separator">~</span>
+                            <input
+                                type="date"
+                                value={searchEndDate}
+                                onChange={(e) => setSearchEndDate(e.target.value)}
+                                className="date-input"
+                            />
+                            <button onClick={handleSearch} className="search-button">검색</button>
+                                                {(searchStartDate || searchEndDate || isSearchMode) && (
+                                                    <button onClick={handleSearchReset} className="reset-button">초기화</button>
+                                                )}
+                        </div>
+
+                                            {searchTerm && (
+                                                <span className="inline-search-count">
                                 {filteredApplications.length}건
                             </span>
-                        )}
+                                            )}
                     </span>
                 </div>
                 <div className="leave-application-list">
@@ -644,7 +783,7 @@ const LeaveApplicationBoard: React.FC = () => {
                                 {Array.from({length: endPage - startPage + 1}, (_, i) => startPage + i).map(num => (
                                     <button
                                         key={num}
-                                        onClick={() => setCurrentPage(num)}
+                                        onClick={() => handlePageChange(num)}
                                         className={num === currentPage ? 'active' : ''}
                                     >
                                         {num}

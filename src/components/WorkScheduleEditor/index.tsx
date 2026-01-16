@@ -72,6 +72,8 @@ const WorkScheduleEditor: React.FC = () => {
     const [tempConfig, setTempConfig] = useState<DeptDutyConfig | null>(null); // 모달 내부 임시 저장용
     const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const [canManageMembers, setCanManageMembers] = useState(false);
+    const [weekdays, setWeekdays] = useState<Record<number, string>>({});
+
     const loadHolidays = async (year: number) => {
         try {
             // ✅ 백엔드 프록시를 통해 호출
@@ -161,7 +163,7 @@ const WorkScheduleEditor: React.FC = () => {
 // ✅ 폴링 함수
     const pollForPdf = async (maxRetries: number) => {
         for (let i = 0; i < maxRetries; i++) {
-            await new Promise(resolve => setTimeout(resolve, 5000));  // 5초 대기
+            await new Promise(resolve => setTimeout(resolve, 3000));  // 3초 대기
 
             try {
                 const response = await axios.get(`/api/v1/work-schedules/${id}/pdf`, {
@@ -182,6 +184,9 @@ const WorkScheduleEditor: React.FC = () => {
 
                     setIsGeneratingPdf(false);
                     return;
+                }
+                else if (response.status === 202) {
+                    console.log(`폴링 ${i+1}회: 생성 중...`);
                 }
             } catch (err) {
                 console.error(`폴링 ${i + 1}차 시도 실패:`, err);
@@ -294,6 +299,24 @@ const WorkScheduleEditor: React.FC = () => {
         }
     }, [scheduleData]);
 
+    useEffect(() => {
+        if (scheduleData) {
+            const year = parseInt(scheduleData.yearMonth.split('-')[0]);
+            const month = parseInt(scheduleData.yearMonth.split('-')[1]);
+            loadHolidays(year);
+
+            // 요일 계산
+            const days: Record<number, string> = {};
+            const daysInMonth = new Date(year, month, 0).getDate();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month - 1, day);
+                const dow = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][date.getDay()];
+                days[day] = dow;
+            }
+            setWeekdays(days);
+        }
+    }, [scheduleData]);
+
     // 2. 전결 권한 확인 useEffect
     useEffect(() => {
         const checkFinalApprovalRight = async () => {
@@ -357,6 +380,32 @@ const WorkScheduleEditor: React.FC = () => {
         if (!scheduleData) return false; // null 체크 추가
         const [year, month] = scheduleData.yearMonth.split('-');
         return holidays.has(`${parseInt(month)}-${day}`);
+    };
+
+    const dayClass = (day: number) => {
+        if (!scheduleData) return '';
+        const monthDay = `${parseInt(scheduleData.yearMonth.split('-')[1])}-${day}`;
+        if (holidays.has(monthDay)) return 'holiday';
+        if (weekdays[day] === 'SATURDAY') return 'saturday';
+        if (weekdays[day] === 'SUNDAY') return 'sunday';
+        return '';
+    };
+
+    const cellClass = (day: number) => {
+        if (!scheduleData) return 'wse-work-cell';
+        let base = `wse-work-cell ${dayClass(day)}`;
+        if (dutyConfig?.dutyMode === 'ON_CALL_DUTY') {
+            const monthDay = `${parseInt(scheduleData.yearMonth.split('-')[1])}-${day}`;
+            if (holidays.has(monthDay)) {
+                // 공휴일 우선
+                base += ' holiday-priority';
+            } else if (weekdays[day] === 'SATURDAY' && dutyConfig.useSaturday) {
+                base += ' saturday-duty';
+            } else if ((weekdays[day] === 'SUNDAY' || holidays.has(monthDay)) && dutyConfig.useHolidaySunday) {
+                base += ' holiday-sunday-duty';
+            }
+        }
+        return base;
     };
 
     const [localCreatorSignatureUrl, setLocalCreatorSignatureUrl] = useState<string | null>(null);
@@ -1636,7 +1685,7 @@ const WorkScheduleEditor: React.FC = () => {
                                     <th
                                         key={d.day}
                                         rowSpan={2}
-                                        className={`wse-day-header ${isWeekendOrHoliday ? 'weekend-holiday' : ''}`}
+                                        className={`wse-day-header ${dayClass(d.day)} ${isWeekend(d.dayOfWeek) ? 'weekend' : ''}`}
                                     >
                                         <div className="wse-day-number">{d.day}일</div>
                                         <div className="wse-day-of-week">{d.dayOfWeek}</div>
@@ -1735,7 +1784,7 @@ const WorkScheduleEditor: React.FC = () => {
                                             ) : (
                                                 <td
                                                     key={d.day}
-                                                    className={`wse-work-cell ${isSelected ? 'selected' : ''} ${workType.toLowerCase()} ${(isWeekend(d.dayOfWeek) || isHoliday(d.day)) ? 'weekend-holiday' : ''}`}
+                                                    className={`${cellClass(d.day)} ${isSelected ? 'selected' : ''} ${workType.toLowerCase()}`}
                                                     onDoubleClick={() => handleCellDoubleClick(entry.id, d.day)}
                                                     onMouseDown={(e) => handleMouseDown(entry.id, d.day, e)}
                                                     onMouseEnter={() => handleMouseEnter(entry.id, d.day)}

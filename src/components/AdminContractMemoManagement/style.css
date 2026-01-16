@@ -590,6 +590,106 @@
     max-width: 300px;
 }
 
+/* ✅ 조직도 래퍼 */
+.vacation-org-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    max-height: 700px;
+}
+
+/* ✅ 스크롤 가능한 설정 영역 */
+.vacation-settings-content-scrollable {
+    padding: 1.5rem;
+    flex: 1;
+    overflow-y: auto;
+    max-height: calc(100vh - 300px); /* 헤더 높이 제외 */
+}
+
+/* 사용자 목록 섹션 높이 조정 */
+.vacation-users-section {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 200px); /* ✅ 최대 높이 설정 */
+}
+
+/* 설정 섹션 높이 조정 */
+.vacation-settings-section {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 200px); /* ✅ 최대 높이 설정 */
+}
+
+/* 스크롤바 스타일 (조직도) */
+.vacation-org-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+.vacation-org-wrapper::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.vacation-org-wrapper::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.vacation-org-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* 스크롤바 스타일 (설정 영역) */
+.vacation-settings-content-scrollable::-webkit-scrollbar {
+    width: 6px;
+}
+
+.vacation-settings-content-scrollable::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.vacation-settings-content-scrollable::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.vacation-settings-content-scrollable::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* ✅ 기존 .vacation-settings-content 삭제 또는 주석 처리 */
+/*
+.vacation-settings-content {
+    padding: 1.5rem;
+    flex: 1;
+}
+*/
+
+/* 반응형 */
+@media (max-width: 1024px) {
+    .vacation-management-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        height: auto;
+    }
+
+    .vacation-users-section,
+    .vacation-settings-section {
+        max-height: 500px;
+    }
+
+    .vacation-settings-content-scrollable {
+        max-height: 400px;
+    }
+}
+
 /* 로딩 스켈레톤 */
 .cm-skeleton {
     background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);

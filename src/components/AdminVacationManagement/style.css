@@ -107,8 +107,9 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 2rem;
-    height: calc(100vh - 200px);
+    min-height: 600px;
 }
+
 
 @media (max-width: 1024px) {
     .vacation-management-grid {
@@ -126,6 +127,8 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    /* ❌ 삭제: max-height: calc(100vh - 200px); */
+    min-height: 600px; /* ✅ 추가 */
 }
 
 .vacation-users-header {
@@ -238,6 +241,8 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    /* ❌ 삭제: max-height: calc(100vh - 200px); */
+    min-height: 600px; /* ✅ 추가 */
 }
 
 .vacation-settings-header {
@@ -259,6 +264,26 @@
 .vacation-settings-content {
     padding: 1.5rem;
     flex: 1;
+    overflow-y: auto; /* ✅ 스크롤 추가 */
+    min-height: 600px; /* ✅ 최대 높이 설정 */
+}
+
+/* 스크롤바 스타일링 */
+.vacation-settings-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.vacation-settings-content::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.vacation-settings-content::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.vacation-settings-content::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 /* 빈 상태 */
@@ -506,6 +531,88 @@
     background: linear-gradient(90deg, #ef4444, #dc2626);
 }
 
+/* 폼 섹션 */
+.vacation-form-section {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+.vacation-form-section-title {
+    margin: 0 0 1rem 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.vacation-form-hint {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+/* 총 연차 표시 */
+.vacation-total-display {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #e0f2fe;
+    border-radius: 0.375rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.vacation-total-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #0369a1;
+}
+
+.vacation-total-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #0284c7;
+}
+
+/* 안내 박스 */
+.vacation-info-box {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background-color: #fff8e1;
+    border-left: 4px solid #ffa726;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    color: #424242;
+}
+
+.vacation-info-box strong {
+    color: #e65100;
+    font-weight: 600;
+}
+
+/* 현재 상태 카드 */
+.vacation-current-stat.carryover .vacation-current-stat-value {
+    color: #8b5cf6;
+}
+
+.vacation-current-stat.regular .vacation-current-stat-value {
+    color: #3b82f6;
+}
+
+.vacation-recalculate-btn:hover:not(:disabled) {
+    background-color: #d97706;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+}
+
+.vacation-recalculate-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
     .vacation-management-container {
@@ -551,3 +658,4 @@
 .vacation-users-list::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
 }
+

@@ -243,27 +243,22 @@
 }
 
 .wse-work-cell.d {
-    background-color: #bbdefb;
     color: #0d47a1;
 }
 
 .wse-work-cell.n {
-    background-color: #e1bee7;
     color: #4a148c;
 }
 
 .wse-work-cell.e {
-    background-color: #ffe0b2;
     color: #e65100;
 }
 
 .wse-work-cell.off {
-    background-color: #c8e6c9;
     color: #1b5e20;
 }
 
 .wse-work-cell.d1 {
-    background-color: #90caf9;
     color: #0d47a1;
 }
 
@@ -271,17 +266,14 @@
 .wse-work-cell.he,
 .wse-work-cell.hn,
 .wse-work-cell.반차 {
-    background-color: #7e6241;
     color: #ab7c39;
 }
 
 .wse-work-cell.대 {
-    background-color: #81d4fa;
     color: #01579b;
 }
 
 .wse-work-cell.연 {
-    background-color: #ffcdd2;
     color: #b71c1c;
 }
 
@@ -1041,6 +1033,52 @@
     font-size: 8px; /* 10px → 8px */
     margin-top: 1px; /* 2px → 1px */
     color: #666;
+}
+
+/* 기본 요일 색상 */
+.saturday {
+    color: blue !important; /* 토요일: 파랑 */
+    font-weight: bold;
+}
+
+.sunday {
+    color: red !important; /* 일요일: 빨강 */
+    font-weight: bold;
+}
+
+.holiday {
+    color: red !important; /* 공휴일: 빨강 */
+    font-weight: bold;
+    background-color: #fff0f0; /* 연한 빨강 배경 */
+}
+
+/* 당직 모드 구분 */
+.saturday-duty {
+    background-color: #e6f7ff; /* 토요일 당직: 연한 파랑 배경 */
+}
+
+.holiday-sunday-duty {
+    background-color: #fff0f0; /* 공휴일/일요일 당직: 연한 빨강 배경 */
+}
+
+.holiday-priority {
+    color: red !important; /* 토요일 + 공휴일: 공휴일 우선 (빨강) */
+    background-color: #ffebee;
+}
+
+/* 토요일 배경 */
+.wse-work-cell.saturday {
+    background-color: #e3f2fd !important; /* 연한 파란색 배경 */
+}
+
+/* 일요일 배경 */
+.wse-work-cell.sunday {
+    background-color: #ffebee !important; /* 연한 빨간색 배경 */
+}
+
+/* 공휴일 배경 */
+.wse-work-cell.holiday {
+    background-color: #ffebee !important; /* 연한 빨간색 배경 */
 }
 
 

@@ -60,29 +60,45 @@ export async function fetchUserSignatureFromDB(
         : `${API_BASE}/user/me/signature`;
 
     try {
-        // 1) 먼저 JSON으로 내려오는 imageUrl or signatureUrl 시도
+        // 1) JSON으로 내려오는 imageUrl or signatureUrl 시도
         const respJson = await axios.get(baseEndpoint, {
             headers: { Authorization: `Bearer ${token}` },
         });
+
         const { imageUrl, signatureUrl } = respJson.data;
-        if (imageUrl || signatureUrl) {
-            return imageUrl ?? signatureUrl!;
+
+        // ✅ 빈 문자열도 체크
+        if (imageUrl && imageUrl.trim() !== '') {
+            return imageUrl;
+        }
+        if (signatureUrl && signatureUrl.trim() !== '') {
+            return signatureUrl;
         }
 
-        // 2) 없으면 /signature/image 로 직접 PNG 바이너리 가져오기
-        const respImg = await axios.get(
-            userId
-                ? `${API_BASE}/user/${userId}/signature/image`
-                : `${API_BASE}/user/me/signature/image`,
-            {
-                headers: { Authorization: `Bearer ${token}` },
-                responseType: "arraybuffer",
-            }
-        );
-        // arraybuffer → Base64
-        const b64 = Buffer.from(respImg.data, "binary").toString("base64");
-        return `data:image/png;base64,${b64}`;
+        // 2) 없으면 /signature/image로 PNG 바이너리 가져오기
+        const imgEndpoint = userId
+            ? `${API_BASE}/user/${userId}/signature/image`
+            : `${API_BASE}/user/me/signature/image`;
+
+        const respImg = await axios.get(imgEndpoint, {
+            headers: { Authorization: `Bearer ${token}` },
+            responseType: "arraybuffer",
+        });
+
+        if (respImg.status === 200 && respImg.data) {
+            const b64 = Buffer.from(respImg.data, "binary").toString("base64");
+            return `data:image/png;base64,${b64}`;
+        }
+
+        return null;
+
     } catch (e) {
+        if (axios.isAxiosError(e)) {
+            if (e.response?.status === 404) {
+                console.warn("서명 이미지 없음 (정상)");
+                return null;
+            }
+        }
         console.error("서명 이미지 조회 실패:", e);
         return null;
     }

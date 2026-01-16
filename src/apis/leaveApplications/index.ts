@@ -367,3 +367,86 @@ export const downloadAttachmentApi = async (attachmentId: number, token: string)
     const blob = await response.blob();
     return blob;
 };
+
+// 날짜 범위로 완료된 휴가원 검색
+export const searchCompletedApplications = async (
+    token: string,
+    startDate: string, // YYYY-MM-DD
+    endDate: string,   // YYYY-MM-DD
+    page: number = 0,
+    size: number = 10
+): Promise<PaginationResponse> => {
+    const response = await fetch(
+        `${API_BASE}/leave-application/completed/search?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`,
+        {
+            headers: withAuth(token)
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error('날짜 범위 검색에 실패했습니다.');
+    }
+
+    const data = await response.json();
+    const totalCount = response.headers.get('X-Total-Count');
+
+    return {
+        content: data.content || data,
+        totalElements: totalCount ? parseInt(totalCount) : 0,
+        totalPages: data.totalPages || 1,
+        currentPage: page,
+        size: size
+    };
+};
+
+// 내 휴가원 검색
+export const searchMyApplications = async (
+    accessToken: string,
+    startDate: string,
+    endDate: string,
+    page: number = 0,
+    size: number = 10
+) => {
+    const response = await fetch(
+        `${API_BASE}/leave-application/my/search?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`,
+        {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error('내 휴가원 검색에 실패했습니다.');
+    }
+
+    return await response.json();
+};
+
+// 승인 대기 검색
+export const searchPendingApplications = async (
+    accessToken: string,
+    startDate: string,
+    endDate: string,
+    page: number = 0,
+    size: number = 10
+) => {
+    const response = await fetch(
+        `${API_BASE}/leave-application/pending/search?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`,
+        {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error('승인 대기 검색에 실패했습니다.');
+    }
+
+    return await response.json();
+};

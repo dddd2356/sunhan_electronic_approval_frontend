@@ -1,0 +1,277 @@
+/* ==========================================
+   동의서 공통 스타일
+   ========================================== */
+.consent-loading-container,
+.consent-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    gap: 1rem;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f4f6;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.consent-error,
+.consent-completed {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    gap: 1rem;
+    text-align: center;
+}
+
+.consent-page-header {
+    margin-bottom: 2rem;
+}
+
+.consent-page-header h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.5rem;
+}
+
+.consent-page-description {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.consent-write-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: white;
+}
+
+.consent-write-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.consent-write-header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+/* HTML 내용 렌더링 영역 */
+.consent-content-html {
+    margin-bottom: 2rem;
+    padding: 2rem;
+    background-color: #f9fafb;
+    border-radius: 8px;
+    line-height: 1.8;
+}
+
+.consent-content-html h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #111827;
+}
+
+.consent-content-html p {
+    margin-bottom: 0.75rem;
+    color: #374151;
+}
+
+.consent-content-html table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+.consent-content-html th,
+.consent-content-html td {
+    border: 1px solid #d1d5db;
+    padding: 0.75rem;
+    text-align: left;
+}
+
+.consent-content-html th {
+    background-color: #f3f4f6;
+    font-weight: 600;
+}
+
+/* 입력 필드 */
+.consent-form-fields {
+    margin-bottom: 2rem;
+}
+
+.consent-field {
+    margin-bottom: 1.5rem;
+}
+
+.consent-field label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.consent-field input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: border-color 0.2s;
+}
+
+.consent-field input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.consent-field input.error {
+    border-color: #ef4444;
+}
+
+.required {
+    color: #ef4444;
+}
+
+.error-message {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: #ef4444;
+}
+
+/* 서명 영역 */
+.consent-signature-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: #f9fafb;
+    border-radius: 8px;
+}
+
+.consent-signature-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.5rem;
+}
+
+.consent-signature-desc {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 1rem;
+}
+
+.consent-signature-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.consent-signature-preview img {
+    max-width: 300px;
+    max-height: 120px;
+    border: 2px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0.5rem;
+    background: white;
+}
+
+.consent-btn-clear-signature {
+    padding: 0.5rem 1rem;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.consent-btn-clear-signature:hover {
+    background-color: #dc2626;
+}
+
+.consent-signature-canvas-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.consent-signature-canvas {
+    border: 2px solid #d1d5db;
+    border-radius: 4px;
+    background: white;
+    cursor: crosshair;
+}
+
+.canvas-help-text {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+/* 제출 섹션 */
+.consent-submit-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e5e7eb;
+}
+
+.consent-submit-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background-color: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+.consent-submit-notice p {
+    font-size: 0.875rem;
+    color: #92400e;
+    margin: 0;
+}
+
+.consent-btn-submit-final {
+    width: 100%;
+    padding: 1rem;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.consent-btn-submit-final:hover:not(:disabled) {
+    background-color: #059669;
+}
+
+.consent-btn-submit-final:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

@@ -75,8 +75,8 @@
 .mp-stats-row { display: flex; gap: 12px; margin-bottom: 24px; }
 .mp-stat-box { flex: 1; text-align: center; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid var(--mp-border); }
 .mp-stat-box.highlight { background: #eff6ff; border-color: #bfdbfe; }
-.stat-label { font-size: 12px; color: var(--mp-text-sub); display: block; margin-bottom: 4px; font-weight: 600; }
-.stat-value { font-size: 22px; font-weight: 800; }
+.mp-stat-label { font-size: 12px; color: var(--mp-text-sub); display: block; margin-bottom: 4px; font-weight: 600; }
+.mp-stat-value { font-size: 22px; font-weight: 800; }
 
 .mp-progress-section { margin-bottom: 24px; }
 .progress-labels { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
@@ -205,6 +205,192 @@
     font-size: 16px;
 }
 
+/* 근무현황 캘린더 스타일 개선 */
+
+.mp-schedule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.month-selector {
+    padding: 4px 8px;
+    border: 1px solid var(--mp-border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mp-text-dark);
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.schedule-stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--mp-text-sub);
+    flex-wrap: wrap;
+}
+
+/* 캘린더 컨테이너 */
+.work-calendar {
+    border: 1px solid var(--mp-border);
+    border-radius: 12px;
+    overflow: hidden; /* 모서리 둥글게 유지 */
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.calendar-wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 헤더 및 주(Week) 공통 그리드 설정 */
+/* 중요: minmax(0, 1fr)을 사용해야 내용이 길어져도 셀이 늘어나지 않음 */
+.calendar-header,
+.calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    width: 100%;
+}
+
+.calendar-header {
+    background: #f1f5f9;
+    border-bottom: 1px solid var(--mp-border);
+}
+
+.day-label {
+    padding: 8px 0;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--mp-text-dark);
+}
+
+/* 요일 색상 */
+.day-label.sun, .day-number.sun { color: var(--mp-danger); } /* 일요일 빨강 */
+.day-label.sat, .day-number.sat { color: var(--mp-primary); } /* 토요일 파랑 */
+
+.calendar-week {
+    border-bottom: 1px solid #f1f5f9;
+}
+.calendar-week:last-child {
+    border-bottom: none;
+}
+
+/* 개별 날짜 셀 */
+.calendar-day {
+    position: relative;
+    /* aspect-ratio 제거하거나, 모바일 고려하여 min-height 사용 */
+    min-height: 55px;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 2px;
+    border-right: 1px solid #f8fafc; /* 아주 연한 구분선 */
+    background: white;
+}
+
+.calendar-day:nth-child(7) {
+    border-right: none;
+}
+
+.calendar-day.empty {
+    background: #fafafa;
+}
+
+/* 날짜 숫자 */
+.day-number {
+    font-size: 12px;
+    font-weight: 500;
+    color: #94a3b8;
+    margin-bottom: 2px;
+}
+
+/* 근무 타입 뱃지 */
+.work-type {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-align: center;
+    width: 100%; /* 셀 너비 꽉 차게 */
+    max-width: 40px; /* 너무 넓어지는 것 방지 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+/* 근무 타입별 색상 커스텀 */
+/* Day: 노랑/주황 계열 */
+.work-type.type-d {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #ffedd5;
+}
+
+/* Evening: 보라/핑크 계열 (기존 Day와 구분) */
+.work-type.type-e {
+    background: #fdf2f8;
+    color: #db2777;
+    border: 1px solid #fce7f3;
+}
+
+/* Night: 짙은 남색/보라 계열 */
+.work-type.type-n {
+    background: #eef2ff;
+    color: #4338ca;
+    border: 1px solid #e0e7ff;
+}
+
+/* Off: 회색/초록 계열 */
+.work-type.type-off {
+    background: #f1f5f9;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* Vacation: 빨강 계열 (눈에 띄게) */
+.work-type.type-vacation {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fee2e2;
+}
+
+/* Half: 반차 등 */
+.work-type.type-half {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #d1fae5;
+}
+
+/* 기타 */
+.work-type.type-etc {
+    background: #f8fafc;
+    color: #475569;
+}
+
+/* 반응형 조정 (작은 화면에서 폰트 축소) */
+@media (max-width: 480px) {
+    .work-type {
+        font-size: 10px;
+        padding: 1px 2px;
+    }
+    .calendar-day {
+        min-height: 45px;
+    }
+}
 
 /* 모바일 대응 보강 */
 @media (max-width: 768px) {

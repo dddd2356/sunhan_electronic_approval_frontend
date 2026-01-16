@@ -5,6 +5,29 @@ import Layout from '../Layout';
 import './style.css';
 import OrgChartModal from "../OrgChartModal";
 
+interface VacationLedgerEntry {
+    rowNumber: number;
+    deptName: string;
+    userName: string;
+    startDate: string;
+    leaveType: string;
+    carryoverDays: number | null;
+    regularDays: number | null;
+    monthlyUsage: {
+        [key: number]: {
+            details: Array<{
+                date: string;
+                halfDayType: 'ALL_DAY' | 'MORNING' | 'AFTERNOON';
+                days: number;
+            }>;
+            monthTotal: number;
+        };
+    };
+    totalUsed: number;
+    remaining: number | null;
+    remarks: string;
+}
+
 interface EmployeeVacation {
     userId: string;
     userName: string;
@@ -12,6 +35,16 @@ interface EmployeeVacation {
     jobLevel: string;
     jobType: string;
     startDate?: string;
+    // 추가
+    annualCarryover?: number;
+    annualRegular?: number;
+    annualTotal?: number;
+    annualUsed?: number;
+    annualRemaining?: number;
+    annualUsageRate?: number;
+    usedCarryoverDays?: number;
+    usedRegularDays?: number;
+    // 하위 호환
     totalDays: number;
     usedDays: number;
     remainingDays: number;
@@ -48,7 +81,71 @@ const AdminVacationStatistics: React.FC = () => {
     const [sortOrder, setSortOrder] = useState<string>('desc');
     const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]); // 선택된 직원 ID 목록
     const [isOrgChartModalOpen, setIsOrgChartModalOpen] = useState(false); // 조직도 모달
+
+    // 관리대장 관련 state
+    const [activeTab, setActiveTab] = useState<'statistics' | 'ledger'>('statistics');
+    const [ledgerData, setLedgerData] = useState<any[]>([]);
+    const [ledgerDeptCode, setLedgerDeptCode] = useState<string>('ALL');
+    const [ledgerUserIds, setLedgerUserIds] = useState<string[]>([]);
+    const [isLedgerOrgChartOpen, setIsLedgerOrgChartOpen] = useState(false);
+    // 현재 연도를 기본값으로 설정
+    const currentYear = new Date().getFullYear();
+    const [ledgerYear, setLedgerYear] = useState(currentYear);
+
     const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+
+    const handleRecalculateFromStats = async () => {
+        if (!window.confirm('모든 휴가원의 일수를 재계산하시겠습니까?')) {
+            return;
+        }
+
+        try {
+            setLoading(true);
+
+            const response = await fetch('/api/v1/leave-application/admin/recalculate-total-days', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${cookies.accessToken}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                alert(`✅ ${data.updatedCount}건의 휴가원 일수가 재계산되었습니다.`);
+
+                // ✅ 데이터 새로고침
+                await fetchDepartmentSummaries();
+
+                if (selectedDept) {
+                    if (selectedDept.deptCode === 'ALL') {
+                        await fetchAllDepartments();
+                    } else if (selectedDept.deptCode === 'CUSTOM') {
+                        await fetchSpecificEmployees(selectedEmployees);
+                    } else {
+                        await handleDeptClick(selectedDept.deptCode);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('재계산 실패:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ✅ 연도 옵션 자동 생성 (2024년 ~ 현재+1년)
+    const getYearOptions = () => {
+        const startYear = 2024;
+        const endYear = currentYear + 1;
+        const years = [];
+
+        for (let year = startYear; year <= endYear; year++) {
+            years.push(year);
+        }
+
+        return years;
+    };
 
     const fetchDepartmentNames = async () => {
         try {
@@ -76,7 +173,7 @@ const AdminVacationStatistics: React.FC = () => {
         fetchDepartmentSummaries();
     }, []);
 
-    // ✅ 부서 요약 정보 불러오기 (차트용)
+
     // ✅ 부서 요약 정보 불러오기 + 전체 요약 계산
     const fetchDepartmentSummaries = async () => {
         try {
@@ -162,6 +259,103 @@ const AdminVacationStatistics: React.FC = () => {
             setDeptLoading(false);
         }
     };
+
+
+    // ✅ 관리대장 조회
+    const fetchLedger = async () => {
+        try {
+            setDeptLoading(true);
+
+            let url: string;
+            let options: RequestInit;
+
+            // 특정 직원 선택된 경우
+            if (ledgerUserIds.length > 0) {
+                url = `/api/v1/vacation/statistics/ledger/users?year=${ledgerYear}`;
+                options = {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${cookies.accessToken}`
+                    },
+                    body: JSON.stringify(ledgerUserIds)
+                };
+            } else {
+                // 부서별 조회
+                url = `/api/v1/vacation/statistics/ledger?deptCode=${ledgerDeptCode}&leaveType=ALL&year=${ledgerYear}`;
+                options = {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${cookies.accessToken}`
+                    }
+                };
+            }
+
+            const response = await fetch(url, options);
+
+            if (response.ok) {
+                const data = await response.json();
+                setLedgerData(data);
+            }
+        } catch (error) {
+            console.error('관리대장 조회 실패:', error);
+        } finally {
+            setDeptLoading(false);
+        }
+    };
+
+// ✅ 엑셀 다운로드 (관리대장)
+    const downloadLedgerExcel = async () => {
+        try {
+            let url: string;
+            let options: RequestInit;
+
+            if (ledgerUserIds.length > 0) {
+                url = `/api/v1/vacation/statistics/ledger/excel/users?year=${ledgerYear}`;
+                options = {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${cookies.accessToken}`
+                    },
+                    body: JSON.stringify(ledgerUserIds)
+                };
+            } else {
+                url = `/api/v1/vacation/statistics/ledger/excel?deptCode=${ledgerDeptCode}&leaveType=ALL&year=${ledgerYear}`;
+                options = {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${cookies.accessToken}`
+                    }
+                };
+            }
+
+            const response = await fetch(url, options);
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `휴가관리대장_${ledgerYear}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }
+        } catch (error) {
+            console.error('엑셀 다운로드 실패:', error);
+        }
+    };
+
+    // ✅ 관리대장 직원 선택
+    const handleLedgerEmployeeSelect = (users: { id: string, name: string }[]) => {
+        const userIds = users.map(u => u.id);
+        setLedgerUserIds(userIds);
+        setLedgerDeptCode('CUSTOM'); // 커스텀 모드
+        setIsLedgerOrgChartOpen(false);
+    };
+
 
     // ✅ 전체 데이터 불러오기
     const fetchAllDepartments = async () => {
@@ -438,292 +632,512 @@ const AdminVacationStatistics: React.FC = () => {
                     <p className="vs-subtitle">부서별 및 직원별 휴가 사용 현황을 확인할 수 있습니다</p>
                 </div>
 
-                {/* ✅ 부서별 평균 사용률 차트 - 항상 표시 */}
-                <div className="vs-chart-card">
-                    <h2 className="vs-chart-title">부서별 평균 휴가 사용률</h2>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={getDeptChartData()}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis label={{ value: '사용률 (%)', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="사용률" fill="#3b82f6" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-
-                {/* ✅ 특정 직원 선택 버튼 */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                <div className="vs-tabs">
                     <button
-                        onClick={() => setIsOrgChartModalOpen(true)}
-                        className="vs-select-employee-btn"
-                        style={{
-                            padding: '0.75rem 1.5rem',
-                            backgroundColor: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '0.5rem',
-                            cursor: 'pointer',
-                            fontSize: '0.875rem',
-                            fontWeight: 600,
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#2563eb';
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#3b82f6';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = 'none';
+                        className={`vs-tab ${activeTab === 'statistics' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('statistics')}
+                    >
+                        부서별 통계
+                    </button>
+                    <button
+                        className={`vs-tab ${activeTab === 'ledger' ? 'active' : ''}`}
+                        onClick={() => {
+                            setActiveTab('ledger');
+                            fetchLedger(); // ✅ 연차+특별 모두
                         }}
                     >
-                        👥 특정 직원 선택 조회
+                        휴가 관리대장
                     </button>
                 </div>
 
-                <div className="vs-content-grid">
-                    {/* ✅ 부서 목록 */}
-                    <div className="vs-dept-list-card">
-                        <h3 className="vs-dept-list-title">부서 목록</h3>
-                        <div className="vs-dept-list">
-                            {/* ✅ 선택된 직원이 있으면 맨 위에 표시 */}
-                            {selectedEmployees.length > 0 && selectedDept?.deptCode === 'CUSTOM' && (
-                                <div
-                                    className="vs-dept-item selected"
-                                    style={{ borderColor: '#8b5cf6', backgroundColor: '#f5f3ff' }}
-                                >
-                                    <div className="vs-dept-name">
-                                        👥 {selectedDept.deptName}
-                                        <button
-                                            onClick={handleClearSelection}
-                                            style={{
-                                                marginLeft: '0.5rem',
-                                                padding: '0.25rem 0.5rem',
-                                                fontSize: '0.75rem',
-                                                background: '#ef4444',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '0.25rem',
-                                                cursor: 'pointer'
-                                            }}
+                {/* ✅ 통계 탭 내용 */}
+                {activeTab === 'statistics' && (
+                    <>
+                        {/* 기존 차트 */}
+                        <div className="vs-chart-card">
+                            <h2 className="vs-chart-title">부서별 평균 휴가 사용률</h2>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={getDeptChartData()}>
+                                    <CartesianGrid strokeDasharray="3 3"/>
+                                    <XAxis dataKey="name"/>
+                                    <YAxis label={{value: '사용률 (%)', angle: -90, position: 'insideLeft'}}/>
+                                    <Tooltip/>
+                                    <Legend/>
+                                    <Bar dataKey="사용률" fill="#3b82f6"/>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        {/* 특정 직원 선택 버튼 */}
+                        <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem'}}>
+                            <button
+                                onClick={() => setIsOrgChartModalOpen(true)}
+                                className="vs-select-employee-btn"
+                                style={{
+                                    padding: '0.75rem 1.5rem',
+                                    backgroundColor: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '0.5rem',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 600,
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#2563eb';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#3b82f6';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
+                                👥 특정 직원 선택 조회
+                            </button>
+                        </div>
+
+                        <div className="vs-content-grid">
+                            {/* 부서 목록 */}
+                            <div className="vs-dept-list-card">
+                                <h3 className="vs-dept-list-title">부서 목록</h3>
+                                <div className="vs-dept-list">
+                                    {selectedEmployees.length > 0 && selectedDept?.deptCode === 'CUSTOM' && (
+                                        <div
+                                            className="vs-dept-item selected"
+                                            style={{borderColor: '#8b5cf6', backgroundColor: '#f5f3ff'}}
                                         >
-                                            ✕ 선택 해제
-                                        </button>
+                                            <div className="vs-dept-name">
+                                                👥 {selectedDept.deptName}
+                                                <button
+                                                    onClick={handleClearSelection}
+                                                    style={{
+                                                        marginLeft: '0.5rem',
+                                                        padding: '0.25rem 0.5rem',
+                                                        fontSize: '0.75rem',
+                                                        background: '#ef4444',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '0.25rem',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    ✕ 선택 해제
+                                                </button>
+                                            </div>
+                                            <div className="vs-dept-stats">
+                                                <span
+                                                    className="vs-stat total">평균 사용률 {selectedDept.avgUsageRate.toFixed(2)}%</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {departmentSummaries.map((dept) => (
+                                        <div
+                                            key={dept.deptCode}
+                                            onClick={() => {
+                                                handleClearSelection();
+                                                if (dept.deptCode === 'ALL') {
+                                                    fetchAllDepartments();
+                                                } else {
+                                                    handleDeptClick(dept.deptCode);
+                                                }
+                                            }}
+                                            className={`vs-dept-item ${selectedDept?.deptCode === dept.deptCode ? 'selected' : ''}`}
+                                        >
+                                            <div className="vs-dept-name">{dept.deptName}</div>
+                                            <div className="vs-dept-employee-count">
+                                                {`직원 ${dept.totalEmployees}명`}
+                                            </div>
+                                            <div className="vs-dept-stats">
+                                                <span className="vs-stat total">평균 사용률 {dept.avgUsageRate}%</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 선택된 부서 상세 정보 */}
+                            {deptLoading ? (
+                                <div className="vs-loading-container">
+                                    <div className="vs-loading-spinner"></div>
+                                    <p>부서 정보를 불러오는 중...</p>
+                                </div>
+                            ) : selectedDept ? (
+                                <div className="vs-detail-container">
+                                    <div className="vs-summary-card">
+                                        <h3 className="vs-summary-title">
+                                            {selectedDept.deptName} 부서 현황
+                                        </h3>
+                                        <div className="vs-summary-grid">
+                                            <div className="vs-summary-item employees">
+                                                <div className="vs-summary-label">직원 수</div>
+                                                <div className="vs-summary-value">{selectedDept.totalEmployees}명</div>
+                                            </div>
+                                            <div className="vs-summary-item rate">
+                                                <div className="vs-summary-label">평균 사용률</div>
+                                                <div className="vs-summary-value">{selectedDept.avgUsageRate}%</div>
+                                            </div>
+                                            <div className="vs-summary-item used">
+                                                <div className="vs-summary-label">사용 휴가</div>
+                                                <div className="vs-summary-value">{selectedDept.totalUsedDays}일</div>
+                                            </div>
+                                            <div className="vs-summary-item remaining">
+                                                <div className="vs-summary-label">남은 휴가</div>
+                                                <div className="vs-summary-value">{selectedDept.totalRemainingDays}일
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="vs-dept-stats">
-                                        <span className="vs-stat total">평균 사용률 {selectedDept.avgUsageRate.toFixed(2)}%</span>
+
+                                    <div className="vs-charts-grid">
+                                        <div className="vs-pie-chart-card">
+                                            <h4 className="vs-chart-subtitle">휴가 사용 비율</h4>
+                                            <ResponsiveContainer width="100%" height={200}>
+                                                <PieChart>
+                                                    <Pie
+                                                        data={getUsagePieData()}
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        labelLine={false}
+                                                        label={({name, value}) => `${name}: ${value}일`}
+                                                        outerRadius={80}
+                                                        fill="#8884d8"
+                                                        dataKey="value"
+                                                    >
+                                                        {getUsagePieData().map((entry, index) => (
+                                                            <Cell key={`cell-${index}`}
+                                                                  fill={COLORS[index % COLORS.length]}/>
+                                                        ))}
+                                                    </Pie>
+                                                    <Tooltip/>
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+
+                                        <div className="vs-bar-chart-card">
+                                            <h4 className="vs-chart-subtitle">직원별 휴가 현황</h4>
+                                            <ResponsiveContainer width="100%" height={200}>
+                                                <BarChart data={getEmployeeChartData()}>
+                                                    <CartesianGrid strokeDasharray="3 3"/>
+                                                    <XAxis dataKey="name"/>
+                                                    <YAxis/>
+                                                    <Tooltip/>
+                                                    <Legend/>
+                                                    <Bar dataKey="사용" fill="#10b981"/>
+                                                    <Bar dataKey="남은휴가" fill="#f59e0b"/>
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+
+                                    <div className="vs-table-card">
+                                        <div className="vs-table-header-group">
+                                            <h4 className="vs-table-title">직원별 상세 현황</h4>
+                                            <button onClick={handleExcelDownload} className="vs-excel-btn">
+                                                📊 엑셀 다운로드
+                                            </button>
+                                        </div>
+                                        <div className="vs-table-wrapper">
+                                            <table className="vs-table">
+                                                <thead>
+                                                <tr>
+                                                    <th onClick={() => handleSort('userName')}>
+                                                        이름 <span
+                                                        className={`vs-sort-icon ${sortBy === 'userName' ? 'active' : ''}`}>
+                                                            {sortBy === 'userName' && sortOrder === 'asc' ? '▲' : '▼'}
+                                                        </span>
+                                                    </th>
+                                                    <th onClick={() => handleSort('deptCode')}>
+                                                        부서 <span
+                                                        className={`vs-sort-icon ${sortBy === 'deptCode' ? 'active' : ''}`}>
+                                                            {sortBy === 'deptCode' && sortOrder === 'asc' ? '▲' : '▼'}
+                                                        </span>
+                                                    </th>
+                                                    <th onClick={() => handleSort('jobLevel')}>
+                                                        직급 <span
+                                                        className={`vs-sort-icon ${sortBy === 'jobLevel' ? 'active' : ''}`}>
+                                                            {sortBy === 'jobLevel' && sortOrder === 'asc' ? '▲' : '▼'}
+                                                        </span>
+                                                    </th>
+                                                    <th onClick={() => handleSort('startDate')}>
+                                                        입사일자 <span
+                                                        className={`vs-sort-icon ${sortBy === 'startDate' ? 'active' : ''}`}>
+                                                            {sortBy === 'startDate' && sortOrder === 'asc' ? '▲' : '▼'}
+                                                        </span>
+                                                    </th>
+                                                    {/* ✅ 이월/정상 컬럼 추가 */}
+                                                    <th>이월</th>
+                                                    <th>정상</th>
+                                                    <th onClick={() => handleSort('totalDays')}>
+                                                        총 휴가 <span
+                                                        className={`vs-sort-icon ${sortBy === 'totalDays' ? 'active' : ''}`}>
+                                                            {sortBy === 'totalDays' && sortOrder === 'asc' ? '▲' : '▼'}
+                                                        </span>
+                                                    </th>
+                                                    <th onClick={() => handleSort('usedDays')}>
+                                                        사용 <span
+                                                        className={`vs-sort-icon ${sortBy === 'usedDays' ? 'active' : ''}`}>
+                                                            {sortBy === 'usedDays' && sortOrder === 'asc' ? '▲' : '▼'}
+                                                        </span>
+                                                    </th>
+                                                    <th onClick={() => handleSort('remainingDays')}>
+                                                        남은휴가 <span
+                                                        className={`vs-sort-icon ${sortBy === 'remainingDays' ? 'active' : ''}`}>
+                                                            {sortBy === 'remainingDays' && sortOrder === 'asc' ? '▲' : '▼'}
+                                                        </span>
+                                                    </th>
+                                                    <th onClick={() => handleSort('usageRate')}>
+                                                        사용률 <span
+                                                        className={`vs-sort-icon ${sortBy === 'usageRate' ? 'active' : ''}`}>
+                                                            {sortBy === 'usageRate' && sortOrder === 'asc' ? '▲' : '▼'}
+                                                        </span>
+                                                    </th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                {selectedDept.employees.map((emp) => (
+                                                    <tr key={emp.userId}>
+                                                        <td className="vs-table-name">{emp.userName}</td>
+                                                        <td className="vs-table-dept">
+                                                            {departmentNames[getBaseDeptCode(emp.deptCode)] || emp.deptCode}
+                                                        </td>
+                                                        <td className="vs-table-position">
+                                                            {getPositionByJobLevel(emp.jobLevel)}
+                                                        </td>
+                                                        <td className="vs-table-date">{emp.startDate || '-'}</td>
+                                                        <td className="vs-table-carryover">
+                                                            {emp.annualCarryover || 0}일
+                                                        </td>
+                                                        <td className="vs-table-regular">
+                                                            {emp.annualRegular || 15}일
+                                                        </td>
+                                                        <td className="vs-table-total">
+                                                            <strong>{emp.totalDays}일</strong>
+                                                        </td>
+                                                        {/* ✅ 수정: 소수점 처리 */}
+                                                        <td className="vs-table-used">
+                                                            {emp.usedDays % 1 === 0 ? emp.usedDays : emp.usedDays.toFixed(1)}일
+                                                        </td>
+                                                        <td className="vs-table-remaining">
+                                                            {emp.remainingDays % 1 === 0 ? emp.remainingDays : emp.remainingDays.toFixed(1)}일
+                                                        </td>
+                                                        <td className="vs-table-rate">
+                                                        <span className={`vs-rate-badge ${
+                                                            emp.usageRate >= 80 ? 'high' :
+                                                                emp.usageRate >= 50 ? 'medium' : 'low'
+                                                        }`}>
+                                                            {emp.usageRate}%
+                                                        </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="vs-detail-container">
+                                    <div className="vs-summary-card">
+                                        <p className="vs-no-data">좌측 부서 목록에서 부서를 선택하면 상세 정보가 표시됩니다.</p>
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    </>
+                )}
 
-                            {/* ✅ 일반 부서 목록 */}
-                            {departmentSummaries.map((dept) => (
-                                <div
-                                    key={dept.deptCode}
-                                    onClick={() => {
-                                        handleClearSelection(); // 기존 선택 해제
-                                        if (dept.deptCode === 'ALL') {
-                                            fetchAllDepartments();
-                                        } else {
-                                            handleDeptClick(dept.deptCode);
-                                        }
-                                    }}
-                                    className={`vs-dept-item ${selectedDept?.deptCode === dept.deptCode ? 'selected' : ''}`}
+                {/* ✅ 관리대장 탭 내용 */}
+                {activeTab === 'ledger' && (
+                    <div className="vs-ledger-container">
+                        <div className="vs-ledger-controls">
+                            {/* ✅ 왼쪽: 부서/연도 선택 */}
+                            <select
+                                value={ledgerDeptCode}
+                                onChange={(e) => {
+                                    setLedgerDeptCode(e.target.value);
+                                    setLedgerUserIds([]);
+                                }}
+                                className="vs-dept-select"
+                                disabled={ledgerUserIds.length > 0}
+                            >
+                            <option value="ALL">전체 부서</option>
+                                {departmentSummaries
+                                    .filter(dept => dept.deptCode !== 'ALL')
+                                    .map(dept => (
+                                        <option key={dept.deptCode} value={dept.deptCode}>
+                                            {dept.deptName}
+                                        </option>
+                                    ))}
+                            </select>
+
+                            <select
+                                value={ledgerYear}
+                                onChange={(e) => setLedgerYear(Number(e.target.value))}
+                                className="vs-year-select"
+                            >
+                                {getYearOptions().map(year => (
+                                    <option key={year} value={year}>
+                                        {year}년
+                                    </option>
+                                ))}
+                            </select>
+
+                            {/* ✅ 오른쪽: 버튼 그룹 */}
+                            <div className="vs-button-group">
+                                <button
+                                    onClick={() => setIsLedgerOrgChartOpen(true)}
+                                    className="vs-select-btn"
                                 >
-                                    <div className="vs-dept-name">{dept.deptName}</div>
-                                    <div className="vs-dept-employee-count">
-                                        {`직원 ${dept.totalEmployees}명`}
-                                    </div>
-                                    <div className="vs-dept-stats">
-                                        <span className="vs-stat total">평균 사용률 {dept.avgUsageRate}%</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                                    👥 특정 직원 선택
+                                </button>
 
-                    {/* ✅ 선택된 부서 상세 정보 */}
-                    {deptLoading ? (
-                        <div className="vs-loading-container">
-                            <div className="vs-loading-spinner"></div>
-                            <p>부서 정보를 불러오는 중...</p>
-                        </div>
-                    ) : selectedDept ? (
-                        <div className="vs-detail-container">
-                            <div className="vs-summary-card">
-                                <h3 className="vs-summary-title">
-                                    {selectedDept.deptName} 부서 현황
-                                </h3>
-                                <div className="vs-summary-grid">
-                                    <div className="vs-summary-item employees">
-                                        <div className="vs-summary-label">직원 수</div>
-                                        <div className="vs-summary-value">{selectedDept.totalEmployees}명</div>
-                                    </div>
-                                    <div className="vs-summary-item rate">
-                                        <div className="vs-summary-label">평균 사용률</div>
-                                        <div className="vs-summary-value">{selectedDept.avgUsageRate}%</div>
-                                    </div>
-                                    <div className="vs-summary-item used">
-                                        <div className="vs-summary-label">사용 휴가</div>
-                                        <div className="vs-summary-value">{selectedDept.totalUsedDays}일</div>
-                                    </div>
-                                    <div className="vs-summary-item remaining">
-                                        <div className="vs-summary-label">남은 휴가</div>
-                                        <div className="vs-summary-value">{selectedDept.totalRemainingDays}일</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="vs-charts-grid">
-                                <div className="vs-pie-chart-card">
-                                    <h4 className="vs-chart-subtitle">휴가 사용 비율</h4>
-                                    <ResponsiveContainer width="100%" height={200}>
-                                        <PieChart>
-                                            <Pie
-                                                data={getUsagePieData()}
-                                                cx="50%"
-                                                cy="50%"
-                                                labelLine={false}
-                                                label={({name, value}) => `${name}: ${value}일`}
-                                                outerRadius={80}
-                                                fill="#8884d8"
-                                                dataKey="value"
-                                            >
-                                                {getUsagePieData().map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]}/>
-                                                ))}
-                                            </Pie>
-                                            <Tooltip/>
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                </div>
-
-                                <div className="vs-bar-chart-card">
-                                    <h4 className="vs-chart-subtitle">직원별 휴가 현황</h4>
-                                    <ResponsiveContainer width="100%" height={200}>
-                                        <BarChart data={getEmployeeChartData()}>
-                                            <CartesianGrid strokeDasharray="3 3"/>
-                                            <XAxis dataKey="name"/>
-                                            <YAxis/>
-                                            <Tooltip/>
-                                            <Legend/>
-                                            <Bar dataKey="사용" fill="#10b981"/>
-                                            <Bar dataKey="남은휴가" fill="#f59e0b"/>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-
-                            <div className="vs-table-card">
-                                <div className="vs-table-header-group">
-                                    <h4 className="vs-table-title">직원별 상세 현황</h4>
-                                    <button onClick={handleExcelDownload} className="vs-excel-btn">
-                                        📊 엑셀 다운로드
+                                {ledgerUserIds.length > 0 && (
+                                    <button
+                                        onClick={() => {
+                                            setLedgerUserIds([]);
+                                            setLedgerDeptCode('ALL');
+                                        }}
+                                        className="vs-clear-btn"
+                                    >
+                                        ✕ 선택 해제 ({ledgerUserIds.length}명)
                                     </button>
-                                </div>
-                                <div className="vs-table-wrapper">
-                                    <table className="vs-table">
-                                        <thead>
-                                        <tr>
-                                            <th onClick={() => handleSort('userName')}>
-                                                이름 <span
-                                                className={`vs-sort-icon ${sortBy === 'userName' ? 'active' : ''}`}>
-                                                {sortBy === 'userName' && sortOrder === 'asc' ? '▲' : '▼'}
-                                            </span>
-                                            </th>
-                                            <th onClick={() => handleSort('deptCode')}> {/* ✅ 클릭 이벤트 추가 */}
-                                                부서 <span
-                                                    className={`vs-sort-icon ${sortBy === 'deptCode' ? 'active' : ''}`}>
-                                                {sortBy === 'deptCode' && sortOrder === 'asc' ? '▲' : '▼'}
-                                            </span>
-                                            </th>
-                                            <th onClick={() => handleSort('jobLevel')}>
-                                                직급 <span
-                                                className={`vs-sort-icon ${sortBy === 'jobLevel' ? 'active' : ''}`}>
-                                                {sortBy === 'jobLevel' && sortOrder === 'asc' ? '▲' : '▼'}
-                                            </span>
-                                            </th>
-                                            <th onClick={() => handleSort('startDate')}>
-                                                입사일자 <span
-                                                className={`vs-sort-icon ${sortBy === 'startDate' ? 'active' : ''}`}>
-                                                {sortBy === 'startDate' && sortOrder === 'asc' ? '▲' : '▼'}
-                                            </span>
-                                            </th>
-                                            <th onClick={() => handleSort('totalDays')}>
-                                                총 휴가 <span
-                                                className={`vs-sort-icon ${sortBy === 'totalDays' ? 'active' : ''}`}>
-                                                {sortBy === 'totalDays' && sortOrder === 'asc' ? '▲' : '▼'}
-                                            </span>
-                                            </th>
-                                            <th onClick={() => handleSort('usedDays')}>
-                                                사용 <span
-                                                className={`vs-sort-icon ${sortBy === 'usedDays' ? 'active' : ''}`}>
-                                                {sortBy === 'usedDays' && sortOrder === 'asc' ? '▲' : '▼'}
-                                            </span>
-                                            </th>
-                                            <th onClick={() => handleSort('remainingDays')}>
-                                                남은휴가 <span
-                                                className={`vs-sort-icon ${sortBy === 'remainingDays' ? 'active' : ''}`}>
-                                                {sortBy === 'remainingDays' && sortOrder === 'asc' ? '▲' : '▼'}
-                                            </span>
-                                            </th>
-                                            <th onClick={() => handleSort('usageRate')}>
-                                                사용률 <span
-                                                className={`vs-sort-icon ${sortBy === 'usageRate' ? 'active' : ''}`}>
-                                                {sortBy === 'usageRate' && sortOrder === 'asc' ? '▲' : '▼'}
-                                            </span>
-                                            </th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        {selectedDept.employees.map((emp) => (
-                                            <tr key={emp.userId}>
-                                                <td className="vs-table-name">{emp.userName}</td>
-                                                <td className="vs-table-dept">
-                                                    {departmentNames[getBaseDeptCode(emp.deptCode)] || emp.deptCode}
-                                                </td>
-                                                <td className="vs-table-position">
-                                                    {getPositionByJobLevel(emp.jobLevel)}
-                                                </td>
-                                                <td className="vs-table-date">{emp.startDate || '-'}</td>
-                                                <td className="vs-table-total">{emp.totalDays}일</td>
-                                                <td className="vs-table-used">{emp.usedDays}일</td>
-                                                <td className="vs-table-remaining">{emp.remainingDays}일</td>
-                                                <td className="vs-table-rate">
-                                                    <span className={`vs-rate-badge ${
-                                                        emp.usageRate >= 80 ? 'high' :
-                                                            emp.usageRate >= 50 ? 'medium' : 'low'
-                                                    }`}>
-                                                        {emp.usageRate}%
-                                                    </span>
-                                                </td>
-                                            </tr>
+                                )}
+
+                                <button onClick={fetchLedger} className="vs-search-btn">
+                                    🔍 조회
+                                </button>
+
+                                <button onClick={downloadLedgerExcel} className="vs-excel-btn">
+                                    📊 엑셀 다운로드
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 테이블 */}
+                        {deptLoading ? (
+                            <div className="vs-loading-container">
+                                <div className="vs-loading-spinner"></div>
+                                <p>관리대장을 불러오는 중...</p>
+                            </div>
+                        ) : (
+                            <div className="vs-ledger-table-wrapper">
+                                <table className="vs-ledger-table">
+                                    <thead>
+                                    <tr>
+                                        <th rowSpan={2}>번호</th>
+                                        <th rowSpan={2}>부서명</th>
+                                        <th rowSpan={2}>성명</th>
+                                        <th rowSpan={2}>입사일자</th>
+                                        <th rowSpan={2}>휴가구분</th>
+                                        <th rowSpan={2}>작년이월</th>
+                                        <th rowSpan={2}>휴가일수</th>
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(month => (
+                                            <th key={month} colSpan={2}>{month}월</th>
                                         ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        <th rowSpan={2}>사용계</th>
+                                        <th rowSpan={2}>남은개수</th>
+                                        <th rowSpan={2}>비고</th>
+                                    </tr>
+                                    <tr>
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(month => (
+                                            <React.Fragment key={month}>
+                                                <th>사용일</th>
+                                                <th>계</th>
+                                            </React.Fragment>
+                                        ))}
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {ledgerData.map((entry: VacationLedgerEntry, index: number) => {
+                                        const prevEntry = index > 0 ? ledgerData[index - 1] : null;
+                                        const isNewUser = !prevEntry || prevEntry.userName !== entry.userName;
+
+                                        return (
+                                            <tr key={`${entry.userName}-${entry.leaveType}-${index}`}>
+                                                {isNewUser ? (
+                                                    <>
+                                                        <td rowSpan={2} className="vs-merged-cell">{entry.rowNumber}</td>
+                                                        <td rowSpan={2} className="vs-merged-cell">{entry.deptName}</td>
+                                                        <td rowSpan={2} className="vs-merged-cell">{entry.userName}</td>
+                                                        <td rowSpan={2} className="vs-merged-cell">
+                                                            {entry.startDate ?
+                                                                new Date(entry.startDate).toLocaleDateString('ko-KR') : '-'}
+                                                        </td>
+                                                    </>
+                                                ) : null}
+
+                                                <td>{entry.leaveType}</td>
+                                                <td>{entry.carryoverDays !== null ? entry.carryoverDays : '-'}</td>
+                                                <td>{entry.regularDays !== null ? entry.regularDays : '-'}</td>
+
+                                                {/* ✅ 월별 데이터 - 줄바꿈 적용 */}
+                                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(month => {
+                                                    const monthData = entry.monthlyUsage[month];
+                                                    return (
+                                                        <React.Fragment key={month}>
+                                                            <td className="vs-month-details">
+                                                                {monthData?.details?.map((daily, idx) => {
+                                                                    // ✅ 5개마다 줄바꿈
+                                                                    const needsLineBreak = idx > 0 && idx % 5 === 0;
+
+                                                                    return (
+                                                                        <React.Fragment key={idx}>
+                                                                            {needsLineBreak && <br />}
+                                                                            <span
+                                                                                className="vs-daily-usage"
+                                                                                style={{
+                                                                                    color: daily.halfDayType === 'ALL_DAY' ? 'black' :
+                                                                                        daily.halfDayType === 'MORNING' ? 'red' : 'blue',
+                                                                                    marginRight: '4px'
+                                                                                }}
+                                                                            >
+                                                                {new Date(daily.date).getDate()}
+                                                                                {idx < monthData.details.length - 1 && ', '}
+                                                            </span>
+                                                                        </React.Fragment>
+                                                                    );
+                                                                }) || '-'}
+                                                            </td>
+                                                            <td className="vs-month-total">{monthData?.monthTotal || 0}</td>
+                                                        </React.Fragment>
+                                                    );
+                                                })}
+
+                                                <td>{entry.totalUsed}</td>
+                                                <td>{entry.remaining !== null ? entry.remaining : '-'}</td>
+                                                <td>{entry.remarks}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                    </tbody>
+                                </table>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="vs-detail-container">
-                            <div className="vs-summary-card">
-                                <p className="vs-no-data">좌측 부서 목록에서 부서를 선택하면 상세 정보가 표시됩니다.</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
+
+                {/* 조직도 모달 */}
+                <OrgChartModal
+                    isOpen={isOrgChartModalOpen}
+                    onClose={() => setIsOrgChartModalOpen(false)}
+                    onSelect={handleEmployeeSelect}
+                    multiSelect={true}
+                    allDepartments={true}
+                />
+
+                {/* ✅ 관리대장용 조직도 모달 추가 */}
+                <OrgChartModal
+                    isOpen={isLedgerOrgChartOpen}
+                    onClose={() => setIsLedgerOrgChartOpen(false)}
+                    onSelect={handleLedgerEmployeeSelect}
+                    multiSelect={true}
+                    allDepartments={true}
+                />
             </div>
-            {/* ✅ 조직도 모달 */}
-            <OrgChartModal
-                isOpen={isOrgChartModalOpen}
-                onClose={() => setIsOrgChartModalOpen(false)}
-                onSelect={handleEmployeeSelect}
-                multiSelect={true}
-                allDepartments={true}
-            />
         </Layout>
     );
 };

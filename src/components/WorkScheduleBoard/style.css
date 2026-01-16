@@ -484,6 +484,105 @@
     font-weight: bold;
 }
 
+/* 검색 결과 카운트 */
+.inline-search-count {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+/* 검색 입력 필드 스타일 개선 */
+.inline-search-input {
+    min-width: 300px; /* 플레이스홀더가 길어서 너비 증가 */
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.inline-search-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.inline-search-input::placeholder {
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+/* 검색 초기화 버튼 */
+.inline-search-reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-left: 8px;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.inline-search-reset:hover {
+    background-color: #dc2626;
+    transform: scale(1.1);
+}
+
+/* 검색 섹션 레이아웃 */
+.inline-search-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto; /* 오른쪽 정렬 */
+}
+
+/* 빈 상태 스타일 개선 */
+.wsb-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.wsb-empty-state p {
+    color: #6b7280;
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+.wsb-btn-secondary {
+    padding: 8px 20px;
+    background-color: #6b7280;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wsb-btn-secondary:hover {
+    background-color: #4b5563;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 /* 모달 애니메이션 */
 @keyframes modalFadeIn {
     from {
@@ -515,4 +614,14 @@
     .wsb-btn-confirm {
         width: 100%;
     }
+
+    .inline-search-input {
+        min-width: 200px;
+        font-size: 13px;
+    }
+
+    .inline-search-input::placeholder {
+        font-size: 12px;
+    }
 }
+

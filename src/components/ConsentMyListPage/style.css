@@ -1,0 +1,123 @@
+/* 내 동의서 목록 */
+.consent-my-list-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.consent-section {
+    margin-bottom: 3rem;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 1.5rem;
+}
+
+.consent-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.consent-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+}
+
+.consent-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.consent-card.pending {
+    border-left: 4px solid #f59e0b;
+}
+
+.consent-card.completed {
+    border-left: 4px solid #10b981;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.card-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.card-badge.yellow {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.card-badge.green {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.consent-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.5rem;
+}
+
+.card-date {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 1rem;
+}
+
+.card-action-btn {
+    width: 100%;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.card-action-btn.primary {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.card-action-btn.primary:hover {
+    background-color: #2563eb;
+}
+
+.card-action-btn.secondary {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.card-action-btn.secondary:hover {
+    background-color: #e5e7eb;
+}
+
+.consent-empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #9ca3af;
+}

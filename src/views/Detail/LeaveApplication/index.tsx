@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, {useState, useCallback, useEffect, useMemo} from "react";
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCookies } from 'react-cookie';
 import axios from 'axios';
@@ -540,8 +540,84 @@ const LeaveApplication = () => {
         }
     };
 
+    const loadSignatures = useCallback(async () => {
+        if (!id || !token) return;
+        try {
+            const signaturesData = await fetchLeaveApplicationSignatures(parseInt(id), token);
+
+            // 안전한 서명 데이터 업데이트
+            setSignatures(prev => {
+                const newSignatures = { ...prev };
+                const signatureTypes = [
+                    'applicant', 'substitute', 'departmentHead',
+                    'hrStaff', 'centerDirector', 'adminDirector', 'ceoDirector'
+                ];
+
+                signatureTypes.forEach(type => {
+                    const backendSignature = signaturesData.signatures?.[type]?.[0];
+
+                    if (backendSignature) {
+                        newSignatures[type] = [{
+                            text: backendSignature.text || '',
+                            imageUrl: backendSignature.imageUrl || undefined,
+                            isSigned: Boolean(backendSignature.isSigned),
+                            signatureDate: backendSignature.signatureDate || ''
+                        }];
+                    } else if (!newSignatures[type]) {
+                        newSignatures[type] = [{
+                            text: '',
+                            imageUrl: undefined,
+                            isSigned: false,
+                            signatureDate: undefined
+                        }];
+                    }
+                });
+
+                return newSignatures;
+            });
+
+            // LeaveApplicationData의 boolean 필드들 업데이트
+            if (leaveApplication) {
+                setLeaveApplication(prev => {
+                    if (!prev) return prev;
+                    return {
+                        ...prev,
+                        isApplicantSigned: Boolean(signaturesData.isApplicantSigned),
+                        isSubstituteApproved: Boolean(signaturesData.isSubstituteApproved),
+                        isDeptHeadApproved: Boolean(signaturesData.isDeptHeadApproved),
+                        isHrStaffApproved: Boolean(signaturesData.isHrStaffApproved),
+                        isCenterDirectorApproved: Boolean(signaturesData.isCenterDirectorApproved),
+                        isFinalHrApproved: Boolean(signaturesData.isFinalHrApproved),
+                        isAdminDirectorApproved: Boolean(signaturesData.isAdminDirectorApproved),
+                        isCeoDirectorApproved: Boolean(signaturesData.isCeoDirectorApproved),
+                    };
+                });
+            }
+
+            console.log('서명 데이터 로드 완료:', signaturesData);
+
+        } catch (error) {
+            console.error('휴가신청서 서명 로드 실패', error);
+
+            // 로드 실패 시 기본값으로 초기화
+            const defaultSignatures: Record<string, { text: string; imageUrl?: string; isSigned: boolean; signatureDate: undefined; }[]> = {};
+            const signatureTypes = ['applicant', 'substitute', 'departmentHead', 'hrStaff', 'centerDirector', 'adminDirector', 'ceoDirector'];
+
+            signatureTypes.forEach(type => {
+                defaultSignatures[type] = [{
+                    text: '',
+                    imageUrl: undefined,
+                    isSigned: false,
+                    signatureDate: undefined
+                }];
+            });
+
+            setSignatures(defaultSignatures);
+        }
+    }, [id, token]);
+
     // 신청자 제출 (다음단계로 전송)
-    const handleSubmitToSubstitute = async () => {
+    const handleSubmitToSubstitute = useCallback(async () => {
         if (!leaveApplication || !id) {
             alert("휴가원 데이터가 유효하지 않습니다.");
             return;
@@ -550,7 +626,7 @@ const LeaveApplication = () => {
         // 추가: 대직자 선택 확인 (대직자 필요한 결재라인인데 없으면 막기)
         if (selectedApprovalLineId) {
             const selectedLine = approvalLines.find(line => line.id === selectedApprovalLineId);
-            const hasSubstitute = selectedLine?.steps.some(step => step.approverType === 'SUBSTITUTE');  // 대직자 포함 여부 확인
+            const hasSubstitute = selectedLine?.steps.some(step => step.approverType === 'SUBSTITUTE');
             if (hasSubstitute && !substituteInfo.userId) {
                 alert('대직자가 포함된 결재라인을 선택하셨습니다. 대직자를 선택해주세요.');
                 return;
@@ -560,11 +636,9 @@ const LeaveApplication = () => {
         // 1. 결재라인 선택 확인
         if (!selectedApprovalLineId) {
             if (approvalLines.length > 0) {
-                // 결재라인이 있으면 선택 모달 표시
                 setShowApprovalLineSelector(true);
                 return;
             } else {
-                // ✅ 수정: 결재라인이 없으면 생성 안내 후 중단
                 alert('사용 가능한 결재라인이 없습니다.\n결재라인을 먼저 생성해주세요.');
                 return;
             }
@@ -593,7 +667,7 @@ const LeaveApplication = () => {
             // 6. 폼 데이터 동기화 (임시저장)
             await syncFormData();
 
-            // // 서명 완료 후
+            // 서명 완료 후
             await loadSignatures();
 
             // 8. 제출 API 호출
@@ -622,7 +696,20 @@ const LeaveApplication = () => {
                 alert(`전송 중 오류가 발생했습니다: ${error.message}`);
             }
         }
-    };
+    }, [
+        leaveApplication,
+        id,
+        selectedApprovalLineId,
+        approvalLines,
+        substituteInfo.userId,
+        signatures.applicant,
+        currentUser,
+        leaveTypes,
+        syncFormData,
+        loadSignatures,
+        token,
+        navigate
+    ]); // ✅ 필요한 의존성만 추가
 
 
     // 결재라인 선택 확인 핸들러
@@ -772,44 +859,6 @@ const LeaveApplication = () => {
         setIsRejectable(canApproveCurrent);
         setIsManager(canApproveCurrent);
     }, [applicantInfo.department]);
-
-
-    // 전결 권한 확인 함수 (백엔드 로직과 일치시켜야 함)
-    const checkFinalApprovalRight = useCallback((user: User, app: LeaveApplicationData) => {
-        if (!user || !user.id) {
-            setCanFinalApprove(false);
-            return;
-        }
-
-        // ✅ 결재라인 사용 시
-        if (app.approvalLine) {
-            // 1. 현재 승인자인지 확인
-            const isCurrentApprover = (user.id === app.currentApproverId);
-
-            if (!isCurrentApprover) {
-                setCanFinalApprove(false);
-                return;
-            }
-
-            // 2. 백엔드에 전결 권한 확인 요청
-            fetch(`/api/v1/leave-application/${app.id}/can-final-approve`, {
-                headers: { Authorization: `Bearer ${token}` }
-            })
-                .then(res => res.json())
-                .then(data => {
-                    setCanFinalApprove(data.canFinalApprove);
-                })
-                .catch(err => {
-                    console.error('전결 권한 확인 실패:', err);
-                    setCanFinalApprove(false);
-                });
-
-            return;
-        }
-
-        // ❌ 하드코딩 방식 (하위 호환용 - 기존 코드 유지)
-        // ...
-    }, [token]);
 
     // 관리자 승인 (부서장, 인사담당, 센터장, 원장들)
     // handleManagerApproval 함수 전체 교체
@@ -991,82 +1040,6 @@ const LeaveApplication = () => {
             alert(`오류: ${error.message}`);
         }
     };
-
-    const loadSignatures = useCallback(async () => {
-        if (!id || !token) return;
-        try {
-            const signaturesData = await fetchLeaveApplicationSignatures(parseInt(id), token);
-
-            // 안전한 서명 데이터 업데이트
-            setSignatures(prev => {
-                const newSignatures = { ...prev };
-                const signatureTypes = [
-                    'applicant', 'substitute', 'departmentHead',
-                    'hrStaff', 'centerDirector', 'adminDirector', 'ceoDirector'
-                ];
-
-                signatureTypes.forEach(type => {
-                    const backendSignature = signaturesData.signatures?.[type]?.[0];
-
-                    if (backendSignature) {
-                        newSignatures[type] = [{
-                            text: backendSignature.text || '',
-                            imageUrl: backendSignature.imageUrl || undefined,
-                            isSigned: Boolean(backendSignature.isSigned),
-                            signatureDate: backendSignature.signatureDate || ''
-                        }];
-                    } else if (!newSignatures[type]) {
-                        newSignatures[type] = [{
-                            text: '',
-                            imageUrl: undefined,
-                            isSigned: false,
-                            signatureDate: undefined
-                        }];
-                    }
-                });
-
-                return newSignatures;
-            });
-
-            // LeaveApplicationData의 boolean 필드들 업데이트
-            if (leaveApplication) {
-                setLeaveApplication(prev => {
-                    if (!prev) return prev;
-                    return {
-                        ...prev,
-                        isApplicantSigned: Boolean(signaturesData.isApplicantSigned),
-                        isSubstituteApproved: Boolean(signaturesData.isSubstituteApproved),
-                        isDeptHeadApproved: Boolean(signaturesData.isDeptHeadApproved),
-                        isHrStaffApproved: Boolean(signaturesData.isHrStaffApproved),
-                        isCenterDirectorApproved: Boolean(signaturesData.isCenterDirectorApproved),
-                        isFinalHrApproved: Boolean(signaturesData.isFinalHrApproved),
-                        isAdminDirectorApproved: Boolean(signaturesData.isAdminDirectorApproved),
-                        isCeoDirectorApproved: Boolean(signaturesData.isCeoDirectorApproved),
-                    };
-                });
-            }
-
-            console.log('서명 데이터 로드 완료:', signaturesData);
-
-        } catch (error) {
-            console.error('휴가신청서 서명 로드 실패', error);
-
-            // 로드 실패 시 기본값으로 초기화
-            const defaultSignatures: Record<string, { text: string; imageUrl?: string; isSigned: boolean; signatureDate: undefined; }[]> = {};
-            const signatureTypes = ['applicant', 'substitute', 'departmentHead', 'hrStaff', 'centerDirector', 'adminDirector', 'ceoDirector'];
-
-            signatureTypes.forEach(type => {
-                defaultSignatures[type] = [{
-                    text: '',
-                    imageUrl: undefined,
-                    isSigned: false,
-                    signatureDate: undefined
-                }];
-            });
-
-            setSignatures(defaultSignatures);
-        }
-    }, [id, token, leaveApplication]);
 
 
     // 서명 클릭 핸들러 수정
@@ -1312,7 +1285,7 @@ const checkCanSign = useCallback((signatureKey: keyof SignatureState) => {
         return currentUser.id === leaveApplication.currentApproverId;
     }
 
-}, [currentUser, leaveApplication, applicantInfo]);
+}, [currentUser, applicantInfo]);
 
 // 인사권한 확인
 useEffect(() => {
@@ -1360,6 +1333,10 @@ const handleCancelApproved = async (cancellationReason: string) => {
         }
     }
 };
+
+    const memoizedAttachments = useMemo(() => {
+        return attachments.length ? attachments : (leaveApplication?.attachments || []);
+    }, [attachments, leaveApplication?.attachments]);
 
 // PDF 다운로드 함수
 const handleDownload = useCallback(
@@ -1415,8 +1392,14 @@ useEffect(() => {
             };
             setCurrentUser(fetchedUser);
 
-            const userSigImg = await fetchUserSignatureFromDB(token);
-            setUserSignatureImage(userSigImg);
+            // 2. 서명 이미지 가져오기 (404 무시)
+            try {
+                const userSigImg = await fetchUserSignatureFromDB(token);
+                setUserSignatureImage(userSigImg);
+            } catch (sigError) {
+                console.warn('서명 이미지 없음 (정상):', sigError);
+                setUserSignatureImage(null);
+            }
 
             // 2. 휴가원 상세 데이터 가져오기
             const appResponse = await axios.get(`/api/v1/leave-application/${id}`, {
@@ -1425,7 +1408,7 @@ useEffect(() => {
             const appData = appResponse.data;
             setLeaveApplication(appData);
 
-            // appData.attachments가 있을 경우 AttachmentDto 형태로 안전 매핑합니다.
+            // appData.attachments가 있을 경우 AttachmentDto 형태로 안전 매핑합니다 .
             if (appData.attachments && Array.isArray(appData.attachments)) {
                 const mappedAttachments = appData.attachments.map((a: any) => ({
                     id: Number(a.id ?? a.attachmentId ?? 0),
@@ -1664,23 +1647,6 @@ useEffect(() => {
     }
 }, [token, applicationStatus]);
 
-// 기존 useEffect 아래에 추가
-useEffect(() => {
-    // substituteInfo가 변경될 때 leaveApplication 상태 동기화
-    if (substituteInfo && leaveApplication && leaveApplication.substituteId !== substituteInfo.userId) {
-        setLeaveApplication(prev => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                // substituteInfo.userId가 undefined일 경우 빈 문자열 할당
-                substituteId: substituteInfo.userId || '',
-                // substituteInfo.name이 undefined일 경우 빈 문자열 할당
-                substituteName: substituteInfo.name || '',
-            };
-        });
-    }
-}, [substituteInfo, leaveApplication, setLeaveApplication]);
-
 // signatures가 바뀔 때마다 approvalData 자동 동기화
 useEffect(() => {
     console.log('signatures 변경됨:', signatures);
@@ -1709,11 +1675,39 @@ useEffect(() => {
     );
 }, [signatures]);
 
-useEffect(() => {
-    if (currentUser && leaveApplication) {
-        checkFinalApprovalRight(currentUser, leaveApplication);
-    }
-}, [currentUser, leaveApplication, checkFinalApprovalRight]);
+    useEffect(() => {
+        // PENDING 상태에서만 전결 권한 체크
+        if (!currentUser || !leaveApplication || leaveApplication.status !== 'PENDING') {
+            setCanFinalApprove(false);
+            return;
+        }
+
+        if (!currentUser.id) {
+            setCanFinalApprove(false);
+            return;
+        }
+
+        if (leaveApplication.approvalLine) {
+            const isCurrentApprover = (currentUser.id === leaveApplication.currentApproverId);
+
+            if (!isCurrentApprover) {
+                setCanFinalApprove(false);
+                return;
+            }
+
+            fetch(`/api/v1/leave-application/${leaveApplication.id}/can-final-approve`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    setCanFinalApprove(data.canFinalApprove);
+                })
+                .catch(err => {
+                    console.error('전결 권한 확인 실패:', err);
+                    setCanFinalApprove(false);
+                });
+        }
+    }, [currentUser?.id, leaveApplication?.id, leaveApplication?.status, leaveApplication?.currentApproverId, leaveApplication?.approvalLine, token]);
 
 useEffect(() => {
     if (leaveApplication && currentUser) {
@@ -2288,7 +2282,7 @@ return (
                                             value={substituteInfo.userId}
                                             onChange={e => {
                                                 const val = e.target.value;
-                                                // [수정] "선택 없음"(빈 값)을 선택했을 때 초기화 로직
+
                                                 if (val === "") {
                                                     setSubstituteInfo({
                                                         userId: '',
@@ -2298,6 +2292,12 @@ return (
                                                         contact: '',
                                                         phone: ''
                                                     });
+                                                    // ✅ 여기서 직접 동기화
+                                                    setLeaveApplication(prev => prev ? {
+                                                        ...prev,
+                                                        substituteId: '',
+                                                        substituteName: ''
+                                                    } : prev);
                                                     return;
                                                 }
 
@@ -2311,10 +2311,14 @@ return (
                                                         contact: '',
                                                         phone: ''
                                                     });
+                                                    // ✅ 여기서 직접 동기화
+                                                    setLeaveApplication(prev => prev ? {
+                                                        ...prev,
+                                                        substituteId: sel.userId,
+                                                        substituteName: sel.userName
+                                                    } : prev);
                                                 }
                                             }}
-                                            className="form-input-inline"
-                                            disabled={isFormReadOnly || candidates.length === 0}
                                         >
                                             {/* [수정] 선택 없음 옵션 명시적으로 추가 */}
                                             <option value="">— 선택 없음 —</option>
@@ -2387,7 +2391,7 @@ return (
                                     setApplicationDate(`${e.target.value || ''}-${parts[1] || ''}-${parts[2] || ''}`);
                                 }}
                                 className="date-input"
-                                placeholder="2024"
+                                placeholder="2026"
                                 readOnly={isFormReadOnly} // 이 줄 추가
                             />
                             <span>년</span>
@@ -2469,7 +2473,7 @@ return (
                     <LeaveAttachments
                         leaveApplicationId={leaveApplication.id}
                         token={token!}
-                        initialAttachments={attachments.length ? attachments : (leaveApplication.attachments || [])}
+                        initialAttachments={memoizedAttachments}
                         disabled={isFormReadOnly}
                         readOnly={applicationStatus !== 'DRAFT'}
                         onChange={(newAttachments) => {

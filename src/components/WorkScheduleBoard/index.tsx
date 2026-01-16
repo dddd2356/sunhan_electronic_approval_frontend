@@ -2,7 +2,7 @@ import React, {useState, useEffect, useMemo, useRef} from 'react';
 import { useCookies } from 'react-cookie';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../Layout';
-import { fetchMyWorkSchedules, createWorkSchedule, WorkSchedule } from '../../apis/workSchedule';
+import {fetchMyWorkSchedules, createWorkSchedule, WorkSchedule, fetchWorkScheduleDetail} from '../../apis/workSchedule';
 import './style.css';
 import axios from "axios";
 import OrgChartModal from "../OrgChartModal";
@@ -230,12 +230,25 @@ const WorkScheduleBoard: React.FC = () => {
     const filteredSchedules = useMemo(() => {
         if (!searchTerm.trim()) return schedules;
 
-        return schedules.filter(schedule =>
-            schedule.scheduleYearMonth.includes(searchTerm) ||
-            schedule.deptCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            schedule.createdBy.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [schedules, searchTerm]);
+        const lowerSearch = searchTerm.toLowerCase();
+
+        return schedules.filter(schedule => {
+            // 년월 검색
+            const matchesYearMonth = schedule.scheduleYearMonth.includes(searchTerm);
+
+            // 부서명 검색 (커스텀 부서명 또는 일반 부서명)
+            const deptName = schedule.isCustom && schedule.customDeptName
+                ? schedule.customDeptName
+                : (departmentNames[schedule.deptCode] || schedule.deptCode);
+            const matchesDeptName = deptName.toLowerCase().includes(lowerSearch);
+
+            // 작성자명 검색
+            const creatorName = schedule.creatorName || schedule.createdBy;
+            const matchesCreator = creatorName.toLowerCase().includes(lowerSearch);
+
+            return matchesYearMonth || matchesDeptName || matchesCreator;
+        });
+    }, [schedules, searchTerm, departmentNames]);
 
     // 페이지네이션
     const totalPages = Math.ceil(filteredSchedules.length / itemsPerPage);
@@ -390,19 +403,31 @@ const WorkScheduleBoard: React.FC = () => {
                     <span className="inline-search-section">
                         <input
                             type="text"
-                            placeholder="검색..."
+                            placeholder="년월, 부서명, 작성자로 검색..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setCurrentPage(1); // ✅ 검색 시 첫 페이지로
+                            }}
                             className="inline-search-input"
                         />
-                        {searchTerm && (
-                            <button
-                                onClick={() => setSearchTerm('')}
-                                className="inline-search-reset"
-                            >
-                                ×
-                            </button>
-                        )}
+                                            {searchTerm && (
+                                                <>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSearchTerm('');
+                                                            setCurrentPage(1);
+                                                        }}
+                                                        className="inline-search-reset"
+                                                        title="검색 초기화"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                    <span className="inline-search-count">
+                                    {filteredSchedules.length}건
+                                </span>
+                                                </>
+                                            )}
                     </span>
                 </div>
 
@@ -410,7 +435,22 @@ const WorkScheduleBoard: React.FC = () => {
                 <div className="wsb-schedule-list">
                     {pageSchedules.length === 0 ? (
                         <div className="wsb-empty-state">
-                            <p>등록된 근무표가 없습니다.</p>
+                            {searchTerm ? (
+                                <>
+                                    <p>'{searchTerm}'에 대한 검색 결과가 없습니다.</p>
+                                    <button
+                                        onClick={() => {
+                                            setSearchTerm('');
+                                            setCurrentPage(1);
+                                        }}
+                                        className="wsb-btn-secondary"
+                                    >
+                                        검색 초기화
+                                    </button>
+                                </>
+                            ) : (
+                                <p>등록된 근무표가 없습니다.</p>
+                            )}
                         </div>
                     ) : (
                         <table className="wsb-schedule-table">

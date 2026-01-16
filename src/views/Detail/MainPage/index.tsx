@@ -61,6 +61,15 @@ interface VacationHistory {
 interface VacationStatus {
     userId: string;
     userName: string;
+    annualCarryoverDays?: number;
+    annualRegularDays?: number;
+    annualTotalDays?: number;
+    annualUsedDays?: number;
+    annualRemainingDays?: number;
+    // 사용 세부 정보
+    usedCarryoverDays?: number;        // 이월 사용
+    usedRegularDays?: number;          // 정상 사용
+    // 하위 호환
     totalVacationDays: number;
     usedVacationDays: number;
     remainingVacationDays: number;
@@ -81,6 +90,17 @@ interface WorkScheduleStatus {
     createdAt: string;
     updatedAt: string;
     scheduleYearMonth?: string;
+}
+
+interface MyScheduleData {
+    yearMonth: string;
+    hasSchedule: boolean;
+    workData: Record<string, string>;
+    nightDutyActual: number;
+    dutyDisplayName?: string;
+    offCount: number;
+    vacationUsedThisMonth: number;
+    deptName?: string;
 }
 
 const MainPage: React.FC = () => {
@@ -108,10 +128,100 @@ const MainPage: React.FC = () => {
     const [loadingMemos, setLoadingMemos] = useState(true);
     const [memosError, setMemosError] = useState('');
 
+
+    const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
+    const [mySchedule, setMySchedule] = useState<any>(null);
+    const [loadingSchedule, setLoadingSchedule] = useState(false);
+
+
     // --- 원본 헬퍼 함수 유지 ---
     const handleRefreshVacation = () => setRefreshTrigger(prev => prev + 1);
     const handleShowHistoryPopup = () => setShowHistoryPopup(true);
     const handleCloseHistoryPopup = () => setShowHistoryPopup(false);
+
+    // 캘린더 렌더링 헬퍼 함수
+    const renderWorkCalendar = () => {
+        if (!mySchedule || !mySchedule.hasSchedule) {
+            return <div className="empty-msg">이번 달 근무표가 없습니다.</div>;
+        }
+
+        const [year, month] = selectedMonth.split('-').map(Number);
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const firstDayOfWeek = new Date(year, month - 1, 1).getDay(); // 0: 일요일, 1: 월요일...
+
+        const weeks = [];
+        let days = [];
+
+        // 1. 빈 칸 채우기 (일요일부터 시작하는 달력이면 firstDayOfWeek 그대로, 월요일 시작이면 조정 필요)
+        // 여기서는 일요일(0) 시작 기준 캘린더로 가정합니다.
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
+        }
+
+        // 2. 날짜 채우기
+        for (let day = 1; day <= daysInMonth; day++) {
+            const workType = mySchedule.workData[day.toString()] || '';
+            const date = new Date(year, month - 1, day);
+            const dayOfWeek = date.getDay();
+
+            // 요일 체크
+            const isSunday = dayOfWeek === 0;
+            const isSaturday = dayOfWeek === 6;
+
+            days.push(
+                <div key={day} className="calendar-day">
+                    <div className={`day-number ${isSunday ? 'sun' : ''} ${isSaturday ? 'sat' : ''}`}>
+                        {day}
+                    </div>
+                    {workType && (
+                        <div className={`work-type ${getWorkTypeClass(workType)}`}>
+                            {workType}
+                        </div>
+                    )}
+                </div>
+            );
+
+            // 주 단위 줄바꿈 (토요일(6)이거나, 7개 찼을 때)
+            if (days.length === 7) {
+                weeks.push(<div key={`week-${weeks.length}`} className="calendar-week">{days}</div>);
+                days = [];
+            }
+        }
+
+        // 남은 날짜 처리
+        if (days.length > 0) {
+            // 남은 칸 빈칸으로 채우기 (선택사항, 레이아웃 유지를 위해 권장)
+            while (days.length < 7) {
+                days.push(<div key={`empty-end-${days.length}`} className="calendar-day empty"></div>);
+            }
+            weeks.push(<div key={`week-${weeks.length}`} className="calendar-week">{days}</div>);
+        }
+
+        return (
+            <div className="calendar-wrapper">
+                <div className="calendar-header">
+                    {['일', '월', '화', '수', '목', '금', '토'].map((d, idx) => (
+                        <div key={d} className={`day-label ${idx === 0 ? 'sun' : ''} ${idx === 6 ? 'sat' : ''}`}>
+                            {d}
+                        </div>
+                    ))}
+                </div>
+                <div className="calendar-body">{weeks}</div>
+            </div>
+        );
+    };
+
+    // 근무 타입에 따른 CSS 클래스 반환 헬퍼 함수
+    const getWorkTypeClass = (type: string): string => {
+        const t = type.toUpperCase();
+        if (t === 'N' || t.startsWith('NIGHT') || t.startsWith('N')) return 'type-n';
+        if (t === 'D' || t.startsWith('DAY')) return 'type-d';
+        if (t === 'E' || t.startsWith('EVEN')) return 'type-e';
+        if (t === 'OFF') return 'type-off';
+        if (t.includes('연') || t === 'AL' || t === 'ANNUAL') return 'type-vacation';
+        if (t.includes('반') || t === 'HD' || t === 'HE') return 'type-half';
+        return 'type-etc';
+    };
 
     const mapStatusToSimpleKorean = (status: string): string => {
         switch (status) {
@@ -229,6 +339,29 @@ const MainPage: React.FC = () => {
         };
         fetchVacationData();
     }, [userProfile, cookies.accessToken, refreshTrigger]);
+
+    // 근무현황 조회 useEffect
+    useEffect(() => {
+        const fetchMySchedule = async () => {
+            if (!cookies.accessToken || !userProfile) return;
+
+            try {
+                setLoadingSchedule(true);
+                const response = await axios.get(
+                    `/api/v1/work-schedules/my-schedule/${selectedMonth}`,
+                    { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                );
+                setMySchedule(response.data);
+            } catch (error) {
+                console.error('근무현황 조회 실패:', error);
+                setMySchedule({ hasSchedule: false, workData: {} });
+            } finally {
+                setLoadingSchedule(false);
+            }
+        };
+
+        fetchMySchedule();
+    }, [selectedMonth, cookies.accessToken, userProfile]);
 
     useEffect(() => {
         const fetchRecentActivities = async () => {
@@ -408,16 +541,20 @@ const MainPage: React.FC = () => {
                                     <>
                                         <div className="mp-stats-row">
                                             <div className="mp-stat-box">
-                                                <span className="stat-label">총 연차</span>
-                                                <span className="stat-value">{total}</span>
+                                                <span className="mp-stat-label">총 연차</span>
+                                                <span className="mp-stat-value">{total}</span>
                                             </div>
                                             <div className="mp-stat-box highlight">
-                                                <span className="stat-label">사용</span>
-                                                <span className="stat-value">{used}</span>
+                                                <span className="mp-stat-label">이월 사용</span>
+                                                <span className="mp-stat-value">{vacationStatus?.usedCarryoverDays || 0}</span>
+                                            </div>
+                                            <div className="mp-stat-box highlight">
+                                                <span className="mp-stat-label">정상 사용</span>
+                                                <span className="mp-stat-value">{vacationStatus?.usedRegularDays || 0}</span>
                                             </div>
                                             <div className="mp-stat-box">
-                                                <span className="stat-label">잔여</span>
-                                                <span className="stat-value text-green">{remaining}</span>
+                                                <span className="mp-stat-label">잔여</span>
+                                                <span className="mp-stat-value text-green">{remaining}</span>
                                             </div>
                                         </div>
 
@@ -470,14 +607,51 @@ const MainPage: React.FC = () => {
                                         <span>문서 관리</span>
                                     </button>
                                     <button className="mp-action-btn" onClick={handleShowHistoryPopup}>
-                                        <Clock size={22} />
+                                        <Clock size={22}/>
                                         <span>휴가 기록</span>
                                     </button>
-                                    <button className="mp-action-btn primary" onClick={() => window.location.href='/detail/leave-application'}>
-                                        <Calendar size={22} />
+                                    <button className="mp-action-btn primary"
+                                            onClick={() => window.location.href = '/detail/leave-application'}>
+                                        <Calendar size={22}/>
                                         <span>휴가 신청</span>
                                     </button>
                                 </div>
+                            </section>
+
+                            <section className="mp-card">
+                                <div className="mp-schedule-header">
+                                    <h2 className="mp-card-title">
+                                        <Calendar size={20} className="icon-blue"/> 내 근무현황
+                                    </h2>
+                                    <input
+                                        type="month"
+                                        value={selectedMonth}
+                                        onChange={(e) => setSelectedMonth(e.target.value)}
+                                        className="month-selector"
+                                    />
+                                </div>
+
+                                {loadingSchedule ? (
+                                    <div className="inner-loader">로딩 중...</div>
+                                ) : (
+                                    <>
+                                        {mySchedule?.hasSchedule && (
+                                            <div className="schedule-stats">
+                                                <span>
+
+                                                    {mySchedule.dutyDisplayName || '나이트'}: {mySchedule.nightDutyActual}회
+                                                </span>
+                                                <span style={{margin: '0 8px', color: '#e2e8f0'}}>|</span>
+                                                <span>OFF: {mySchedule.offCount || 0}일</span>
+                                                <span style={{margin: '0 8px', color: '#e2e8f0'}}>|</span>
+                                                <span>휴가: {mySchedule.vacationUsedThisMonth || 0}일</span>
+                                            </div>
+                                        )}
+                                        <div className="work-calendar">
+                                            {renderWorkCalendar()}
+                                        </div>
+                                    </>
+                                )}
                             </section>
 
                             {/* 최근 활동 */}
@@ -498,7 +672,8 @@ const MainPage: React.FC = () => {
                                                 <div className="activity-info">
                                                     <span className="act-title">{act.title}</span>
                                                     <span className="act-desc">상태: {act.status}</span>
-                                                    <span className="act-time">{new Date(act.date).toLocaleDateString()}</span>
+                                                    <span
+                                                        className="act-time">{new Date(act.date).toLocaleDateString()}</span>
                                                 </div>
                                             </div>
                                         )) : <div className="empty-msg">최근 활동이 없습니다.</div>}

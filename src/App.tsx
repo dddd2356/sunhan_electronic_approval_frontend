@@ -18,6 +18,12 @@ import WorkScheduleBoard from "./components/WorkScheduleBoard";
 import WorkScheduleEditor from "./components/WorkScheduleEditor";
 import PositionManagement from "./components/PositionManagement";
 import AdminMemoManagement from "./components/AdminContractMemoManagement";
+import ConsentIssuePage from "./components/ConsentIssuePage";
+import ConsentManagementPage from "./components/ConsentManagementPage";
+import ConsentMyListPage from "./components/ConsentMyListPage";
+import ConsentMyIssuedPage from "./components/ConsentMyIssuedPage";
+import ConsentPreviewPage from "./components/ConsentPreviewPage";
+import ConsentWritePage from "./components/ConsentWritePage";
 
 
 function App() {
@@ -47,6 +53,10 @@ function App() {
 
             {/* ✅ 직책 관리 라우트 */}
             <Route path="positions" element={<PositionManagement/>} />
+            {/* 동의서 작성 (대상자) */}
+            <Route path="consent/write/:agreementId" element={<ConsentWritePage/>} />
+            {/* 내가 받은 동의서 목록 (일반 사용자) */}
+            <Route path="consent/my-list" element={<ConsentMyListPage />} />
         </Route>
           {/* ===== 관리자 페이지 라우트 추가 ===== */}
           <Route path="/admin">
@@ -56,8 +66,14 @@ function App() {
               <Route path="vacation" element={<AdminVacationManagement/>}/>
               <Route path="sync-management-dashboard" element={<SyncManagementDashboard/>}/>
               <Route path="vacation-statistics" element={<AdminVacationStatistics/>} />
+              {/* 동의서 관리 (관리 권한 필요) */}
+              <Route path="consent/management" element={<ConsentManagementPage />} />
+              {/* 내가 발송한 동의서 목록 (생성 권한 보유자) */}
+              <Route path="consent/my-issued" element={<ConsentMyIssuedPage />} />
+              {/* 동의서 발송 (생성 권한 필요) */}
+              <Route path="consent/issue" element={<ConsentIssuePage />} />
+              <Route path="consent/preview" element={<ConsentPreviewPage/>}/>
           </Route>
-
     </Routes>
   );
 }

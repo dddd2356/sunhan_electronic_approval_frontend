@@ -95,6 +95,8 @@ const PERMISSION_DISPLAY_MAP: Record<string, string> = {
     'WORK_SCHEDULE_MANAGE': '근무현황표 완료 문서 관리',
     'FINAL_APPROVAL_LEAVE_APPLICATION': '휴가원 전결 승인',
     'FINAL_APPROVAL_WORK_SCHEDULE': '근무현황표 전결 승인',
+    'CONSENT_CREATE': '동의서 발송 (생성)',
+    'CONSENT_MANAGE': '동의서 관리 (전체 조회)',
     'FINAL_APPROVAL_ALL': '모든 문서 전결 승인',
 };
 
@@ -105,6 +107,8 @@ const HR_PERMISSION_TYPES_LIST = [
     'WORK_SCHEDULE_MANAGE',
     'FINAL_APPROVAL_LEAVE_APPLICATION',
     'FINAL_APPROVAL_WORK_SCHEDULE',
+    'CONSENT_CREATE',
+    'CONSENT_MANAGE',
     'FINAL_APPROVAL_ALL'
 ];
 
