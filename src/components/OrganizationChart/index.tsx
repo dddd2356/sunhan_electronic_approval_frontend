@@ -34,11 +34,16 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
                                                                  allDepartments = false
                                                              }) => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
     const [departments, setDepartments] = useState<Department[]>([]);
     const [deptNames, setDeptNames] = useState<Record<string, string>>({});  // ✅ 추가
     const [employees, setEmployees] = useState<Record<string, Employee[]>>({});
     const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchResults, setSearchResults] = useState<Employee[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
     const getBaseDeptCode = (code: string) => code.replace(/\d+$/, '');
 
     useEffect(() => {
@@ -46,10 +51,39 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
         fetchDepartmentNames();
     }, []);
 
+    useEffect(() => {
+        if (searchTerm.trim().length < 2) {
+            setSearchResults([]);
+            return;
+        }
+
+        setIsSearching(true);
+        const timer = setTimeout(() => {
+            handleSearch(searchTerm);
+        }, 300); // 300ms 대기
+
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const handleSearch = async (term: string) => {
+        try {
+            const response = await fetch(`/api/v1/user/search?query=${encodeURIComponent(term)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await response.json();
+            setSearchResults(data);
+        } catch (error) {
+            console.error('검색 실패:', error);
+            setSearchResults([]);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
     const fetchDepartments = async () => {
         try {
             const response = await fetch('/api/v1/user/departments', {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             const data = await response.json();
             setDepartments(buildDepartmentTree(data));
@@ -64,7 +98,7 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
     const fetchDepartmentNames = async () => {
         try {
             const response = await fetch('/api/v1/departments/names', {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             const data = await response.json();
 
@@ -95,7 +129,7 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
                 : `/api/v1/user/department/${baseCode}?includeSubDepts=true`;
 
             const response = await fetch(endpoint, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             const data = await response.json();
@@ -174,7 +208,7 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
         const levels: Record<string, string> = {
             '0': '사원',
             '1': '부서장',
-            '2': '진료센터장',
+            '2': '센터장',
             '3': '원장',
             '4': '행정원장',
             '5': '대표원장',
@@ -255,7 +289,54 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
                 <p className="org-chart-description">
                     부서를 클릭하여 펼치고, 직원을 선택하세요
                 </p>
+                {/* ✅ 검색 입력란 */}
+                <div className="org-search-container">
+                    <input
+                        type="text"
+                        className="org-search-input"
+                        placeholder="이름 또는 아이디로 검색..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
             </div>
+
+            {searchTerm.trim().length >= 2 && (
+                <div className="org-search-results">
+                    <div className="org-search-results-header">
+                        {isSearching ? '검색 중...' : `검색 결과 (${searchResults.length})`}
+                    </div>
+                    {!isSearching && searchResults.length === 0 ? (
+                        <div className="org-search-no-results">
+                            검색 결과가 없습니다.
+                        </div>
+                    ) : (
+                        searchResults.map(emp => {
+                            const isSelected = multiSelect
+                                ? selectedUserIds.includes(emp.userId)
+                                : selectedUserId === emp.userId;
+
+                            return (
+                                <div
+                                    key={emp.userId}
+                                    className={`org-employee-item ${isSelected ? 'selected' : ''}`}
+                                    onClick={() => onUserSelect(emp.userId, emp.userName, emp.jobLevel)}
+                                >
+                                    <User className="org-icon" />
+                                    <div className="org-employee-info">
+                                        <span className="org-employee-name">{emp.userName}</span>
+                                        <span className="org-employee-position">
+                                        {getJobLevelText(emp.jobLevel)} · {deptNames[getBaseDeptCode(emp.deptCode)] || emp.deptCode}
+                                    </span>
+                                    </div>
+                                    {isSelected && <span className="org-selected-badge">✓</span>}
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+            )}
+
             <div className="org-chart-tree">
                 {departments.map(dept => renderDepartment(dept))}
             </div>

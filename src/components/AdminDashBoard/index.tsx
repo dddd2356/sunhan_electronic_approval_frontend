@@ -15,7 +15,7 @@ import {
     AlertCircle,
     Search,
     ChevronRight,
-    Briefcase
+    Briefcase, AlertTriangle, Lock
 } from "lucide-react";
 
 // --- Interfaces ---
@@ -115,6 +115,8 @@ const HR_PERMISSION_TYPES_LIST = [
 export const AdminDashboard: React.FC = () => {
     // ## State Management ##
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>('');
 
@@ -146,13 +148,16 @@ export const AdminDashboard: React.FC = () => {
     const [hrPermissionLoading, setHrPermissionLoading] = useState<boolean>(false);
     const [stats, setStats] = useState<AdminStats>({ totalUsers: 0, activeUsers: 0, inactiveUsers: 0, totalDepartments: 0 });
 
+    const [newPassword, setNewPassword] = useState<string>('');
+    const [showPasswordSection, setShowPasswordSection] = useState<boolean>(false);
+
     // ## API Helpers ##
     const getAuthHeaders = useCallback(() => {
         return {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${cookies.accessToken}`,
+            'Authorization': `Bearer ${token}`,
         };
-    }, [cookies.accessToken]);
+    }, [token]);
 
     // ✅ 통계 데이터 호출 함수
     const fetchStats = useCallback(async () => {
@@ -226,7 +231,7 @@ export const AdminDashboard: React.FC = () => {
     }, [getAuthHeaders]);
 
     const fetchUserPermissions = useCallback(async () => {
-        if (!cookies.accessToken) return;
+        if (!token) return;
         try {
             setHrPermissionLoading(true);
 
@@ -252,10 +257,10 @@ export const AdminDashboard: React.FC = () => {
         } finally {
             setHrPermissionLoading(false);
         }
-    }, [getAuthHeaders, cookies.accessToken]);
+    }, [getAuthHeaders, token]);
 
     const fetchDeptPermissions = useCallback(async () => {
-        if (!cookies.accessToken) return;
+        if (!token) return;
         try {
             // 💡 [개선] 단일 API 호출
             const res = await fetch('/api/v1/admin/permissions/departments/all', {
@@ -277,7 +282,7 @@ export const AdminDashboard: React.FC = () => {
         } catch (e: any) {
             console.error('Dept permissions fetch error (Unified):', e.message);
         }
-    }, [getAuthHeaders, cookies.accessToken]);
+    }, [getAuthHeaders, token]);
 
     const fetchDepartments = useCallback(async () => {
         try {
@@ -293,10 +298,48 @@ export const AdminDashboard: React.FC = () => {
         }
     }, [users]);
 
+    const handleResetPassword = async () => {
+        if (!selectedUser || !newPassword) {
+            alert('새 비밀번호를 입력해주세요.');
+            return;
+        }
+
+        if (newPassword.length < 4) {
+            alert('비밀번호는 최소 4자 이상이어야 합니다.');
+            return;
+        }
+
+        if (!window.confirm(`${selectedUser.userName}님의 비밀번호를 변경하시겠습니까?\n다음 로그인 시 비밀번호 변경이 필요합니다.`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/v1/admin/reset-user-password', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    targetUserId: selectedUser.userId,
+                    newPassword: newPassword
+                }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || '비밀번호 변경 실패');
+            }
+
+            alert('비밀번호가 변경되었습니다.\n해당 사용자는 다음 로그인 시 비밀번호를 변경해야 합니다.');
+            setNewPassword('');
+            setShowPasswordSection(false);
+        } catch (e: any) {
+            alert(e.message);
+        }
+    };
+
     // ## Initialization Effect ##
     useEffect(() => {
         const initialize = async () => {
-            if (!cookies.accessToken) {
+            if (!token) {
                 setLoading(false);
                 setError('Please log in to access the admin dashboard.');
                 return;
@@ -330,7 +373,7 @@ export const AdminDashboard: React.FC = () => {
         };
 
         initialize();
-    }, [getAuthHeaders, cookies.accessToken]);
+    }, [getAuthHeaders, token]);
 
     // ✅ 통계 데이터를 최초 1회만 호출하는 useEffect
     useEffect(() => {
@@ -389,7 +432,9 @@ export const AdminDashboard: React.FC = () => {
 
     const handleCloseDrawer = () => {
         setIsDrawerOpen(false);
-        setTimeout(() => setSelectedUser(null), 300); // Wait for animation
+        setShowPasswordSection(false);
+        setNewPassword('');
+        setTimeout(() => setSelectedUser(null), 300);
     };
 
     // ## Action Handlers ##
@@ -753,6 +798,56 @@ export const AdminDashboard: React.FC = () => {
                                                     </button>
                                                 </div>
                                             </div>
+
+                                            {currentUser?.jobLevel === '6' && (
+                                                <div className={`password-reset-zone ${showPasswordSection ? 'active' : ''}`}>
+                                                    {/* 헤더 영역 */}
+                                                    <div className="password-header">
+                                                        <div className="password-label">
+                                                            <Lock size={16} />
+                                                            <span>비밀번호 재설정 (최고관리자)</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => {
+                                                                setShowPasswordSection(!showPasswordSection);
+                                                                setNewPassword(''); // 닫을 때 입력값 초기화
+                                                            }}
+                                                            className={`btn-toggle-danger ${showPasswordSection ? 'cancel' : ''}`}
+                                                        >
+                                                            {showPasswordSection ? '취소' : '변경하기'}
+                                                        </button>
+                                                    </div>
+
+                                                    {/* 폼 영역 (토글 시 표시) */}
+                                                    {showPasswordSection && (
+                                                        <div className="password-form-container">
+                                                            <input
+                                                                type="text" // 비밀번호 확인을 위해 text로 두거나 password로 변경 가능
+                                                                placeholder="새 비밀번호 입력 (4자 이상)"
+                                                                value={newPassword}
+                                                                onChange={(e) => setNewPassword(e.target.value)}
+                                                                className="password-input"
+                                                                autoFocus
+                                                            />
+
+                                                            <button
+                                                                onClick={handleResetPassword}
+                                                                className="btn-submit-danger"
+                                                            >
+                                                                비밀번호 변경 실행
+                                                            </button>
+
+                                                            <div className="password-warning">
+                                                                <AlertTriangle size={14} style={{ minWidth: '14px', marginTop: '2px' }} />
+                                                                <span>
+                                                                비밀번호 변경 시 해당 사용자는 다음 로그인 직후<br/>
+                                                                반드시 비밀번호를 다시 변경해야 합니다.
+                                                            </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {/* Admin Role */}
                                             <div className="permission-item" style={{marginTop: '1rem'}}>

@@ -1,4 +1,4 @@
-import React, {ChangeEvent, useCallback, useEffect, useState} from 'react';
+import React, {ChangeEvent, useCallback, useEffect, useRef, useState} from 'react';
 import {useCookies} from "react-cookie";
 import {ContractSignatures, fetchSignaturesForContract} from "../../../apis/signatures";
 import {SignatureState} from '../../../types/signature';
@@ -57,10 +57,13 @@ interface FormDataFields {
     employeePhone: string;
     employeeSSN: string;
     startDate: string;
-    workTime: string;
     contractDate: string;
+    conditionApplyDate: string;
     salaryContractDate: string;
-    breakTime: string;
+    workTimeList: string[];
+    breakTimeList: string[];
+    workingHours: string;
+    salaryMonths: string;
     totalAnnualSalary: string;
     basicSalary: string;
     positionAllowance: string;
@@ -82,18 +85,19 @@ interface FormDataFields {
     employeeSignatureUrl?: string;
     ceoSignatureUrl?: string;  // 추가
     ceoName?: string;          // 추가
+    contractSignDate: string;
 }
 
 
 const EmploymentContract = () => {
     const {id} = useParams<{ id: string }>();
     const [cookies] = useCookies(['accessToken']);
-    const token = cookies.accessToken;
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const [contract, setContract] = useState<Contract | null>(null);
     const [status, setStatus] = useState<string>('DRAFT'); // 초깃값은 'DRAFT' 또는 ''
     const navigate = useNavigate();
     const [userSignatureImage, setUserSignatureImage] = useState<string | null>(null);
-    const createdDate = contract?.createdAt?.slice(0, 10) || '';
+    const addressTextareaRef = useRef<HTMLTextAreaElement>(null);
     const [formData, setFormData] = useState<FormDataFields>({
         contractTitle: '',
         employerName: '',
@@ -104,10 +108,13 @@ const EmploymentContract = () => {
         employeePhone: '',
         employeeSSN: '',
         startDate: '',
-        workTime: '',
         contractDate: '',
+        conditionApplyDate: '',
         salaryContractDate: '',
-        breakTime: '',
+        workTimeList: ['', '', ''],
+        breakTimeList: ['', '', '', ''],
+        workingHours: '209',
+        salaryMonths: '12',
         totalAnnualSalary: '',
         basicSalary: '',
         positionAllowance: '',
@@ -128,7 +135,8 @@ const EmploymentContract = () => {
         receiptConfirmation2: '',
         employeeSignatureUrl: '', // 서명 이미지 URL 초기값
         ceoSignatureUrl: '',  // 추가
-        ceoName: ''           // 추가
+        ceoName: '',           // 추가
+        contractSignDate: '',
     });
     const isDraft = status === 'DRAFT'; //DRAFT에서만 수정할 수 있도록하기
     // 모달용 state
@@ -286,6 +294,57 @@ const EmploymentContract = () => {
         setRejectModalOpen(true);
     };
 
+    // 배열 필드 변경 핸들러
+    const handleArrayInputChange = useCallback((
+        fieldName: 'workTimeList' | 'breakTimeList',
+        index: number,
+        value: string
+    ) => {
+        setFormData(prev => {
+            const newArray = [...prev[fieldName]];
+            newArray[index] = value;
+            return { ...prev, [fieldName]: newArray };
+        });
+    }, []);
+
+// 엔터 키 핸들러 (새 줄 추가)
+    const handleArrayInputKeyDown = useCallback((
+        e: React.KeyboardEvent<HTMLInputElement>,
+        fieldName: 'workTimeList' | 'breakTimeList',
+        index: number
+    ) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            setFormData(prev => {
+                const newArray = [...prev[fieldName]];
+                newArray.splice(index + 1, 0, '');  // 현재 위치 다음에 빈 줄 추가
+                return { ...prev, [fieldName]: newArray };
+            });
+
+            // 다음 input으로 포커스 이동
+            setTimeout(() => {
+                const inputs = document.querySelectorAll(`input[name="${fieldName}"]`);
+                if (inputs[index + 1]) {
+                    (inputs[index + 1] as HTMLInputElement).focus();
+                }
+            }, 0);
+        } else if (e.key === 'Backspace' && formData[fieldName][index] === '' && formData[fieldName].length > 1) {
+            e.preventDefault();
+            setFormData(prev => {
+                const newArray = [...prev[fieldName]];
+                newArray.splice(index, 1);  // 현재 줄 삭제
+                return { ...prev, [fieldName]: newArray };
+            });
+            // 이전 input으로 포커스 이동
+            setTimeout(() => {
+                const inputs = document.querySelectorAll(`input[name="${fieldName}"]`);
+                if (inputs[index - 1]) {
+                    (inputs[index - 1] as HTMLInputElement).focus();
+                }
+            }, 0);
+        }
+    }, [formData]);
+
     // ① 관리자 전송
     const handleInitialSend = async () => {
         if (!contract) return;
@@ -429,38 +488,28 @@ const EmploymentContract = () => {
         }
     }, [token]);
 
-    useEffect(() => {
-        const loadContract = async () => {
-            try {
-                const contractData = await fetchContract(parseInt(id!), token);
-                setContract(contractData);
-                setStatus(contractData.status);
-            } catch (error) {
-                console.error('계약서 데이터를 불러오는 데 실패했습니다.', error);
-            }
-        };
+    const formatSSN = (value: string): string => {
+        // 숫자만 추출
+        const numbersOnly = value.replace(/[^\d]/g, '');
 
-        if (id && token) {
-            loadContract();
+        // 최대 13자리까지만 허용
+        const limitedNumbers = numbersOnly.slice(0, 13);
+
+        // 6자리-7자리 형식으로 포맷팅
+        if (limitedNumbers.length <= 6) {
+            return limitedNumbers;
+        } else {
+            return `${limitedNumbers.slice(0, 6)}-${limitedNumbers.slice(6)}`;
         }
-    }, [id, token]);
-
-    // 로그인 사용자로부터 서명 데이터를 가져오는 효과
-    useEffect(() => {
-        if (!token || !id) return;
-        fetchSignaturesForContract(token, parseInt(id))
-            .then((data: ContractSignatures) => {
-                const {signatures, agreements} = data;
-                setSignatures(signatures);
-                setAgreements(agreements);
-            })
-            .catch(err => console.error('서명 데이터 로딩 실패:', err));
-    }, [token, id]);
+    };
 
     const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const {name, value} = e.target;
+        // 주민등록번호 필드인 경우 포맷팅 적용
+        const formattedValue = name === 'employeeSSN' ? formatSSN(value) : value;
+
         setFormData((prevData: FormDataFields) => { // prevData에 타입 적용
-            const updatedData = {...prevData, [name]: value};
+            const updatedData = {...prevData, [name]: formattedValue};
             setContract((prevContract: Contract | null) => { // prevContract에 타입 적용
                 if (!prevContract) return null;
                 return {
@@ -499,7 +548,7 @@ const EmploymentContract = () => {
     // 사용자 서명 가져오는 함수
     const fetchUserSignatureData = async (): Promise<string | undefined> => {
         try {
-            const signatureData = await fetchUserSignature(cookies.accessToken);
+            const signatureData = await fetchUserSignature(token);
             const signatureUrl = signatureData.imageUrl || signatureData.signatureUrl;
             setUserSignatureImage(signatureUrl || null);
             return signatureUrl || undefined;
@@ -511,10 +560,10 @@ const EmploymentContract = () => {
 
     // useEffect로 컴포넌트 로드 시 서명 가져오기
     useEffect(() => {
-        if (cookies.accessToken) {
+        if (token) {
             fetchUserSignatureData();
         }
-    }, [cookies.accessToken]);
+    }, [token]);
 
     // 수정된 handleSignatureClick 함수
     const handleSignatureClick = (page: string, idx: number) => async () => {
@@ -562,7 +611,7 @@ const EmploymentContract = () => {
                     // 서명이 없는 경우 사용자에게 안내
                     if (window.confirm('등록된 서명이 없습니다. 서명을 먼저 등록하시겠습니까?')) {
                         // 서명 등록 페이지로 이동하거나 모달 열기
-                        window.location.href = '/profile/signature'; // 또는 서명 등록 페이지 경로
+                        navigate('/profile/signature'); // 또는 서명 등록 페이지 경로
                         // 또는 서명 등록 모달 열기
                         // openSignatureModal();
                     }
@@ -598,32 +647,46 @@ const EmploymentContract = () => {
         [id, token]
     );
 
+    // ✅ 통합된 하나의 useEffect
     useEffect(() => {
         if (!token || !id) return;
 
         const loadContractDetails = async () => {
             try {
                 const contractData = await fetchContract(parseInt(id), token);
+
+                // 👉 첫 번째 useEffect의 기능
+                setContract(contractData);
+                setStatus(contractData.status);
+
+                // 👉 두 번째 useEffect의 기능
                 const dto = JSON.parse(contractData.formDataJson);
 
                 // 1) formDataJson → formData 상태 반영
                 setFormData(dto);
 
                 // 2) employeeName, employerName(creatorName) 반영
-                setFormData(prev => ({
-                    ...prev,
-                    employeeName: contractData.employeeName ?? prev.employeeName,
-                    employerName: contractData.creatorName ?? prev.employerName
-                }));
+                setFormData({
+                    ...dto,
+                    workTimeList: dto.workTimeList?.length > 0
+                        ? dto.workTimeList
+                        : ['', '', ''],
+                    breakTimeList: dto.breakTimeList?.length > 0
+                        ? dto.breakTimeList
+                        : ['', '', '', ''],
+                    employeeName: contractData.employeeName ?? dto.employeeName,
+                    employerName: contractData.creatorName ?? dto.employerName,
+                    contractSignDate: dto.contractSignDate || new Date().toISOString().split('T')[0]
+                });
 
                 // 3) 서명 데이터가 있으면 반영
                 if (dto.signatures) {
                     setSignatures(dto.signatures);
                 }
 
-                // 4) 계약 상태 status 저장
-                if (contractData.status) {
-                    setStatus(contractData.status);
+                // 4) 동의 데이터가 있으면 반영
+                if (dto.agreements) {
+                    setAgreements(dto.agreements);
                 }
             } catch (error) {
                 console.error('계약서 상세 정보 로드 실패:', error);
@@ -674,7 +737,7 @@ const EmploymentContract = () => {
                         />
                     </div>
                     <div style={{textAlign: "left"}}>
-                        선한병원(이하 '사용자'라 한다)와(과)
+                        선한병원(이하 '사용자'라 한다)과
                         <input
                             type="text"
                             name="employeeName"
@@ -740,21 +803,44 @@ const EmploymentContract = () => {
                                         name="employeeSSN"
                                         value={formData.employeeSSN || ''}
                                         onChange={handleInputChange}
-                                        placeholder=""
-                                        disabled={!isDraft} // ← DRAFT가 아니면 편집 금지
+                                        placeholder="000000-0000000"  // ← 플레이스홀더 추가
+                                        maxLength={14}  // ← 하이픈 포함 최대 14자리
+                                        disabled={!isDraft}
                                     />
                                 </td>
                             </tr>
                             <tr>
                                 <th className="field-header">주소</th>
-                                <td className="input-cell wide-cell">
-                                    <input
-                                        type="text"
+                                <td className="input-cell" style={{verticalAlign: 'top'}}>
+                                    <textarea
+                                        ref={(el) => {
+                                            addressTextareaRef.current = el;
+                                            if (el) {
+                                                el.style.height = 'auto';
+                                                el.style.height = el.scrollHeight + 'px';
+                                            }
+                                        }}
                                         name="employeeAddress"
                                         value={formData.employeeAddress}
                                         onChange={handleInputChange}
                                         placeholder=""
-                                        disabled={!isDraft} // ← DRAFT가 아니면 편집 금지
+                                        disabled={!isDraft}
+                                        style={{
+                                            width: '100%',
+                                            minHeight: '38px',
+                                            wordBreak: 'break-word',
+                                            whiteSpace: 'pre-wrap',
+                                            overflow: 'hidden',
+                                            resize: 'none',
+                                            padding: '6px 8px',
+                                            fontFamily: 'inherit',
+                                            fontSize: 'inherit',
+                                            lineHeight: '1.4',
+                                            border: 'none',
+                                            backgroundColor: 'transparent',
+                                            boxSizing: 'border-box',
+                                            outline: 'none'
+                                        }}
                                     />
                                 </td>
                                 <th className="field-header">전화</th>
@@ -765,7 +851,7 @@ const EmploymentContract = () => {
                                         value={formData.employeePhone}
                                         onChange={handleInputChange}
                                         placeholder=""
-                                        disabled={!isDraft} // ← DRAFT가 아니면 편집 금지
+                                        disabled={!isDraft}
                                     />
                                 </td>
                             </tr>
@@ -778,7 +864,7 @@ const EmploymentContract = () => {
                             <h3>제 1 조 【취업 장소 및 취업직종】</h3>
                             <p className="input-group">
                                 ① 취업장소 : 사업장 소재지 및 회사가 지정한 소재지 &nbsp;&nbsp;&nbsp;&nbsp;
-                                ② 취업직종 :&nbsp;
+                                ② 취업직종 &nbsp;&nbsp;:
                                 <input
                                     type="text"
                                     name="employmentOccupation"
@@ -791,14 +877,14 @@ const EmploymentContract = () => {
                                 />
                             </p>
                             <p>
-                                ③ '사용자'는 업무상 필요에 의해서 '근로자'의 근무장소 및 부서 또는 담당업무를 변경할 수 있으며 근로자는 이에 성실히 따라야 한다
+                                ③ '사용자'는 업무상 필요에 의해서 '근로자'의 근무장소 및 부서 또는 담당업무를 변경할 수 있으며 근로자는 이에 성실히 따라야 한다.
                             </p>
                         </div>
 
                         <div className="clause">
                             <h3>제 2 조 【근로계약기간】</h3>
                             <div className="input-group">
-                                <p>①최초입사일 :</p>
+                                <p>① 최초입사일 &nbsp;&nbsp;:</p>
                                 <input
                                     type="text"
                                     name="startDate"
@@ -810,7 +896,7 @@ const EmploymentContract = () => {
                                 />
                             </div>
                             <div className="input-group">
-                                <p>②근로계약기간 : </p>
+                                <p>② 근로계약기간 &nbsp;&nbsp;:</p>
                                 <input
                                     type="text"
                                     name="contractDate"
@@ -821,41 +907,89 @@ const EmploymentContract = () => {
                                     className="wide-input"
                                 />
                             </div>
+                            <div className="input-group">
+                                <p>③ 근로조건 적용기간 &nbsp;&nbsp;:</p>
+                                <input
+                                    type="text"
+                                    name="conditionApplyDate"
+                                    value={formData.conditionApplyDate}
+                                    onChange={handleInputChange}
+                                    placeholder=" "
+                                    disabled={!isDraft}
+                                    className="wide-input"
+                                />
+                            </div>
                             <p>
-                                ③ 본 계약의 유효기간은 제 ②항을 원칙으로 하며 매년 연봉 등 근로 조건에 대한 재계약을 체결하고 재계약 체결 시에는 "사용자"는
-                                "근로자"에게 30일 전에 재계약 체결에 대한 기일 통보를 한다. 또한 매년 재계약 체결시 "사용자"가 제시한 기일 내에 "근로자"가
+                                ④ 본 계약의 유효기간은 제 ②항을 원칙으로 하며 매년 연봉 등 근로 조건에 대한 재계약을 체결하고 재계약 체결 시에는 '사용자'는
+                                '근로자'에게 30일 전에 재계약 체결에 대한 기일 통보를 한다. 또한 매년 재계약 체결 시 '사용자'가 제시한 기일 내에 '근로자'가
                                 재계약에 응하지 않을 때에는 근로계약의 해지의사로 간주하여 근로계약은 자동으로 종료된다.
                             </p>
                             <p>
-                                ④ 계약기간 중 '근로자'가 계약을 해지하고자 할 때에는 30일 전에 사직서를 제출하여 업무인수인계가 원활히 이루어지도록 하여야
+                                ⑤ 계약기간 중 '근로자'가 계약을 해지하고자 할 때에는 30일 전에 사직서를 제출하여 업무인수인계가 원활히 이루어지도록 하여야
                                 하며, 만약 사직서가 수리되기 전에 출근 명령 등에 불응하였을 때에는 그 기간에 대하여 결근 처리한다.
                             </p>
                             <h3>제 3 조 【근로시간 및 휴게시간】</h3>
-                            <div className="input-group">
-                                <p>① 근로시간 : </p>
-                                <input
-                                    type="text"
-                                    name="workTime"
-                                    value={formData.workTime}
-                                    placeholder=" "
-                                    disabled={!isDraft} // ← DRAFT가 아니면 편집 금지
-                                    onChange={handleInputChange}
-                                    className="wide-input"
-                                />
+                            <div style={{marginBottom: '10px'}}>
+                                <div className="input-group">
+                                    <p>① 근로시간 &nbsp;&nbsp;:</p>
+                                    <input
+                                        type="text"
+                                        name="workTimeList"
+                                        value={formData.workTimeList[0]}
+                                        placeholder=" "
+                                        disabled={!isDraft}
+                                        onChange={(e) => handleArrayInputChange('workTimeList', 0, e.target.value)}
+                                        onKeyDown={(e) => handleArrayInputKeyDown(e, 'workTimeList', 0)}
+                                        className="wide-input"
+                                    />
+                                </div>
+                                {formData.workTimeList.slice(1).map((time, index) => (
+                                    <div key={index + 1} className="input-group">
+                                        <p style={{visibility: 'hidden'}}>① 근로시간 &nbsp;&nbsp;:</p>
+                                        <input
+                                            type="text"
+                                            name="workTimeList"
+                                            value={time}
+                                            placeholder=" "
+                                            disabled={!isDraft}
+                                            onChange={(e) => handleArrayInputChange('workTimeList', index + 1, e.target.value)}
+                                            onKeyDown={(e) => handleArrayInputKeyDown(e, 'workTimeList', index + 1)}
+                                            className="wide-input"
+                                        />
+                                    </div>
+                                ))}
                             </div>
-                            <div className="input-group">
-                                <p>② 휴게시간 : </p>
-                                <input
-                                    type="text"
-                                    name="breakTime"
-                                    value={formData.breakTime}
-                                    placeholder=" "
-                                    disabled={!isDraft} // ← DRAFT가 아니면 편집 금지
-                                    onChange={handleInputChange}
-                                    className="wide-input"
-                                />
+                            <div style={{marginBottom: '10px'}}>
+                                <div className="input-group">
+                                    <p>② 휴게시간 &nbsp;&nbsp;:</p>
+                                    <input
+                                        type="text"
+                                        name="breakTimeList"
+                                        value={formData.breakTimeList[0]}
+                                        placeholder=" "
+                                        disabled={!isDraft}
+                                        onChange={(e) => handleArrayInputChange('breakTimeList', 0, e.target.value)}
+                                        onKeyDown={(e) => handleArrayInputKeyDown(e, 'breakTimeList', 0)}
+                                        className="wide-input"
+                                    />
+                                </div>
+                                {formData.breakTimeList.slice(1).map((time, index) => (
+                                    <div key={index + 1} className="input-group">
+                                        <p style={{visibility: 'hidden'}}>② 휴게시간 &nbsp;&nbsp;:</p>
+                                        <input
+                                            type="text"
+                                            name="breakTimeList"
+                                            value={time}
+                                            placeholder=" "
+                                            disabled={!isDraft}
+                                            onChange={(e) => handleArrayInputChange('breakTimeList', index + 1, e.target.value)}
+                                            onKeyDown={(e) => handleArrayInputKeyDown(e, 'breakTimeList', index + 1)}
+                                            className="wide-input"
+                                        />
+                                    </div>
+                                ))}
                             </div>
-                            <p>③ 제 ①항 및 ②항은 "사용자"의 병원운영상 필요와 계절의 변화에 의해 변경할 수 있으며 "근로자"는 근로형태에 따라 1주일에
+                            <p>③ 제 ①항 및 ②항은 '사용자'의 병원운영상 필요와 계절의 변화에 의해 변경할 수 있으며 '근로자'는 근로형태에 따라 1주일에
                                 12시간 한도로 근로를 연장할 수 있으며, 근로자는 발생할 수 있는 연장, 야간 및 휴일근로를 시행하는 것에 동의한다.</p>
                             <div className="consent-container">
                                 <div className="consent-row">
@@ -913,7 +1047,15 @@ const EmploymentContract = () => {
                                 </div>
                             </div>
                         </div>
-
+                    </div>
+                </>
+        },
+        {
+            id: 2,
+            title: "근로계약서 -2페이지",
+            content:
+                <>
+                    <div className="contract-content">
                         <div className="clause">
                             <h3>제 4 조 【연봉계약】</h3>
                             <div className="input-group">
@@ -932,23 +1074,32 @@ const EmploymentContract = () => {
                                 <p>② 연봉계약의 종료일까지 재계약이 체결되지 않을 경우 재계약 체결일까지 동일한 조건으로 재계약이 체결된 것으로 한다.</p>
                             </div>
                         </div>
-                    </div>
-                </>
-        },
-        {
-            id: 2,
-            title: "근로계약서 -2페이지",
-            content:
-                <>
-                    <div className="contract-content">
                         <div className="clause">
                             <h3>제 5 조 【임금 및 구성항목】</h3>
-                            <p>① 연봉은 아래의 각 수당을 포함하고, 12개월 균등 분할하여 매월 지급한다.</p>
+                            <p>① 연봉은 아래의 각 수당을 포함하고,
+                                <input
+                                    type="text"
+                                    name="salaryMonths"
+                                    value={formData.salaryMonths}
+                                    onChange={handleInputChange}
+                                    placeholder="12"
+                                    disabled={!isDraft}
+                                    style={{
+                                        width: '30px',
+                                        border: 'none',
+                                        borderBottom: '1px solid #333',
+                                        textAlign: 'center',
+                                        display: 'inline',
+                                        padding: '0 2px'
+                                    }}
+                                />
+                                개월 균등 분할하여 매월 지급한다.
+                            </p>
                             <div className="parties-table">
                                 <table>
                                     <thead>
                                     <tr>
-                                    <th className="section-header" colSpan={3}>항목</th>
+                                        <th className="section-header" colSpan={3}>항목</th>
                                         <th className="content-header" colSpan={1}>금액</th>
                                         <th className="content-header" colSpan={3}>산정근거</th>
                                     </tr>
@@ -969,8 +1120,8 @@ const EmploymentContract = () => {
                                                 disabled={!isDraft} // ← DRAFT가 아니면 편집 금지
                                             />
                                         </td>
-                                        <td style={{borderTop: "3px double #333"}} colSpan={3}
-                                            className="section-body">월급여총액 x 12개월
+                                        <td style={{borderTop: "3px double #333"}} colSpan={3} className="section-body">
+                                            월급여총액 x {formData.salaryMonths || '12'}개월
                                         </td>
                                     </tr>
                                     <tr>
@@ -993,7 +1144,24 @@ const EmploymentContract = () => {
                                             />
 
                                         </td>
-                                        <td colSpan={1} rowSpan={6} className="input-cell">209시간</td>
+                                        <td colSpan={1} rowSpan={6} className="input-cell" style={{padding: '4px 3px'}}>
+                                            <input
+                                                type="text"
+                                                name="workingHours"
+                                                value={formData.workingHours}
+                                                onChange={handleInputChange}
+                                                placeholder="209"
+                                                disabled={!isDraft}
+                                                style={{
+                                                    width: '40px',
+                                                    border: 'none',
+                                                    textAlign: 'center',
+                                                    padding: '0',
+                                                    margin: '0'
+                                                }}
+                                            />
+                                            <span style={{marginLeft: '-6px'}}>시간</span>
+                                        </td>
                                         <td colSpan={2} rowSpan={6} className="section-body"
                                             style={{textAlign: "center"}}>소정근로시간 x 통상시급 x 1.0
                                         </td>
@@ -1001,7 +1169,7 @@ const EmploymentContract = () => {
                                     <tr>
                                         <th className="party-header">직책수당</th>
                                         <td className="input-cell">
-                                            <input
+                                        <input
                                                 type="text"
                                                 name="positionAllowance"
                                                 value={formData.positionAllowance}
@@ -1177,10 +1345,11 @@ const EmploymentContract = () => {
                                         }}        // 필요하면 추가 스타일
                                     />
                                 </u>
-                                로 지정하고,의무나이트(당직)개수를 기준으로 매월 부족한 개수에 대해서는 ①항의 연봉에서 삭감하고 초과한 개수에 대해서는 추가 지급한다.
+                                <strong>개</strong>로 지정하고, 의무나이트(당직)개수를 기준으로 매월 부족한 개수에 대해서는 ①항의 연봉에서 삭감하고 초과한 개수에 대해서는
+                                추가 지급한다.
                             </p>
                             <p>⑦ 제 ①항의 임금에 관한 내용은 다른 직원들에게 비밀을 유지하며, 이를 위반할 경우 중징계 대상이 될수 있다.</p>
-                            <p>⑧ 3개월 미만 제직 후 퇴사할 경우 유니폼 구입비용(업체 거래명에서 금액) 100%와 채용 시 지출했던 특수검진비 100%를 퇴직 월급여에서 공제 후
+                            <p>⑧ 3개월 미만 재직 후 퇴사할 경우 유니폼 구입비용(업체 거래명세서 금액) 100%와 채용 시 지출했던 특수검진비 100%를 퇴직 월급여에서 공제 후
                                 지급한다.</p>
                             <p>⑨ 이외의 사항은 급여규정에 따른다.</p>
                         </div>
@@ -1190,6 +1359,11 @@ const EmploymentContract = () => {
                                 ① 제 3조(근로시간 및 휴게)에서 정한 근로시간에 '사용자'의 근무지시에도 불구하고 지각, 조퇴 및 결근한 경우에는 「근로 기준법」이 정하는 바에 따라
                                 지급될 수 있고,
                                 결근 1일에 대해서는 근로자 통상시급에 시간을 비례해서 공제하며, 제5조(임금 및 구성항목) 제 ①항에서 정한 급여를 차감하여 지급한다.
+                            </p>
+                            <p>
+                            ② '근로자'가 월 중 신규채용, 중도퇴사, 휴직, 복직 등의 사유로 그 월의 근무일수가 1개월에 미달할 경우에는 임금 및 구성항목별 임금액을 최종 근로일까지의
+                                일수에 비례하여
+                                해당 월의 총 일수로 일할 계산한 후 지급하며, 주휴수당은 만근 시에만 지급한다.
                             </p>
                         </div>
                         <label className="signature-section" style={{justifyContent: 'flex-end', width: '100%'}}>
@@ -1231,11 +1405,6 @@ const EmploymentContract = () => {
                 <>
                     <div className="contract-content">
                         <div className="clause">
-                            <p>
-                                ②'근로자'가 월 중 신규채용, 중도퇴사, 휴직, 복직 등의 사유로 그 월의 근무일수가 1개월에 미달할 경우에는 임금 및 구성항목별 임금액을 최종 근로일까지의
-                                일수에 비례하여
-                                해당 월의 총 일수로 일할 계산한 후 지급하며, 주휴수당은 만근시에만 지급한다.
-                            </p>
                             <h3>제 7 조 【휴일 및 휴가】</h3>
                             <p>
                                 ① 휴일 : 주휴일(주1회), 근로자의 날, 「근로 기준법」에서 정한 날, 기타 취업규칙에서 정한 날. 다만, 주휴일은 회사업무의 특성상 부서별 또는
@@ -1272,52 +1441,52 @@ const EmploymentContract = () => {
                         <div className="clause">
                             <h3>제 10 조 【안전관리】</h3>
                             <p>
-                                ① "근로자"는 "사용자"가 정한 안전관리에 관한 제규칙과 관리자의 지시 사항을 준수하고 재해 발생시에는 산업재해 보상보험법에 의한다.
+                                ① '근로자'는 '사용자'가 정한 안전관리에 관한 제규칙과 관리자의 지시 사항을 준수하고 재해 발생시에는 산업재해 보상보험법에 의한다.
                             </p>
                         </div>
                         <div className="clause">
                             <h3>제 11 조 【근로계약해지】</h3>
                             <p>
-                                ① "근로자"가 취업규칙 또는 다음 각 호에 해당하는 경우에 대해서는 "사용자"는 "근로자"를 징계위원회의에 회부하여 징계위원회의 결정에 따라 처리한다.
+                                ① '근로자'가 취업규칙 또는 다음 각 호에 해당하는 경우에 대해서는 '사용자'는 '근로자'를 징계위원회의에 회부하여 징계위원회의 결정에 따라 처리한다.
                             </p>
-                            <p>
-                                1. "근로자"가 직원을 선동하여 업무를 방해하고 불법으로 유인물을 배포할 때.
+                            <p style={{marginLeft: '20px'}}>
+                                1. '근로자'가 직원을 선동하여 업무를 방해하고 불법으로 유인물을 배포할 때.
                             </p>
-                            <p>
-                                2. "근로자"가 무단결근을 계속해서 연속 3일, 월간 5일 또는 년 20일 이상 무단결근한 경우
+                            <p style={{marginLeft: '20px'}}>
+                                2. '근로자'가 무단결근을 계속해서 연속 3일, 월간 5일 또는 년 20일 이상 무단결근한 경우.
                             </p>
-                            <p>
-                                3. "근로자가"가 근무성적또는 능력이 현저하게 불량하여 업무수행이 불가능하다고 인정될 때.
+                            <p style={{marginLeft: '20px'}}>
+                                3. '근로자'가 근무성적 또는 능력이 현저하게 불량하여 업무수행이 불가능하다고 인정될 때.
                             </p>
-                            <p>
-                                4. "사용자"의 허가 없이 "을"이 문서, 비품, 자산 등을 외부로 반출하거나 대여 했을 때.
+                            <p style={{marginLeft: '20px'}}>
+                                4. '사용자'의 허가 없이 '근로자' 문서, 비품, 자산 등을 외부로 반출하거나 대여 했을 때.
                             </p>
-                            <p>
+                            <p style={{marginLeft: '20px'}}>
                                 5. 기타 이에 준하는 행위를 하였다고 판단 되었을 때.
                             </p>
                             <p>
-                                ② "근로자"가 30일 전 사직서를 제출하고 후임자에게 인수인계를 완료한 경우
+                                ② '근로자'가 30일 전 사직서를 제출하고 후임자에게 인수인계를 완료한 경우.
                             </p>
                             <p>
-                                ③ 제 2조 제②항에서 정한 근로계약기간이 만료된 때
+                                ③ 제 2조 제②항에서 정한 근로계약기간이 만료된 때.
                             </p>
                             <p>
-                                ④ 제 9조에서 규정한 정년에 도달한 때
+                                ④ 제 9조에서 규정한 정년에 도달한 때.
                             </p>
                             <p>
-                                ⑤ 채용조건에 갖춰진 각종 문서의 위조, 변조 또는 허위사실이 발견되었을 때
+                                ⑤ 채용조건에 갖춰진 각종 문서의 위조, 변조 또는 허위사실이 발견되었을 때.
                             </p>
                             <p>
-                                ⑥ 퇴작하는 달의 월급은 급여일인 익월 15일에 지급하고, 퇴직금은 퇴직일로부터 1개월 이내에 지급한다.
+                                ⑥ 퇴직하는 달의 월급은 급여일인 익월 15일에 지급하고, 퇴직금은 퇴직일로부터 1개월 이내에 지급한다.
                             </p>
                         </div>
                         <div className="clause">
                             <h3> 제12 조 【손해배상】</h3>
                             <p>
-                                다음 각 호의 1에 해당하는 경우에는 '근로자'는 '사용자'에게 손해를 배상하여야 한다.
+                            다음 각 호의 1에 해당하는 경우에는 '근로자'는 '사용자'에게 손해를 배상하여야 한다.
                             </p>
                             <p>
-                                ① '근로자'가 고의 또는 과실로 '사용자'에게 손해를 끼친 경우
+                                ① '근로자'가 고의 또는 과실로 '사용자'에게 손해를 끼친 경우.
                             </p>
                         </div>
                         <label className="signature-section" style={{justifyContent: 'flex-end', width: '100%'}}>
@@ -1360,13 +1529,13 @@ const EmploymentContract = () => {
                     <div className="contract-content">
                         <div className="clause">
                             <p>
-                                ② '근로자'가 재직 중 또는 퇴직 후라도 병원, 관련 회사 및 업무상 관계자에 대한 기밀 정보를 누설한 경우
+                                ② '근로자'가 재직 중 또는 퇴직 후라도 병원, 관련 회사 및 업무상 관계자에 대한 기밀 정보를 누설한 경우.
                             </p>
                             <p>
-                                ③ '근로자'가 병원에 근무 중 얻은 비밀 정보나 지식을 이용하여 병원 및 관련 회사에 손해를 끼친 경우
+                                ③ '근로자'가 병원에 근무 중 얻은 비밀 정보나 지식을 이용하여 병원 및 관련 회사에 손해를 끼친 경우.
                             </p>
                             <p>
-                                ④ '사용자'의 사직서 수리 전에 퇴사함으로 써 병원에 손해를 끼친 경우
+                                ④ '사용자'의 사직서 수리 전에 퇴사함으로써 병원에 손해를 끼친 경우.
                             </p>
                         </div>
 
@@ -1555,13 +1724,17 @@ const EmploymentContract = () => {
                              }}>
                             <div style={{justifyContent: 'center', marginTop: '80px', marginBottom:'40px'}} className="signature-section">
                                 <div className="date-section">
-                                    <span>작성일자: </span>
-                                    <input type="date" className="input" style={{
+                                    <span>작성일자 : </span>
+                                    <input type="date" name="contractSignDate" className="input" style={{
                                         border: "none",
                                         fontWeight: "bold",
                                         fontSize: "14px",
                                         textAlign: "end"
-                                    }} value={createdDate} disabled/>
+                                    }}
+                                           value={formData.contractSignDate}  // ← formData에서 가져오기
+                                           onChange={handleInputChange}  // ← 기존 핸들러 사용
+                                           disabled={!isDraft}  // ← DRAFT가 아니면 수정 불가
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -1580,16 +1753,14 @@ const EmploymentContract = () => {
                                     최민선외 6명
                                 </span>
                                 <span className="signature-suffix-container">
-                                {formData.ceoSignatureUrl ? (
+                                <span className="signature-suffix-container">
                                     <img
                                         src={CeoDirectorSignImage}
                                         alt="대표원장 서명"
                                         className="signature-image"
-                                        style={{width: '70px', height: '70px', marginLeft:'15px'}}
+                                        style={{width: '70px', height: '70px', marginLeft: '15px'}}
                                     />
-                                ) : (
-                                    <span className="signature-text">(서명/인)</span>
-                                )}
+                                </span>
                             </span>
                             </label>
                         </div>
@@ -1635,18 +1806,9 @@ const EmploymentContract = () => {
     ]
 
     useEffect(() => {
-        if (!token || !id) return;
-        fetchSignaturesForContract(token, parseInt(id))
-            .then(({signatures, agreements}) => {
-                    setSignatures(signatures);
-                    setAgreements(agreements);
-                }
-            )
-            .catch(err => console.error('서명 데이터 로딩 실패:', err));
-    }, [token, id]);
-    useEffect(() => {
         console.log("FormData updated:", formData);
     }, [formData]);
+
     return (
         <Layout>
             <div className="contract-container">
@@ -1685,7 +1847,15 @@ const EmploymentContract = () => {
                     {status === 'SENT_TO_EMPLOYEE' && (
                         <>
                         <button onClick={goToList} className="btn-list">목록으로</button>
-                            <button onClick={() => setRejectModalOpen(true)} className="btn-reject">반려하기</button>
+                            {(currentUser?.permissions?.includes('HR_CONTRACT')) && (
+                                <button
+                                    onClick={handleDelete}
+                                    className="btn-delete"
+                                    style={{backgroundColor: '#dc3545', color: 'white'}}
+                                >
+                                    삭제하기
+                                </button>
+                            )}
                             <button onClick={handleApprove} className="btn-approve">승인하기</button>
                         </>
                     )}
@@ -1705,7 +1875,6 @@ const EmploymentContract = () => {
                             </button>
                         </>
                     )}
-
 
                     {/* 4) Completed: 인쇄만 */}
                     {status === 'COMPLETED' && (

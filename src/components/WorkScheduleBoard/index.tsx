@@ -9,6 +9,7 @@ import OrgChartModal from "../OrgChartModal";
 
 const WorkScheduleBoard: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const navigate = useNavigate();
     const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
     const [loading, setLoading] = useState(true);
@@ -38,12 +39,12 @@ const WorkScheduleBoard: React.FC = () => {
 // 추가: 초기화 완료 플래그와 사용자 클릭 플래그
     const initializedRef = useRef(false);            // 초기화 루틴이 끝났는지
     const userClickedTabRef = useRef(false);         // 사용자가 탭을 직접 클릭했는지
-
+    const [deptNamesLoaded, setDeptNamesLoaded] = useState(false);
 // 템플릿 로드
     const loadTemplates = async () => {
         try {
             const response = await axios.get('/api/v1/work-schedules/templates', {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             setTemplates(response.data);
         } catch (err) {
@@ -61,7 +62,7 @@ const WorkScheduleBoard: React.FC = () => {
             // 이름 fetch ( /api/v1/user/{id} 사용, UserController에 있음)
             const membersWithNames = await Promise.all(
                 memberIds.map(async (id: string) => {
-                    const res = await axios.get(`/api/v1/user/${id}`, { headers: { Authorization: `Bearer ${cookies.accessToken}` } });
+                    const res = await axios.get(`/api/v1/user/${id}`, { headers: { Authorization: `Bearer ${token}` } });
                     return { id, name: res.data.userName || 'Unknown' };
                 })
             );
@@ -91,7 +92,7 @@ const WorkScheduleBoard: React.FC = () => {
                 customDeptName: customDeptName,
                 memberUserIds: selectedMembers.map(u => u.id)   // 변경
             }, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             alert('템플릿이 저장되었습니다.');
@@ -103,9 +104,10 @@ const WorkScheduleBoard: React.FC = () => {
     };
 
     const fetchDepartmentNames = async () => {
+        if (deptNamesLoaded) return;
         try {
             const response = await axios.get('/api/v1/departments/names', {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             console.log('부서 이름 데이터:', response.data); // 디버깅용
             setDepartmentNames(response.data);
@@ -119,7 +121,7 @@ const WorkScheduleBoard: React.FC = () => {
             try {
                 const hasCreate = await checkPermissions();      // boolean 반환
                 await checkPendingApprovals();
-
+                await fetchDepartmentNames();
                 // 사용자가 탭을 이미 클릭했다면 초기화가 탭을 덮어쓰지 않음
                 if (!userClickedTabRef.current) {
                     if (!hasCreate) {
@@ -139,7 +141,7 @@ const WorkScheduleBoard: React.FC = () => {
         };
 
         initializeTab();
-        fetchDepartmentNames();
+
     }, []);
 
 
@@ -154,7 +156,7 @@ const WorkScheduleBoard: React.FC = () => {
     const checkPermissions = async (): Promise<boolean> => {
         try {
             const permRes = await fetch('/api/v1/user/me/permissions', {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             const permData = await permRes.json();
 
@@ -173,7 +175,7 @@ const WorkScheduleBoard: React.FC = () => {
         try {
             const response = await axios.get(
                 '/api/v1/work-schedules/pending-approvals',
-                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
             setPendingCount(response.data.length);
             setHasApprovalPermission(response.data.length > 0);
@@ -198,13 +200,13 @@ const WorkScheduleBoard: React.FC = () => {
 
                 // 내 작성 문서: DRAFT, SUBMITTED, REJECTED 상태만
                 const response = await axios.get('/api/v1/work-schedules/my-documents', {
-                    headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 });
                 setSchedules(response.data);
 
             } else if (tab === 'completed') {
                 // 완료 문서: APPROVED 상태 (모두 조회 가능)
-                const data = await fetchMyWorkSchedules(cookies.accessToken);
+                const data = await fetchMyWorkSchedules(token);
                 const completedData = data.filter((schedule: WorkSchedule) =>
                     schedule.approvalStatus === 'APPROVED'
                 );
@@ -213,7 +215,7 @@ const WorkScheduleBoard: React.FC = () => {
             }  else if (tab === 'pending') {
                 const response = await axios.get(
                     '/api/v1/work-schedules/pending-approvals',
-                    { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                    { headers: { Authorization: `Bearer ${token}` } }
                 );
                 setSchedules(response.data);
                 setPendingCount(response.data.length);
@@ -265,7 +267,7 @@ const WorkScheduleBoard: React.FC = () => {
             if (createMode === 'default') {
                 // 기존 로직
                 const [deptCode] = await getCurrentUserDept();
-                const newSchedule = await createWorkSchedule(deptCode, selectedYearMonth, cookies.accessToken);
+                const newSchedule = await createWorkSchedule(deptCode, selectedYearMonth, token);
                 alert('근무표가 생성되었습니다.');
                 navigate(`/detail/work-schedule/edit/${newSchedule.id}`);
             } else {
@@ -284,7 +286,7 @@ const WorkScheduleBoard: React.FC = () => {
                     customDeptName: customDeptName,
                     memberUserIds: selectedMembers.map(u => u.id)   // 변경
                 }, {
-                    headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 });
 
                 alert('커스텀 근무표가 생성되었습니다.');
@@ -304,7 +306,7 @@ const WorkScheduleBoard: React.FC = () => {
 
     const getCurrentUserDept = async (): Promise<[string]> => {
         const response = await fetch('/api/v1/user/me', {
-            headers: { Authorization: `Bearer ${cookies.accessToken}` }
+            headers: { Authorization: `Bearer ${token}` }
         });
         const userData = await response.json();
         return [userData.deptCode];

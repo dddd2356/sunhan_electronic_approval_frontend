@@ -38,6 +38,8 @@ interface Statistics {
 
 const ConsentManagementPage: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
     const [agreements, setAgreements] = useState<ConsentAgreement[]>([]);
     const [statistics, setStatistics] = useState<Statistics | null>(null);
     const [loading, setLoading] = useState(true);
@@ -65,7 +67,7 @@ const ConsentManagementPage: React.FC = () => {
         try {
             // 통계 조회
             const statsRes = await fetch(`${API_BASE}/consents/admin/statistics`, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             if (statsRes.ok) {
                 const stats = await statsRes.json();
@@ -84,7 +86,7 @@ const ConsentManagementPage: React.FC = () => {
             const listRes = await fetch(
                 `${API_BASE}/consents/admin/search?${params}`,
                 {
-                    headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 }
             );
 
@@ -141,10 +143,12 @@ const ConsentManagementPage: React.FC = () => {
 
     if (loading && currentPage === 0) {
         return (
-            <div className="consent-loading-container">
-                <div className="loading-spinner"></div>
-                <p>로딩 중...</p>
-            </div>
+            <Layout>
+                <div className="consent-loading-container">
+                    <div className="loading-spinner"></div>
+                    <p>로딩 중...</p>
+                </div>
+            </Layout>
         );
     }
 

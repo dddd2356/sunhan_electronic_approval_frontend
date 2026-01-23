@@ -18,14 +18,15 @@ export const SyncManagementDashboard: React.FC = () => {
     const [error, setError] = useState<string>('');
     const [userIdInput, setUserIdInput] = useState<string>('');
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
 
     // ## API Helper for Authenticated Requests ##
     const getAuthHeaders = useCallback(() => {
         return {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${cookies.accessToken}`,
+            'Authorization': `Bearer ${token}`,
         };
-    }, [cookies.accessToken]);
+    }, [token]);
 
     // ## API Action Handlers ##
 

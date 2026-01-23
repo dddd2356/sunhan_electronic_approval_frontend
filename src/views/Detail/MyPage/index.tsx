@@ -26,6 +26,7 @@ interface User {
 
 const MyPage: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -49,6 +50,10 @@ const MyPage: React.FC = () => {
     const sigCanvas = useRef<SignatureCanvas>(null);
     const [departmentNames, setDepartmentNames] = useState<Record<string, string>>({});
 
+    const [signatureMode, setSignatureMode] = useState<'draw' | 'upload'>('draw');
+    const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const formatPhoneNumber = (value: string) => {
         const digits = value.replace(/\D/g, '');
         if (digits.length <= 3) return digits;
@@ -61,7 +66,7 @@ const MyPage: React.FC = () => {
         switch (level) {
             case '0': return '사원';
             case '1': return '부서장';
-            case '2': return '진료센터장';
+            case '2': return '센터장';
             case '3': return '원장';
             case '4': return '행정원장';
             case '5': return '대표원장';
@@ -73,7 +78,7 @@ const MyPage: React.FC = () => {
         const fetchDepartmentNames = async () => {
             try {
                 const response = await axios.get('/api/v1/departments/names', {
-                    headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 });
                 setDepartmentNames(response.data);
             } catch (error) {
@@ -81,7 +86,7 @@ const MyPage: React.FC = () => {
             }
         };
         fetchDepartmentNames();
-    }, [cookies.accessToken]);
+    }, [token]);
 
     useEffect(() => {
         fetchMyProfile();
@@ -93,7 +98,7 @@ const MyPage: React.FC = () => {
             const res = await fetch('/api/v1/user/me', {
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(cookies.accessToken ? {Authorization: `Bearer ${cookies.accessToken}`} : {})
+                    ...(token ? {Authorization: `Bearer ${token}`} : {})
                 },
                 credentials: 'include'
             });
@@ -141,7 +146,17 @@ const MyPage: React.FC = () => {
         }
         new window.daum.Postcode({
             oncomplete: function(data: any) {
-                setFormData(prev => ({ ...prev, address: data.roadAddress, detailAddress: '' }));
+                // 건물명이 있으면 포함, 없으면 도로명 주소만
+                let fullAddress = data.roadAddress;
+                if (data.buildingName) {
+                    fullAddress += ` (${data.buildingName})`;
+                }
+
+                setFormData(prev => ({
+                    ...prev,
+                    address: fullAddress,
+                    detailAddress: ''
+                }));
                 document.getElementById('detail-address')?.focus();
             }
         }).open();
@@ -186,7 +201,7 @@ const MyPage: React.FC = () => {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(cookies.accessToken ? {Authorization: `Bearer ${cookies.accessToken}`} : {})
+                    'Authorization': `Bearer ${token}`,
                 },
                 credentials: 'include',
                 body: JSON.stringify(body)
@@ -195,6 +210,13 @@ const MyPage: React.FC = () => {
             if (!res.ok) throw new Error('프로필 수정 실패');
             const updated = await res.json();
             setUser(prev => prev ? {...prev, ...updated} : updated);
+            // ✅ 비밀번호 필드 초기화 (보안)
+            setFormData(prev => ({
+                ...prev,
+                currentPassword: '',
+                newPassword: '',
+                confirmNewPassword: ''
+            }));
             setIsEditMode(false);
             alert('프로필이 성공적으로 업데이트되었습니다.');
         } catch (e: any) {
@@ -202,30 +224,95 @@ const MyPage: React.FC = () => {
         }
     };
 
-    const handleSaveSignature = async () => {
-        if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
-            setSigError('서명을 입력해주세요.');
+    // 2. 파일 업로드 핸들러 추가
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
+            setSigError('PNG, JPG, JPEG 파일만 업로드 가능합니다.');
             return;
         }
-        setSigError('');
-        sigCanvas.current.getCanvas().toBlob(async (blob) => {
-            if (!blob) return;
-            const form = new FormData();
-            form.append('file', blob, `${user?.userId}_signature.png`);
-            try {
-                const resp = await fetch(`/api/v1/user/${user?.userId}/signature`, {
-                    method: 'POST',
-                    body: form,
-                    credentials: 'include',
-                });
-                if (!resp.ok) throw new Error('서명 업로드 실패');
-                alert('서명이 등록되었습니다.');
-                setShowSignatureModal(false);
-                window.location.reload();
-            } catch (e: any) {
-                setSigError(e.message);
+
+        if (file.size > 5 * 1024 * 1024) {
+            setSigError('파일 크기는 5MB를 초과할 수 없습니다.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            setUploadedImage(event.target?.result as string);
+            setSigError('');
+        };
+        reader.readAsDataURL(file);
+    };
+
+// 3. 저장 핸들러 수정
+    const handleSaveSignature = async () => {
+        let blob: Blob | null = null;
+
+        if (signatureMode === 'draw') {
+            if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
+                setSigError('서명을 입력해주세요.');
+                return;
             }
-        }, 'image/jpg');
+
+            const canvas = sigCanvas.current.getCanvas();
+            blob = await new Promise<Blob | null>((resolve) => {
+                canvas.toBlob((b) => resolve(b), 'image/png');
+            });
+        } else {
+            if (!uploadedImage) {
+                setSigError('이미지를 선택해주세요.');
+                return;
+            }
+
+            const response = await fetch(uploadedImage);
+            blob = await response.blob();
+        }
+
+        if (!blob) {
+            setSigError('서명 저장에 실패했습니다.');
+            return;
+        }
+
+        setSigError('');
+        const form = new FormData();
+        form.append('file', blob, `${user?.userId}_signature.png`);
+
+        try {
+            const resp = await fetch(`/api/v1/user/${user?.userId}/signature`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: form,
+                credentials: 'include',
+            });
+
+            if (!resp.ok) throw new Error('서명 업로드 실패');
+
+            alert('서명이 등록되었습니다.');
+            setShowSignatureModal(false);
+            setUploadedImage(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            window.location.reload();
+        } catch (e: any) {
+            setSigError(e.message);
+        }
+    };
+
+// 4. 모드 변경 핸들러
+    const handleModeChange = (mode: 'draw' | 'upload') => {
+        setSignatureMode(mode);
+        setSigError('');
+
+        if (mode === 'draw') {
+            setUploadedImage(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        } else {
+            sigCanvas.current?.clear();
+        }
     };
 
     return (
@@ -461,21 +548,86 @@ const MyPage: React.FC = () => {
                     <div className="modal-container">
                         <div className="modal-header">
                             <h3>서명 등록</h3>
-                            <button className="close-btn" onClick={() => setShowSignatureModal(false)}>×</button>
+                            <button className="close-btn" onClick={() => {
+                                setShowSignatureModal(false);
+                                setUploadedImage(null);
+                                setSigError('');
+                            }}>×</button>
                         </div>
+
+                        {/* 탭 버튼 */}
+                        <div className="signature-mode-tabs">
+                            <button
+                                type="button"
+                                className={`tab-btn ${signatureMode === 'draw' ? 'active' : ''}`}
+                                onClick={() => handleModeChange('draw')}
+                            >
+                                직접 그리기
+                            </button>
+                            <button
+                                type="button"
+                                className={`tab-btn ${signatureMode === 'upload' ? 'active' : ''}`}
+                                onClick={() => handleModeChange('upload')}
+                            >
+                                이미지 업로드
+                            </button>
+                        </div>
+
                         <div className="modal-signature-canvas">
-                            <SignatureCanvas
-                                ref={sigCanvas}
-                                penColor="black"
-                                canvasProps={{
-                                    width: 400,
-                                    height: 200,
-                                    className: 'signature-canvas'
-                                }}
-                            />
+                            {/* 그리기 모드 */}
+                            {signatureMode === 'draw' && (
+                                <SignatureCanvas
+                                    ref={sigCanvas}
+                                    penColor="black"
+                                    canvasProps={{
+                                        width: 400,
+                                        height: 200,
+                                        className: 'signature-canvas'
+                                    }}
+                                />
+                            )}
+
+                            {/* 업로드 모드 */}
+                            {signatureMode === 'upload' && (
+                                <div className="upload-section">
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/jpg"
+                                        onChange={handleFileUpload}
+                                        style={{ display: 'none' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        📁 파일 선택
+                                    </button>
+
+                                    {uploadedImage && (
+                                        <div className="image-preview">
+                                            <img src={uploadedImage} alt="업로드된 서명" />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
+
+                        {sigError && <p className="error-message">{sigError}</p>}
+
                         <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => sigCanvas.current?.clear()}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    if (signatureMode === 'draw') {
+                                        sigCanvas.current?.clear();
+                                    } else {
+                                        setUploadedImage(null);
+                                        if (fileInputRef.current) fileInputRef.current.value = '';
+                                    }
+                                }}
+                            >
                                 초기화
                             </button>
                             <button className="btn btn-primary" onClick={handleSaveSignature}>

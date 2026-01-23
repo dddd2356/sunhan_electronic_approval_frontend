@@ -8,6 +8,7 @@ import {
     createLeaveApplication, searchCompletedApplications, searchMyApplications, searchPendingApplications
 } from '../../apis/leaveApplications';
 import dayjs from "dayjs";
+import {useNavigate} from "react-router-dom";
 
 // 타입 정의
 interface LeaveApplication {
@@ -46,6 +47,7 @@ interface PaginationData {
 
 const LeaveApplicationBoard: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>('');
@@ -56,7 +58,7 @@ const LeaveApplicationBoard: React.FC = () => {
     const [searchStartDate, setSearchStartDate] = useState('');
     const [searchEndDate, setSearchEndDate] = useState('');
     const [isSearchMode, setIsSearchMode] = useState(false);
-
+    const navigate = useNavigate();
     // 탭에 따른 플레이스홀더 텍스트 함수
     const getSearchPlaceholder = () => {
         switch (tab) {
@@ -377,12 +379,12 @@ const LeaveApplicationBoard: React.FC = () => {
     }, [searchTerm, searchType]);
 
     useEffect(() => {
-        if (cookies.accessToken) fetchCurrentUser();
-    }, [cookies.accessToken]);
+        if (token) fetchCurrentUser();
+    }, [token]);
 
     const fetchCurrentUser = async () => {
         try {
-            const data = await apiFetchCurrentUser(cookies.accessToken);
+            const data = await apiFetchCurrentUser(token);
             setCurrentUser(data);
         } catch (err: any) {
             setError(err.message || '사용자 정보를 불러올 수 없습니다.');
@@ -396,7 +398,7 @@ const LeaveApplicationBoard: React.FC = () => {
 
             // 모든 탭에 대해 서버 측 페이지네이션 적용
             const data = await fetchLeaveApplications(
-                cookies.accessToken,
+                token,
                 tab,
                 canViewCompleted,
                 apiPage,
@@ -432,8 +434,8 @@ const LeaveApplicationBoard: React.FC = () => {
 
     const handleCreate = async () => {
         try {
-            const newApp: LeaveApplication = await createLeaveApplication(cookies.accessToken);
-            window.location.href = `/detail/leave-application/edit/${newApp.id}`;
+            const newApp: LeaveApplication = await createLeaveApplication(token);
+            navigate(`/detail/leave-application/edit/${newApp.id}`);
         } catch (err: any) {
             setError(err.message || '휴가원 생성에 실패했습니다.');
         }
@@ -443,9 +445,9 @@ const LeaveApplicationBoard: React.FC = () => {
         const base = '/detail/leave-application';
         if ((app.status === 'DRAFT' && app.applicantId === currentUser?.userId) ||
             (currentUser?.role === 'ADMIN' && currentUser?.jobLevel >= '2' && app.status !== 'COMPLETED')) {
-            window.location.href = `${base}/edit/${app.id}`;
+            navigate(`${base}/edit/${app.id}`);
         } else {
-            window.location.href = `${base}/view/${app.id}`;
+            navigate(`${base}/view/${app.id}`);
         }
     };
 
@@ -480,7 +482,7 @@ const LeaveApplicationBoard: React.FC = () => {
 
             if (tab === 'my') {
                 result = await searchMyApplications(
-                    cookies.accessToken,
+                    token,
                     searchStartDate,
                     searchEndDate,
                     apiPage,
@@ -488,7 +490,7 @@ const LeaveApplicationBoard: React.FC = () => {
                 ) as PaginationData;
             } else if (tab === 'pending') {
                 result = await searchPendingApplications(
-                    cookies.accessToken,
+                    token,
                     searchStartDate,
                     searchEndDate,
                     apiPage,
@@ -496,7 +498,7 @@ const LeaveApplicationBoard: React.FC = () => {
                 ) as PaginationData;
             } else {
                 result = await searchCompletedApplications(
-                    cookies.accessToken,
+                    token,
                     searchStartDate,
                     searchEndDate,
                     apiPage,
@@ -528,7 +530,7 @@ const LeaveApplicationBoard: React.FC = () => {
 
                 if (tab === 'my') {
                     result = await searchMyApplications(
-                        cookies.accessToken,
+                        token,
                         searchStartDate,
                         searchEndDate,
                         apiPage,
@@ -536,7 +538,7 @@ const LeaveApplicationBoard: React.FC = () => {
                     ) as PaginationData;
                 } else if (tab === 'pending') {
                     result = await searchPendingApplications(
-                        cookies.accessToken,
+                        token,
                         searchStartDate,
                         searchEndDate,
                         apiPage,
@@ -544,7 +546,7 @@ const LeaveApplicationBoard: React.FC = () => {
                     ) as PaginationData;
                 } else {
                     result = await searchCompletedApplications(
-                        cookies.accessToken,
+                        token,
                         searchStartDate,
                         searchEndDate,
                         apiPage,

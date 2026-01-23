@@ -32,6 +32,8 @@ interface ConsentAgreement {
 
 const ConsentMyIssuedPage: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
     const navigate = useNavigate();
 
     const [allList, setAllList] = useState<ConsentAgreement[]>([]);
@@ -50,7 +52,7 @@ const ConsentMyIssuedPage: React.FC = () => {
     const loadMyIssuedConsents = async () => {
         try {
             const response = await fetch(`${API_BASE}/consents/creator/list`, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             if (response.ok) {

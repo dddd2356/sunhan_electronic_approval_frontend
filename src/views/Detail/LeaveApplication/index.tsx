@@ -147,7 +147,7 @@ interface LeaveApplicationData {
 const LeaveApplication = () => {
     const { id } = useParams<{ id: string }>();
     const [cookies] = useCookies(['accessToken']);
-    const token = cookies.accessToken;
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const navigate = useNavigate();
     const [candidates, setCandidates] = useState<{ userId: string; userName: string; jobLevel: string }[]>([]);
     const [signatures, setSignatures] = useState<Record<string, SignatureData[]>>({
@@ -161,7 +161,7 @@ const LeaveApplication = () => {
     });
     const [approvalData, setApprovalData] = useState<ApprovalData[]>([
         { position: '인사담당', signature: '', date: '', signatureImageUrl: '', isSigned: false },
-        { position: '진료지원센터장', signature: '', date: '', signatureImageUrl: '', isSigned: false },
+        { position: '센터장', signature: '', date: '', signatureImageUrl: '', isSigned: false },
         { position: '행정원장', signature: '', date: '', signatureImageUrl: '', isSigned: false },
         { position: '대표원장', signature: '', date: '', signatureImageUrl: '', isSigned: false }
     ]);
@@ -184,7 +184,7 @@ const LeaveApplication = () => {
         switch (jobLevel) {
             case '0': return '사원';
             case '1': return '부서장';
-            case '2': return '진료센터장';
+            case '2': return '센터장';
             case '3': return '원장';
             case '4': return '행정원장';
             case '5': return '대표원장';
@@ -1146,7 +1146,7 @@ const LeaveApplication = () => {
         // 서명되지 않은 경우 - 서명 진행
         if (!userSignatureImage) {
             if (window.confirm('등록된 서명이 없습니다. 서명을 먼저 등록하시겠습니까?')) {
-                window.location.href = '/profile/signature';
+                navigate('/profile/signature');
             }
             return;
         }
@@ -1760,7 +1760,7 @@ return (
                                         인사담당
                                     </th>
                                     <th className="position-header-cell" rowSpan={2}>
-                                        진료지원<br/>센터장
+                                        센터장
                                     </th>
                                     <th className="approval-group-header" colSpan={2}>
                                         승인

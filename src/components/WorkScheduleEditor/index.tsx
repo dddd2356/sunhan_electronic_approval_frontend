@@ -25,7 +25,7 @@ const WorkScheduleEditor: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [cookies] = useCookies(['accessToken']);
-
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const [scheduleData, setScheduleData] = useState<WorkScheduleDetail | null>(null);
     const [positions, setPositions] = useState<Position[]>([]);
     const [loading, setLoading] = useState(true);
@@ -79,7 +79,7 @@ const WorkScheduleEditor: React.FC = () => {
             // ✅ 백엔드 프록시를 통해 호출
             const response = await axios.get(
                 `/api/v1/holidays?year=${year}`,
-                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
             const holidaySet = new Set<string>();
@@ -117,7 +117,7 @@ const WorkScheduleEditor: React.FC = () => {
             const response = await axios.get(
                 `/api/v1/work-schedules/${id}/pdf?t=${timestamp}`, // 캐시 무효화
                 {
-                    headers: { Authorization: `Bearer ${cookies.accessToken}` },
+                    headers: { Authorization: `Bearer ${token}` },
                     responseType: 'blob'
                 }
             );
@@ -167,7 +167,7 @@ const WorkScheduleEditor: React.FC = () => {
 
             try {
                 const response = await axios.get(`/api/v1/work-schedules/${id}/pdf`, {
-                    headers: { Authorization: `Bearer ${cookies.accessToken}` },
+                    headers: { Authorization: `Bearer ${token}` },
                     responseType: 'blob'
                 });
 
@@ -212,7 +212,7 @@ const WorkScheduleEditor: React.FC = () => {
                 await axios.post(
                     `/api/v1/work-schedules/${id}/members`,
                     { userIds },
-                    { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                    { headers: { Authorization: `Bearer ${token}` } }
                 );
 
                 alert('인원이 추가되었습니다.');
@@ -249,7 +249,7 @@ const WorkScheduleEditor: React.FC = () => {
             await axios.delete(
                 `/api/v1/work-schedules/${id}/members`,
                 {
-                    headers: { Authorization: `Bearer ${cookies.accessToken}` },
+                    headers: { Authorization: `Bearer ${token}` },
                     data: { entryIds: selectedEntriesForRemoval }
                 }
             );
@@ -274,7 +274,7 @@ const WorkScheduleEditor: React.FC = () => {
             await copyFromSpecificMonth(
                 parseInt(id!),
                 copySourceMonth,
-                cookies.accessToken
+                token
             );
 
             alert('데이터 불러오기 완료');
@@ -335,7 +335,7 @@ const WorkScheduleEditor: React.FC = () => {
             try {
                 const response = await axios.get(
                     `/api/v1/work-schedules/${id}/can-final-approve`,
-                    { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                    { headers: { Authorization: `Bearer ${token}` } }
                 );
 
                 setCanFinalApprove(response.data.canFinalApprove);
@@ -363,7 +363,7 @@ const WorkScheduleEditor: React.FC = () => {
             await axios.post(
                 `/api/v1/work-schedules/${id}/final-approve`,
                 { stepOrder: currentStep?.stepOrder },
-                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
             alert('전결 승인이 완료되었습니다.');
@@ -440,7 +440,7 @@ const WorkScheduleEditor: React.FC = () => {
                 if (window.confirm('서명하시겠습니까?')) {
                     try {
                         const userRes = await fetch('/api/v1/user/me', {
-                            headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                            headers: { Authorization: `Bearer ${token}` }
                         });
                         const userData = await userRes.json();
 
@@ -520,7 +520,7 @@ const WorkScheduleEditor: React.FC = () => {
         try {
             // ✅ 서명 이미지 가져오기
             const userRes = await fetch('/api/v1/user/me', {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             const userData = await userRes.json();
 
@@ -535,7 +535,7 @@ const WorkScheduleEditor: React.FC = () => {
             await axios.post(
                 `/api/v1/work-schedules/${id}/sign-step`,
                 { stepOrder },
-                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
             // ✅ [중요] 먼저 signedSteps에 추가
@@ -659,7 +659,7 @@ const WorkScheduleEditor: React.FC = () => {
             await axios.post(
                 '/api/v1/dept-duty-config',
                 configToSave,
-                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
             setDutyConfig(configToSave);
@@ -678,7 +678,7 @@ const WorkScheduleEditor: React.FC = () => {
         if (!entry) return;
 
         const newWorkData = { ...entry.workData, longTextValue: text };
-        await updateWorkData(parseInt(id!), [{ entryId, workData: newWorkData }], cookies.accessToken);
+        await updateWorkData(parseInt(id!), [{ entryId, workData: newWorkData }], token);
     };
 
     // 임시저장 함수
@@ -701,14 +701,14 @@ const WorkScheduleEditor: React.FC = () => {
             }));
 
             // ✅ 하나의 API 호출로 모든 업데이트
-            await updateWorkData(parseInt(id!), updates, cookies.accessToken);
+            await updateWorkData(parseInt(id!), updates, token);
 
             // ✅ 하단 비고 저장
             if (scheduleData.schedule.remarks !== undefined) {
                 await axios.put(
                     `/api/v1/work-schedules/${id}/remarks`,
                     { remarks: scheduleData.schedule.remarks },
-                    { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                    { headers: { Authorization: `Bearer ${token}` } }
                 );
             }
 
@@ -717,7 +717,7 @@ const WorkScheduleEditor: React.FC = () => {
                 await axios.put(
                     `/api/v1/work-schedules/${id}/creator-signature`,
                     { isSigned: localCreatorSigned },
-                    { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                    { headers: { Authorization: `Bearer ${token}` } }
                 );
             }
 
@@ -725,7 +725,7 @@ const WorkScheduleEditor: React.FC = () => {
             if (scheduleData.schedule.approvalStatus === 'APPROVED') {
                 await axios.delete(
                     `/api/v1/work-schedules/${id}/pdf`,
-                    { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                    { headers: { Authorization: `Bearer ${token}` } }
                 );
             }
 
@@ -825,7 +825,7 @@ const WorkScheduleEditor: React.FC = () => {
             // ✅ 내가 생성한 결재라인만 조회
             const response = await axios.get(
                 '/api/v1/approval-lines/my?documentType=WORK_SCHEDULE',
-                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
             setApprovalLines(response.data);
         } catch (err) {
@@ -839,18 +839,18 @@ const WorkScheduleEditor: React.FC = () => {
 
             // 현재 사용자 정보
             const userRes = await fetch('/api/v1/user/me', {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             const userData = await userRes.json();
             setCurrentUser(userData);
 
             // ✅ 권한 정보 조회
             const permRes = await fetch('/api/v1/user/me/permissions', {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             const permData = await permRes.json();
             // 근무표 상세 정보
-            const detail = await fetchWorkScheduleDetail(parseInt(id!), cookies.accessToken);
+            const detail = await fetchWorkScheduleDetail(parseInt(id!), token);
 
             if (detail.dutyConfig) {
                 setDutyConfig(detail.dutyConfig);
@@ -870,7 +870,7 @@ const WorkScheduleEditor: React.FC = () => {
             });
 
             // 직책 목록
-            const positionsData = await fetchPositionsByDept(detail.schedule.deptCode, cookies.accessToken);
+            const positionsData = await fetchPositionsByDept(detail.schedule.deptCode, token);
             setPositions(positionsData);
 
             // ✅ 권한 확인
@@ -900,7 +900,7 @@ const WorkScheduleEditor: React.FC = () => {
 
         try {
             await axios.delete(`/api/v1/work-schedules/${id}`, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             alert('삭제되었습니다.');
             navigate('/detail/work-schedule');
@@ -927,7 +927,7 @@ const WorkScheduleEditor: React.FC = () => {
                     approve: true,
                     stepOrder: currentStep?.stepOrder
                 },
-                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
             alert('결재가 완료되었습니다.');
@@ -1284,7 +1284,7 @@ const WorkScheduleEditor: React.FC = () => {
                 entryId: entry.id,
                 workData: entry.workData || {}
             }));
-            await updateWorkData(parseInt(id!), updates, cookies.accessToken);
+            await updateWorkData(parseInt(id!), updates, token);
 
             // 2. 직책 저장
             for (const entry of scheduleData.entries) {
@@ -1292,7 +1292,7 @@ const WorkScheduleEditor: React.FC = () => {
                     await axios.put(
                         `/api/v1/work-schedules/entries/${entry.id}/position`,
                         { positionId: entry.positionId },
-                        { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                        { headers: { Authorization: `Bearer ${token}` } }
                     );
                 }
             }
@@ -1300,7 +1300,7 @@ const WorkScheduleEditor: React.FC = () => {
             // 3. 나이트 개수 저장
             for (const entry of scheduleData.entries) {
                 if (entry.nightDutyRequired !== undefined) {
-                    await updateNightRequired(entry.id, entry.nightDutyRequired, cookies.accessToken);
+                    await updateNightRequired(entry.id, entry.nightDutyRequired, token);
                 }
             }
 
@@ -1309,14 +1309,14 @@ const WorkScheduleEditor: React.FC = () => {
                 await axios.put(
                     `/api/v1/work-schedules/${id}/remarks`,
                     { remarks: scheduleData.schedule.remarks },
-                    { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                    { headers: { Authorization: `Bearer ${token}` } }
                 );
             }
 
             await axios.put(
                 `/api/v1/work-schedules/${id}/creator-signature`,
                 { isSigned: localCreatorSigned },
-                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
             // 5. 결재라인 선택 모달 표시
@@ -1343,7 +1343,7 @@ const WorkScheduleEditor: React.FC = () => {
             await axios.post(
                 `/api/v1/work-schedules/${id}/submit`,
                 { approvalLineId: selectedLineId },
-                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
             alert('제출되었습니다.');
@@ -1356,7 +1356,7 @@ const WorkScheduleEditor: React.FC = () => {
     // 검토
     const handleReview = async (approve: boolean) => {
         try {
-            await reviewWorkSchedule(parseInt(id!), approve, cookies.accessToken);
+            await reviewWorkSchedule(parseInt(id!), approve, token);
             alert(approve ? '검토 승인되었습니다.' : '반려되었습니다.');
             navigate('/detail/work-schedule');
         } catch (err: any) {
@@ -1367,7 +1367,7 @@ const WorkScheduleEditor: React.FC = () => {
     // 승인
     const handleApprove = async (approve: boolean) => {
         try {
-            await approveWorkSchedule(parseInt(id!), approve, cookies.accessToken);
+            await approveWorkSchedule(parseInt(id!), approve, token);
             alert(approve ? '최종 승인되었습니다.' : '반려되었습니다.');
             navigate('/detail/work-schedule');
         } catch (err: any) {

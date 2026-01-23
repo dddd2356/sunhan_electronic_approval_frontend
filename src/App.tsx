@@ -1,7 +1,7 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import './App.css';
 import EmploymentContract from "./views/Detail/EmploymentContract";
-import {Route, Routes} from "react-router-dom";
+import {Route, Routes, useNavigate} from "react-router-dom";
 import SignIn from "./views/Authentication/SignIn";
 import MainPage from "./views/Detail/MainPage";
 import EmploymentContractBoard from "./components/EmploymentContractBoard";
@@ -22,11 +22,98 @@ import ConsentIssuePage from "./components/ConsentIssuePage";
 import ConsentManagementPage from "./components/ConsentManagementPage";
 import ConsentMyListPage from "./components/ConsentMyListPage";
 import ConsentMyIssuedPage from "./components/ConsentMyIssuedPage";
-import ConsentPreviewPage from "./components/ConsentPreviewPage";
 import ConsentWritePage from "./components/ConsentWritePage";
+import axios from "axios";
+import {useCookies} from "react-cookie";
 
 
 function App() {
+    const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+    const navigate = useNavigate();
+    const API_BASE_URL = process.env.REACT_APP_API_URL;
+    // 🔥 새로고침 시 사용자 정보 복구
+    useEffect(() => {
+        const initializeUser = async () => {
+            const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
+            if (!token) {
+                console.log('⏭️ 토큰 없음 - 초기화 건너뜀');
+                return;
+            }
+
+            if (window.location.pathname === '/') {
+                console.log('⏭️ 로그인 페이지 - 초기화 건너뜀');
+                return;
+            }
+
+            const tokenExpires = localStorage.getItem('tokenExpires');
+            if (tokenExpires) {
+                const expiresDate = new Date(tokenExpires);
+                if (expiresDate < new Date()) {
+                    console.log('⚠️ 토큰 만료 - 로그인 페이지로 이동');
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('tokenExpires');
+                    localStorage.removeItem('userCache');
+                    navigate('/');
+                    return;
+                }
+            }
+
+            // ✅ 캐시 먼저 확인 (5분 이내)
+            const cached = localStorage.getItem('userCache');
+            if (cached) {
+                try {
+                    const userData = JSON.parse(cached);
+                    const cacheAge = Date.now() - (userData.timestamp || 0);
+
+                    if (cacheAge < 5 * 60 * 1000) {
+                        console.log('✅ 캐시 사용 (API 호출 생략)');
+                        return; // ✅ API 호출 생략
+                    }
+                } catch (e) {
+                    console.error('캐시 파싱 실패:', e);
+                }
+            }
+
+            try {
+                console.log('🔄 앱 초기화: 사용자 정보 로딩 중...');
+
+                const response = await axios.get(`${API_BASE_URL}/user/me`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                console.log('✅ 사용자 정보 복구 완료:', response.data);
+
+                const userCache = {
+                    userName: response.data.userName,
+                    deptName: response.data.deptName || response.data.deptCode,
+                    jobLevel: Number(response.data.jobLevel ?? response.data.joblevel ?? 0),
+                    role: response.data.role,
+                    permissions: response.data.permissions || [],
+                    userId: response.data.userId,
+                    timestamp: Date.now() // ✅ 타임스탬프 추가
+                };
+
+                localStorage.setItem('userCache', JSON.stringify(userCache));
+                console.log('💾 캐시 저장 완료:', userCache);
+
+            } catch (error: any) {
+                console.error('❌ 사용자 정보 로딩 실패:', error);
+
+                if (error.response?.status === 401 || error.response?.status === 403) {
+                    console.log('🔒 인증 실패 - 로그인 페이지로 이동');
+                    localStorage.removeItem('userCache');
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('tokenExpires');
+                    navigate('/');
+                }
+            }
+        };
+
+        initializeUser();
+    }, []);
+
   return (
       <Routes>
 
@@ -72,7 +159,6 @@ function App() {
               <Route path="consent/my-issued" element={<ConsentMyIssuedPage />} />
               {/* 동의서 발송 (생성 권한 필요) */}
               <Route path="consent/issue" element={<ConsentIssuePage />} />
-              <Route path="consent/preview" element={<ConsentPreviewPage/>}/>
           </Route>
     </Routes>
   );

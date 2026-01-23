@@ -45,7 +45,7 @@ const approverTypeOptions = [
     { value: 'SUBSTITUTE', label: '대직자' },
     { value: 'DEPARTMENT_HEAD', label: '부서장' },
     { value: 'HR_STAFF', label: '인사팀' },
-    { value: 'CENTER_DIRECTOR', label: '진료센터장' },
+    { value: 'CENTER_DIRECTOR', label: '센터장' },
     { value: 'ADMIN_DIRECTOR', label: '행정원장' },
     { value: 'CEO_DIRECTOR', label: '대표원장' }
 ];
@@ -53,7 +53,7 @@ const approverTypeOptions = [
 const jobLevelOptions = [
     { value: '0', label: '사원' },
     { value: '1', label: '부서장' },
-    { value: '2', label: '진료센터장' },
+    { value: '2', label: '센터장' },
     { value: '3', label: '원장' },
     { value: '4', label: '행정원장' },
     { value: '5', label: '대표원장' }
@@ -72,6 +72,8 @@ const emptyStep = (index: number): ApprovalStepData => ({
 
 const MyApprovalLineEditor: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
     const navigate = useNavigate();
     const { id } = useParams<{ id?: string }>(); // id가 있으면 편집 모드
 
@@ -97,7 +99,7 @@ const MyApprovalLineEditor: React.FC = () => {
         const levels: Record<string, string> = {
             '0': '사원',
             '1': '부서장',
-            '2': '진료센터장',
+            '2': '센터장',
             '3': '원장',
             '4': '행정원장',
             '5': '대표원장'
@@ -110,7 +112,7 @@ const MyApprovalLineEditor: React.FC = () => {
         const fetchMe = async () => {
             try {
                 const res = await fetch('/api/v1/user/me', {
-                    headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -123,7 +125,7 @@ const MyApprovalLineEditor: React.FC = () => {
             }
         };
         fetchMe();
-    }, [cookies.accessToken]);
+    }, [token]);
 
     // 편집 모드면 기존 결재라인 로드
     useEffect(() => {
@@ -133,7 +135,7 @@ const MyApprovalLineEditor: React.FC = () => {
             setLoading(true);
             try {
                 const res = await fetch(`/api/v1/approval-lines/${id}`, {
-                    headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => null);
@@ -170,7 +172,7 @@ const MyApprovalLineEditor: React.FC = () => {
         };
 
         fetchLine();
-    }, [id, isEditMode, cookies.accessToken, navigate]);
+    }, [id, isEditMode, token, navigate]);
 
     const addStep = () => {
         const newStep: ApprovalStepData = {
@@ -277,7 +279,7 @@ const MyApprovalLineEditor: React.FC = () => {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${cookies.accessToken}`
+                        Authorization: `Bearer ${token}`
                     },
                     body: JSON.stringify(payload)
                 });
@@ -293,7 +295,7 @@ const MyApprovalLineEditor: React.FC = () => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${cookies.accessToken}`
+                        Authorization: `Bearer ${token}`
                     },
                     body: JSON.stringify(payload)
                 });
@@ -320,7 +322,7 @@ const MyApprovalLineEditor: React.FC = () => {
         try {
             const res = await fetch(`/api/v1/approval-lines/${id}`, {
                 method: 'DELETE',
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => null);
@@ -359,7 +361,7 @@ const MyApprovalLineEditor: React.FC = () => {
         try {
             const res = await fetch(
                 `/api/v1/approval-lines/candidates?approverType=${step.approverType}`,
-                { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
             if (res.ok) {

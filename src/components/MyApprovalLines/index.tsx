@@ -30,6 +30,8 @@ interface ApprovalLine {
 
 const MyApprovalLines: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
     const [lines, setLines] = useState<ApprovalLine[]>([]);
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
@@ -55,7 +57,7 @@ const MyApprovalLines: React.FC = () => {
         setLoading(true);
         try {
             const res = await fetch('/api/v1/approval-lines/my', {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
@@ -84,7 +86,7 @@ const MyApprovalLines: React.FC = () => {
         try {
             const res = await fetch(`/api/v1/approval-lines/${id}`, {
                 method: 'DELETE',
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
@@ -102,7 +104,7 @@ const MyApprovalLines: React.FC = () => {
     const onDuplicate = async (id: number) => {
         try {
             const res = await fetch(`/api/v1/approval-lines/${id}`, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             if (!res.ok) { alert('원본 불러오기 실패'); return; }
             const original = await res.json();
@@ -126,7 +128,7 @@ const MyApprovalLines: React.FC = () => {
 
             const postRes = await fetch('/api/v1/approval-lines', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cookies.accessToken}` },
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify(payload)
             });
             if (!postRes.ok) { const err = await postRes.json().catch(()=>({})); alert(`복사 실패: ${err.error || postRes.statusText}`); return; }
@@ -143,7 +145,7 @@ const MyApprovalLines: React.FC = () => {
         try {
             const res = await fetch(`/api/v1/approval-lines/${line.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cookies.accessToken}` },
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({
                     name: line.name,
                     description: line.description,

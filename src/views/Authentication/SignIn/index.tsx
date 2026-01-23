@@ -8,13 +8,12 @@ import { ResponseCode } from "../../../types/enums";
 import { useCookies } from "react-cookie";
 import { useNavigate } from "react-router-dom";
 import { signInRequest } from "../../../apis";
-// 아이콘 추가 (필요시 설치: npm install lucide-react)
 import { LogIn } from 'lucide-react';
 
 export default function SignIn() {
     const idRef = useRef<HTMLInputElement | null>(null);
     const passwdRef = useRef<HTMLInputElement | null>(null);
-    const [cookie, setCookie] = useCookies();
+    const [cookies, setCookie] = useCookies(['accessToken']);
     const [id, setId] = useState<string>('');
     const [passwd, setPasswd] = useState<string>('');
     const [message, setMessage] = useState<string>('');
@@ -32,14 +31,43 @@ export default function SignIn() {
         const now = new Date().getTime();
         const expires = new Date(now + expiresIn * 1000);
 
-        setCookie('accessToken', token, {
-            expires,
-            path: '/',
-            secure: window.location.protocol === 'https:',
-            sameSite: window.location.protocol === 'https:' ? 'none' : 'lax'
+        localStorage.removeItem('userCache');
+
+        console.log("🔐 토큰 저장 시도:", {
+            token: token.substring(0, 20) + "...",
+            expiresIn,
+            expires: expires.toISOString()
         });
+
+        // ✅ localStorage를 메인 저장소로 사용
+        try {
+            localStorage.setItem('accessToken', token);
+            localStorage.setItem('tokenExpires', expires.toISOString());
+            console.log("✅ localStorage에 토큰 저장 완료");
+        } catch (e) {
+            console.error("❌ localStorage 저장 실패:", e);
+            alert("토큰 저장에 실패했습니다.");
+            return;
+        }
+
+        // 쿠키도 시도 (작동하지 않아도 무방)
+        try {
+            setCookie('accessToken', token, {
+                expires,
+                path: '/',
+                secure: false,
+                sameSite: 'lax'
+            });
+            console.log("🍪 쿠키 저장 시도 완료 (선택사항)");
+        } catch (e) {
+            console.log("⚠️ 쿠키 저장 실패 (무시됨):", e);
+        }
+
+        // 저장 성공 후 즉시 이동
+        console.log("🚀 메인 페이지로 이동");
         navigate('/detail/main-page');
     };
+
 
     const onIdChangeHandler = (event: ChangeEvent<HTMLInputElement>) => {
         const { value } = event.target;
@@ -87,14 +115,10 @@ export default function SignIn() {
 
     return (
         <div id='sign-in-wrapper'>
-            {/* 시각적 신뢰감을 주는 배경 이미지 영역 */}
-            <div className='sign-in-image'>
-                {/* 필요시 이곳에 병원 슬로건 등을 넣을 수 있습니다 */}
-            </div>
+            <div className='sign-in-image'></div>
 
             <div className='sign-in-container'>
                 <div className='sign-in-box'>
-                    {/* 상단 타이틀 영역 분리 */}
                     <div className="sign-in-header">
                         <div className='sign-in-title'>Welcome Back</div>
                         <div className='sign-in-subtitle'>선한병원 전자결재 시스템에 로그인하세요.</div>

@@ -1235,6 +1235,140 @@
 input:checked + .slider { background-color: var(--primary-600); }
 input:checked + .slider:before { transform: translateX(20px); }
 
+/* ==========================================
+   Password Reset Section (Danger Zone)
+   ========================================== */
+/* 1. 전체 컨테이너: 연한 레드톤 배경으로 '주의 영역'임을 강조 */
+.password-reset-zone {
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background-color: #FEF2F2;
+    border: 1px solid #FECACA;
+    border-radius: var(--radius-md);
+    transition: all 0.3s ease;
+}
+
+/* 활성화(열림) 상태일 때 그림자와 테두리 강조 */
+.password-reset-zone.active {
+    background-color: #FFF1F2;
+    border-color: #FDA4AF;
+    box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.1);
+}
+
+/* 2. 헤더 영역 (제목 + 열기/닫기 버튼) */
+.password-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.password-label {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #991B1B;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* 상단 토글 버튼 (변경/취소) */
+.btn-toggle-danger {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    border: 1px solid #FECACA;
+    background-color: white;
+    color: #EF4444;
+    transition: all 0.2s;
+}
+
+.btn-toggle-danger:hover {
+    background-color: #EF4444;
+    color: white;
+}
+
+.btn-toggle-danger.cancel {
+    background-color: #9CA3AF;
+    border-color: #9CA3AF;
+    color: white;
+}
+
+/* 3. 펼쳐지는 폼 컨테이너 */
+.password-form-container {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px dashed #FECACA;
+    animation: slideDown 0.3s ease forwards; /* 부드럽게 나타나는 효과 */
+}
+
+/* 4. 입력창과 실행 버튼 (규격 완전 일치) */
+.password-input,
+.btn-submit-danger {
+    width: 100%;                  /* 너비 100% 동일 */
+    height: 42px;                 /* 높이 고정 (중요) */
+    box-sizing: border-box;       /* 테두리 포함 크기 계산 (중요) */
+    border-radius: 6px;
+    font-size: 0.875rem;
+    display: block;
+}
+
+/* 입력창 세부 스타일 */
+.password-input {
+    padding: 0 12px;
+    background-color: #ffffff;
+    border: 1px solid #D1D5DB;
+    color: #111827;
+    margin-bottom: 8px;           /* 버튼과의 간격 */
+    transition: all 0.2s ease;
+}
+
+.password-input:focus {
+    outline: none;
+    border-color: #EF4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* 실행 버튼 세부 스타일 */
+.btn-submit-danger {
+    background: #EF4444;
+    color: #ffffff;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-submit-danger:hover {
+    background: #DC2626;
+}
+
+.btn-submit-danger:active {
+    transform: scale(0.98);
+}
+
+/* 5. 경고 문구 알림 박스 */
+.password-warning {
+    margin-top: 12px;
+    padding: 10px;
+    background-color: #FFF5F5;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #C53030;
+    display: flex;
+    gap: 8px;
+    line-height: 1.5;
+}
+
+/* 애니메이션 정의 */
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 /* Responsive Drawer */
 @media (max-width: 480px) {
     .admin-drawer { width: 100%; }

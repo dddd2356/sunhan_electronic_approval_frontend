@@ -20,7 +20,7 @@ export interface Contract {
 export interface User {
     id: string;
     name: string;
-    jobLevel: string; // 0: 직원, 1 : 부서장, 2: 진료센터장, 3:원장, 4 : 행정원장, 5 : 대표원장, 6 : Admin
+    jobLevel: string; // 0: 직원, 1 : 부서장, 2: 센터장, 3:원장, 4 : 행정원장, 5 : 대표원장, 6 : Admin
     role: string;
     userId?: string;
     userName?: string;

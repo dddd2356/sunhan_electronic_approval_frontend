@@ -21,6 +21,7 @@ import {
     Megaphone, CheckCircle2
 } from 'lucide-react';
 import {ContractMemo, getMyMemos} from "../../../apis/contractMemo";
+import {useNavigate} from "react-router-dom";
 
 // --- 원본 인터페이스 유지 ---
 interface UserProfile {
@@ -105,6 +106,7 @@ interface MyScheduleData {
 
 const MainPage: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const [showProfilePopup, setShowProfilePopup] = useState(false);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loadingUser, setLoadingUser] = useState(true);
@@ -128,7 +130,7 @@ const MainPage: React.FC = () => {
     const [loadingMemos, setLoadingMemos] = useState(true);
     const [memosError, setMemosError] = useState('');
 
-
+    const navigate = useNavigate();
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
     const [mySchedule, setMySchedule] = useState<any>(null);
     const [loadingSchedule, setLoadingSchedule] = useState(false);
@@ -244,7 +246,7 @@ const MainPage: React.FC = () => {
         switch (level) {
             case '0': return '사원';
             case '1': return '부서장';
-            case '2': return '진료센터장';
+            case '2': return '센터장';
             case '3': return '원장';
             case '4': return '행정원장';
             case '5': return '대표원장';
@@ -270,21 +272,22 @@ const MainPage: React.FC = () => {
         const fetchDepartmentNames = async () => {
             try {
                 const response = await axios.get('/api/v1/departments/names', {
-                    headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 });
                 setDepartmentNames(response.data);
             } catch (error) { console.error('부서 이름 조회 실패:', error); }
         };
-        if (cookies.accessToken) fetchDepartmentNames();
-    }, [cookies.accessToken]);
+        if (token) fetchDepartmentNames();
+    }, [token]);
 
     useEffect(() => {
         const fetchUserProfile = async () => {
-            if (!cookies.accessToken) { setLoadingUser(false); return; }
+            const token = localStorage.getItem('accessToken') || cookies.accessToken;
+            if (!token) { setLoadingUser(false); return; }
             try {
                 setLoadingUser(true);
                 const response = await fetch(`/api/v1/user/me`, {
-                    headers: { 'Authorization': `Bearer ${cookies.accessToken}` }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.status === 401) { setLoadingUser(false); return; }
                 const data: UserProfile = await response.json();
@@ -299,14 +302,14 @@ const MainPage: React.FC = () => {
             finally { setLoadingUser(false); }
         };
         fetchUserProfile();
-    }, [cookies.accessToken]);
+    }, [token]);
 
     useEffect(() => {
         const fetchMemos = async () => {
-            if (!cookies.accessToken) return;
+            if (!token) return;
             try {
                 // getMyMemos는 본인의 메모만 가져오는 API 함수라고 가정
-                const data = await getMyMemos(cookies.accessToken);
+                const data = await getMyMemos(token);
                 // 최신순 정렬
                 const sortedData = data.sort((a: ContractMemo, b: ContractMemo) =>
                     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -321,35 +324,35 @@ const MainPage: React.FC = () => {
         };
         fetchMemos();
         const fetchVacationData = async () => {
-            if (!cookies.accessToken || !userProfile) return;
+            if (!token || !userProfile) return;
             try {
                 setLoadingVacation(true);
                 const timestamp = new Date().getTime();
                 const statusRes = await fetch(`/api/v1/vacation/my-status`, {
-                    headers: { 'Authorization': `Bearer ${cookies.accessToken}`, 'Cache-Control': 'no-cache' }
+                    headers: { 'Authorization': `Bearer ${token}`, 'Cache-Control': 'no-cache' }
                 });
                 if (statusRes.ok) setVacationStatus(await statusRes.json());
 
                 const historyRes = await fetch(`/api/v1/vacation/my-history?_t=${timestamp}`, {
-                    headers: { 'Authorization': `Bearer ${cookies.accessToken}`, 'Cache-Control': 'no-cache' }
+                    headers: { 'Authorization': `Bearer ${token}`, 'Cache-Control': 'no-cache' }
                 });
                 if (historyRes.ok) setVacationHistory(await historyRes.json());
             } catch (err) { setVacationError('휴가 정보를 불러오는데 실패했습니다.'); }
             finally { setLoadingVacation(false); }
         };
         fetchVacationData();
-    }, [userProfile, cookies.accessToken, refreshTrigger]);
+    }, [userProfile, token, refreshTrigger]);
 
     // 근무현황 조회 useEffect
     useEffect(() => {
         const fetchMySchedule = async () => {
-            if (!cookies.accessToken || !userProfile) return;
+            if (!token || !userProfile) return;
 
             try {
                 setLoadingSchedule(true);
                 const response = await axios.get(
                     `/api/v1/work-schedules/my-schedule/${selectedMonth}`,
-                    { headers: { Authorization: `Bearer ${cookies.accessToken}` } }
+                    { headers: { Authorization: `Bearer ${token}` } }
                 );
                 setMySchedule(response.data);
             } catch (error) {
@@ -361,17 +364,17 @@ const MainPage: React.FC = () => {
         };
 
         fetchMySchedule();
-    }, [selectedMonth, cookies.accessToken, userProfile]);
+    }, [selectedMonth, token, userProfile]);
 
     useEffect(() => {
         const fetchRecentActivities = async () => {
-            if (!cookies.accessToken || !userProfile) return;
+            if (!token || !userProfile) return;
             try {
                 setLoadingActivities(true);
                 const [vacRes, conRes, workRes] = await Promise.all([
-                    fetch(`/api/v1/vacation/my-history`, { headers: { 'Authorization': `Bearer ${cookies.accessToken}` } }),
-                    fetch(`/api/v1/employment-contract/my-status`, { headers: { 'Authorization': `Bearer ${cookies.accessToken}` } }),
-                    fetch(`/api/v1/work-schedules/my-status`, { headers: { 'Authorization': `Bearer ${cookies.accessToken}` } })
+                    fetch(`/api/v1/vacation/my-history`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(`/api/v1/employment-contract/my-status`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(`/api/v1/work-schedules/my-status`, { headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
 
                 const vacData: VacationHistory[] = vacRes.ok ? await vacRes.json() : [];
@@ -389,7 +392,7 @@ const MainPage: React.FC = () => {
             finally { setLoadingActivities(false); }
         };
         fetchRecentActivities();
-    }, [userProfile, cookies.accessToken]);
+    }, [userProfile, token]);
 
     // 포커스 자동 갱신
     useEffect(() => {
@@ -611,7 +614,7 @@ const MainPage: React.FC = () => {
                                         <span>휴가 기록</span>
                                     </button>
                                     <button className="mp-action-btn primary"
-                                            onClick={() => window.location.href = '/detail/leave-application'}>
+                                            onClick={() =>  navigate('/detail/leave-application')}>
                                         <Calendar size={22}/>
                                         <span>휴가 신청</span>
                                     </button>

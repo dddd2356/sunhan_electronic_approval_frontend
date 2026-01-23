@@ -446,6 +446,144 @@
     color: red;
 }
 
+/* 서명 모달 탭 스타일 */
+.signature-mode-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.signature-mode-tabs button,
+.signature-mode-tabs .tab-btn {
+    flex: 1;
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    transition: all 0.3s ease;
+}
+
+.signature-mode-tabs button:hover,
+.signature-mode-tabs .tab-btn:hover {
+    color: #333;
+    background-color: #f5f5f5;
+}
+
+.signature-mode-tabs button.active,
+.signature-mode-tabs .tab-btn.active {
+    color: #1976d2;
+    border-bottom-color: #1976d2;
+    font-weight: 600;
+}
+
+/* 업로드 섹션 */
+.upload-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    padding: 20px;
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    background-color: #fafafa;
+}
+
+/* 이미지 미리보기 */
+.image-preview {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: white;
+    max-width: 400px;
+}
+
+.image-preview img {
+    width: 100%;
+    height: auto;
+    max-height: 200px;
+    object-fit: contain;
+    display: block;
+}
+
+/* 서명 캔버스 공통 스타일 */
+.modal-signature-canvas {
+    margin-bottom: 20px;
+}
+
+.sigCanvas,
+.signature-canvas {
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: crosshair;
+    background-color: white;
+}
+
+/* 에러 메시지 */
+.error-message {
+    color: #d32f2f;
+    font-size: 13px;
+    margin: 10px 0;
+    text-align: center;
+}
+
+/* 서명 액션 버튼 */
+.signature-actions,
+.modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.signature-actions button,
+.modal-footer button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.signature-actions button:first-child,
+.modal-footer .btn-secondary {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.signature-actions button:first-child:hover,
+.modal-footer .btn-secondary:hover {
+    background-color: #e0e0e0;
+}
+
+.signature-actions button:nth-child(2),
+.modal-footer .btn-primary {
+    background-color: #1976d2;
+    color: white;
+}
+
+.signature-actions button:nth-child(2):hover,
+.modal-footer .btn-primary:hover {
+    background-color: #1565c0;
+}
+
+.signature-actions button:last-child {
+    background-color: #757575;
+    color: white;
+}
+
+.signature-actions button:last-child:hover {
+    background-color: #616161;
+}
+
 /* 반응형 */
 @media (max-width: 768px) {
     .dashboard-grid { grid-template-columns: 1fr; }

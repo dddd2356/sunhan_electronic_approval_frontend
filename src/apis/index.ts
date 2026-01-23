@@ -17,10 +17,7 @@ const errorHandler = (error: any) => {
     return responseBody;
 }
 
-const DOMAIN = 'http://localhost:9090';
-
-const API_DOMAIN = `${DOMAIN}/api/v1`;
-
+const API_DOMAIN = process.env.REACT_APP_API_URL || '/api/v1';
 const SIGN_IN_URL = () => `${API_DOMAIN}/auth/sign-in`;
 
 export const signInRequest = async (requestBody: SignInRequestDto)=> {

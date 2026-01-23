@@ -13,6 +13,8 @@ const ConsentWritePage: React.FC = () => {
     const { agreementId } = useParams<{ agreementId: string }>();
     const navigate = useNavigate();
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
     const [agreement, setAgreement] = useState<ConsentAgreement | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -51,10 +53,10 @@ const ConsentWritePage: React.FC = () => {
 
             // API 호출
             const API_BASE = process.env.REACT_APP_API_URL || '';
-            const response = await fetch(`${API_BASE}/user/${cookies.accessToken}/signature`, {
+            const response = await fetch(`${API_BASE}/user/${token}/signature`, {
                 method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${cookies.accessToken}`
+                    Authorization: `Bearer ${token}`
                 },
                 body: formData
             });
@@ -87,7 +89,7 @@ const ConsentWritePage: React.FC = () => {
         try {
             const data = await fetchConsentAgreement(
                 Number(agreementId),
-                cookies.accessToken
+                token
             );
 
             if (data.status === 'COMPLETED') {
@@ -115,7 +117,7 @@ const ConsentWritePage: React.FC = () => {
 
             // ✅ /user/me/signature 엔드포인트만 사용
             const response = await fetch(`${API_BASE}/user/me/signature`, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             if (response.ok) {
@@ -303,7 +305,7 @@ const ConsentWritePage: React.FC = () => {
             await submitConsentAgreement(
                 Number(agreementId),
                 submitData,
-                cookies.accessToken
+                token
             );
 
             alert('동의서가 제출되었습니다.');

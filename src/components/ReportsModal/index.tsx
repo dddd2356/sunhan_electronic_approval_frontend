@@ -41,6 +41,8 @@ interface ReportDataFromApi {
 
 const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose }) => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
     const [reportData, setReportData] = useState<ReportDataFromApi | null>(null);
     const [currentPage, setCurrentPage] = useState<number>(0);
     const [totalPages, setTotalPages] = useState<number>(1);
@@ -111,7 +113,7 @@ const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose }) => {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(cookies.accessToken ? { 'Authorization': `Bearer ${cookies.accessToken}` } : {})
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 }
             });
 
@@ -139,7 +141,7 @@ const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose }) => {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(cookies.accessToken ? { 'Authorization': `Bearer ${cookies.accessToken}` } : {})
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 }
             });
 
@@ -219,7 +221,7 @@ const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose }) => {
             // 휴가원 전용
             'PENDING_SUBSTITUTE': '대직자 승인 대기',
             'PENDING_DEPT_HEAD': '부서장 승인 대기',
-            'PENDING_CENTER_DIRECTOR': '진료센터장 승인 대기',
+            'PENDING_CENTER_DIRECTOR': '센터장 승인 대기',
             'PENDING_ADMIN_DIRECTOR': '행정원장 승인 대기',
             'PENDING_CEO_DIRECTOR': '대표원장 승인 대기',
             'PENDING_HR_STAFF': '인사팀 승인 대기',

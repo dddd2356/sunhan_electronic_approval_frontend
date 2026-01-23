@@ -33,6 +33,8 @@ interface VacationStatus {
 
 const AdminVacationManagement: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -73,7 +75,7 @@ const AdminVacationManagement: React.FC = () => {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cookies.accessToken}`
+                        'Authorization': `Bearer ${token}`
                     }
                 }
             );
@@ -106,7 +108,7 @@ const AdminVacationManagement: React.FC = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${cookies.accessToken}`
+                    'Authorization': `Bearer ${token}`
                 }
             });
 
@@ -149,7 +151,7 @@ const AdminVacationManagement: React.FC = () => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cookies.accessToken}`
+                        'Authorization': `Bearer ${token}`
                     }
                 }
             );
@@ -182,7 +184,7 @@ const AdminVacationManagement: React.FC = () => {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${cookies.accessToken}`
+                    'Authorization': `Bearer ${token}`
                 }
             });
 
@@ -216,7 +218,7 @@ const AdminVacationManagement: React.FC = () => {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cookies.accessToken}`
+                        'Authorization': `Bearer ${token}`
                     }
                 }
             );
@@ -246,7 +248,7 @@ const AdminVacationManagement: React.FC = () => {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cookies.accessToken}`
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({
                         annualCarryoverDays: annualCarryover,
@@ -292,7 +294,7 @@ const AdminVacationManagement: React.FC = () => {
         switch (level) {
             case '0': return '사원';
             case '1': return '부서장';
-            case '2': return '진료센터장';
+            case '2': return '센터장';
             case '3': return '원장';
             case '4': return '행정원장';
             case '5': return '대표원장';

@@ -34,6 +34,8 @@ const CONSENT_TYPES: ConsentType[] = [
 
 const ConsentIssuePage: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
     const navigate = useNavigate();
 
     const [selectedType, setSelectedType] = useState<string>('');
@@ -49,7 +51,7 @@ const ConsentIssuePage: React.FC = () => {
     const checkPermissions = async () => {
         try {
             const response = await fetch(`${API_BASE}/consents/permissions`, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             const data = await response.json();
 
@@ -86,7 +88,7 @@ const ConsentIssuePage: React.FC = () => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${cookies.accessToken}`
+                        Authorization: `Bearer ${token}`
                     },
                     body: JSON.stringify({
                         targetUserId: selectedUsers[0].id,
@@ -106,7 +108,7 @@ const ConsentIssuePage: React.FC = () => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${cookies.accessToken}`
+                        Authorization: `Bearer ${token}`
                     },
                     body: JSON.stringify({
                         targetUserIds: selectedUsers.map(u => u.id),

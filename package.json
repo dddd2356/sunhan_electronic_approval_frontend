@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "proxy": "http://localhost:9090",
+  "homepage": "/sunhan-eap",
   "dependencies": {
     "@headlessui/react": "^2.2.4",
     "@testing-library/dom": "^10.4.0",

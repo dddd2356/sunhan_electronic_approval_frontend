@@ -71,6 +71,8 @@ interface DepartmentSummary {
 
 const AdminVacationStatistics: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
     const [selectedDept, setSelectedDept] = useState<DepartmentStatistics | null>(null);
     const [loading, setLoading] = useState(true);
     const [deptLoading, setDeptLoading] = useState(false);
@@ -106,7 +108,7 @@ const AdminVacationStatistics: React.FC = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${cookies.accessToken}`
+                    'Authorization': `Bearer ${token}`
                 }
             });
 
@@ -151,7 +153,7 @@ const AdminVacationStatistics: React.FC = () => {
         try {
             const response = await fetch('/api/v1/departments/names', {
                 headers: {
-                    'Authorization': `Bearer ${cookies.accessToken}`
+                    'Authorization': `Bearer ${token}`
                 }
             });
             if (response.ok) {
@@ -186,7 +188,7 @@ const AdminVacationStatistics: React.FC = () => {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cookies.accessToken}`
+                        'Authorization': `Bearer ${token}`
                     }
                 }
             );
@@ -241,7 +243,7 @@ const AdminVacationStatistics: React.FC = () => {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cookies.accessToken}`
+                        'Authorization': `Bearer ${token}`
                     }
                 }
             );
@@ -276,7 +278,7 @@ const AdminVacationStatistics: React.FC = () => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cookies.accessToken}`
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(ledgerUserIds)
                 };
@@ -286,7 +288,7 @@ const AdminVacationStatistics: React.FC = () => {
                 options = {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${cookies.accessToken}`
+                        'Authorization': `Bearer ${token}`
                     }
                 };
             }
@@ -316,7 +318,7 @@ const AdminVacationStatistics: React.FC = () => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cookies.accessToken}`
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(ledgerUserIds)
                 };
@@ -325,7 +327,7 @@ const AdminVacationStatistics: React.FC = () => {
                 options = {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${cookies.accessToken}`
+                        'Authorization': `Bearer ${token}`
                     }
                 };
             }
@@ -369,7 +371,7 @@ const AdminVacationStatistics: React.FC = () => {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cookies.accessToken}`
+                        'Authorization': `Bearer ${token}`
                     }
                 }
             );
@@ -430,7 +432,7 @@ const AdminVacationStatistics: React.FC = () => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cookies.accessToken}`
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(userIds)
                 }
@@ -512,7 +514,7 @@ const AdminVacationStatistics: React.FC = () => {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${cookies.accessToken}`
+                            'Authorization': `Bearer ${token}`
                         },
                         body: JSON.stringify(selectedEmployees)
                     }
@@ -535,7 +537,7 @@ const AdminVacationStatistics: React.FC = () => {
                     `/api/v1/vacation/statistics/excel/department/${selectedDept.deptCode}?sortBy=${sortBy}&sortOrder=${sortOrder}`,
                     {
                         headers: {
-                            'Authorization': `Bearer ${cookies.accessToken}`
+                            'Authorization': `Bearer ${token}`
                         }
                     }
                 );
@@ -564,7 +566,7 @@ const AdminVacationStatistics: React.FC = () => {
         switch (jobLevel) {
             case '0': return '사원';
             case '1': return '부서장';
-            case '2': return '진료센터장';
+            case '2': return '센터장';
             case '3': return '원장';
             case '4': return '행정원장';
             case '5': return '대표원장';

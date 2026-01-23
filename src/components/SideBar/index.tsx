@@ -27,6 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     const navigate = useNavigate();
     const location = useLocation(); // 현재 URL 경로 파악용
     const [cookies, , removeCookie] = useCookies(["accessToken"]);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
 
     const [profileName, setProfileName] = useState<string>('사용자');
     const [profileDepartment, setProfileDepartment] = useState<string>('');
@@ -42,28 +43,124 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     // 현재 페이지 활성화 체크 함수
     const isActive = (path: string) => location.pathname === path;
 
-    useEffect(() => {
-        if (cookies.accessToken) {
-            checkUserStatus();
-            checkConsentPermissions();
-        }
-    }, [cookies.accessToken]);
 
-    const checkUserStatus = () => {
-        axios.get(`${API_BASE_URL}/user/me`, {
-            headers: { Authorization: `Bearer ${cookies.accessToken}` },
-        })
-            .then((res) => {
-                const userData = res.data;
+    useEffect(() => {
+        const currentToken = localStorage.getItem('accessToken') || cookies.accessToken;
+
+        if (!currentToken) {
+            console.log('⚠️ Sidebar: accessToken 없음');
+            localStorage.removeItem('userCache');
+            return;
+        }
+
+        // 1️⃣ 캐시만 로드 (API 호출 제거)
+        const cachedUser = localStorage.getItem('userCache');
+        if (cachedUser) {
+            try {
+                const userData = JSON.parse(cachedUser);
+                // ✅ 캐시된 토큰과 현재 토큰 비교 (불일치하면 캐시 무효화)
+                const cachedToken = localStorage.getItem('cachedTokenHash');
+                const currentTokenHash = currentToken.substring(0, 50); // 토큰 일부를 해시로 사용
+
+                if (cachedToken !== currentTokenHash) {
+                    console.log('🔄 토큰 변경 감지 - 캐시 무효화');
+                    localStorage.removeItem('userCache');
+                    localStorage.removeItem('cachedTokenHash');
+                    checkUserStatus();
+                    checkConsentPermissions();
+                    return;
+                }
+
+                console.log('📦 Sidebar: 캐시된 데이터 로드:', userData);
+
                 setProfileName(userData.userName || '사용자');
-                setProfileDepartment(userData.dept || '');
-                setJobLevel(userData.jobLevel || 0);
+                setProfileDepartment(userData.deptName || '');
+                setJobLevel(Number(userData.jobLevel) || 0);
                 setIsAdmin(userData.role === 'ADMIN');
                 setPermissions(userData.permissions || []);
 
+                console.log('✅ Sidebar: 캐시 복원 완료');
+
+                // ✅ 프로필 이미지만 별도 로드
+                if (userData.userId) {
+                    fetchProfileImage(userData.userId);
+                }
+
+                // ✅ 동의서 권한만 별도 확인 (캐시 없으면)
+                if (!userData.consentPermissions) {
+                    checkConsentPermissions();
+                } else {
+                    setCanCreateConsent(userData.consentPermissions.canCreate);
+                    setCanManageConsent(userData.consentPermissions.canManage);
+                }
+
+                return; // ✅ API 호출 생략
+            } catch (e) {
+                console.error('❌ Sidebar: 캐시 파싱 실패:', e);
+                localStorage.removeItem('userCache');
+            }
+        }
+
+        // 2️⃣ 캐시 없으면만 API 호출
+        checkUserStatus();
+        checkConsentPermissions();
+    }, [token]); // ✅ 빈 배열 유지
+
+    const checkUserStatus = () => {
+        const token = localStorage.getItem('accessToken') || cookies.accessToken;
+        axios.get(`${API_BASE_URL}/user/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then((res) => {
+                const userData = res.data;
+                console.log("📥 받은 사용자 데이터:", userData);
+                console.log("🔍 타입 확인:", {
+                    jobLevel: userData.jobLevel,
+                    jobLevelType: typeof userData.jobLevel,
+                    role: userData.role,
+                    roleType: typeof userData.role
+                });
+
+                // ✅ 수정된 매핑
+                setProfileName(userData.userName || '사용자');
+                setProfileDepartment(userData.deptName || userData.deptCode || ''); // deptName 우선
+
+                // ⚠️ jobLevel 처리 개선
+                const level = userData.jobLevel ?? userData.joblevel ?? 0; // 대소문자 모두 체크
+                setJobLevel(Number(level));
+
+                // ⚠️ role 처리 개선
+                setIsAdmin(userData.role === 'ADMIN');
+
+                // ⚠️ permissions 처리 개선
+                setPermissions(Array.isArray(userData.permissions) ? userData.permissions : []);
+
+                console.log("✅ State 업데이트 완료:", {
+                    name: userData.userName,
+                    dept: userData.deptName || userData.deptCode,
+                    level: Number(level),
+                    isAdmin: userData.role === 'ADMIN',
+                    permissions: userData.permissions
+                });
+
+                // 캐시 저장
+                localStorage.setItem('userCache', JSON.stringify({
+                    userName: userData.userName,
+                    deptName: userData.deptName || userData.deptCode,
+                    jobLevel: Number(level),
+                    role: userData.role,
+                    permissions: userData.permissions || [],
+                    userId: userData.userId
+                }));
+                // ✅ 현재 토큰 해시도 함께 저장
+                const currentTokenHash = (localStorage.getItem('accessToken') || cookies.accessToken || '').substring(0, 50);
+                localStorage.setItem('cachedTokenHash', currentTokenHash);
                 if (userData.userId) fetchProfileImage(userData.userId);
             })
-            .catch((err) => console.error('사용자 정보 로드 실패', err));
+            .catch((err) => {
+                console.error('❌ 사용자 정보 로드 실패', err);
+                console.error('응답:', err.response?.data);
+            });
     };
 
     const fetchProfileImage = (userId: string) => {
@@ -72,7 +169,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
             return;
         }
         axios.get(`${API_BASE_URL}/user/${userId}`, {
-            headers: { Authorization: `Bearer ${cookies.accessToken}` },
+            headers: { Authorization: `Bearer ${token}` },
         })
             .then((res) => {
                 const imageData = res.data?.profile_image;
@@ -82,13 +179,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     };
 
     const handleLogout = async () => {
+        const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
         try {
             await axios.post(`${API_BASE_URL}/auth/logout/web`, {}, {
-                headers: { "Authorization": `Bearer ${cookies.accessToken}` },
+                headers: { "Authorization": `Bearer ${token}` },
                 withCredentials: true
             });
         } finally {
-            removeCookie("accessToken", { path: "/", secure: true, sameSite: "none" });
+            // ✅ 모든 저장소 클리어
+            removeCookie("accessToken", {
+                path: "/",
+                secure: false,
+                sameSite: "lax"
+            });
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('tokenExpires');
+            localStorage.removeItem('userCache');
+            localStorage.removeItem('cachedTokenHash');
             navigate("/");
         }
     };
@@ -101,11 +209,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     const checkConsentPermissions = async () => {
         try {
             const response = await axios.get(`${API_BASE_URL}/consents/permissions`, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             setCanCreateConsent(response.data.canCreate);
             setCanManageConsent(response.data.canManage);
+
+            // ✅ 캐시에 권한 정보 추가
+            const cached = localStorage.getItem('userCache');
+            if (cached) {
+                const userData = JSON.parse(cached);
+                userData.consentPermissions = {
+                    canCreate: response.data.canCreate,
+                    canManage: response.data.canManage
+                };
+                localStorage.setItem('userCache', JSON.stringify(userData));
+            }
         } catch (error) {
             console.error('동의서 권한 확인 실패:', error);
         }
@@ -201,16 +320,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
 
                 {/* ✅ 동의서 관리 메뉴 (관리 권한) */}
                 {canManageConsent && (
-                    <>
                         <li onClick={() => navigate('/admin/consent/management')}
                             className={`menu-item admin ${isActive('/admin/consent/management') ? 'active' : ''}`}>
                                     <BarChart3 size={18}/> <span>동의서 관리</span>
                                 </li>
-                                <li onClick={() => navigate('/admin/consent/preview')}
-                                    className={`menu-item admin ${isActive('/admin/consent/preview') ? 'active' : ''}`}>
-                                    <FileText size={18}/> <span>동의서 템플릿 미리보기</span>
-                                </li>
-                            </>
                         )}
 
                         {canViewContractMemoAdmin && (

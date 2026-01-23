@@ -8,6 +8,7 @@ import {
     fetchCurrentUser,
     createContract,
 } from '../../apis/contract';
+import {useNavigate} from "react-router-dom";
 
 // 타입 정의
 interface Contract {
@@ -53,7 +54,6 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen, onClo
         (user.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             user.userId?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-
     const handleSubmit = () => {
         if (selectedEmployee) {
             onSubmit(selectedEmployee);
@@ -119,6 +119,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen, onClo
 
 const EmploymentContractBoard: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -130,7 +131,10 @@ const EmploymentContractBoard: React.FC = () => {
     const [tab, setTab] = useState<'inprogress'|'completed'>('inprogress');
     const [searchTerm, setSearchTerm] = useState('');
     const [searchType, setSearchType] = useState<'all'|'employee'|'creator'|'status'>('all');
-// 관리자 판정 유틸 (jobLevel 기준)
+    const navigate = useNavigate();
+    const [isLoadingContracts, setIsLoadingContracts] = useState(false);
+    const [usersLoaded, setUsersLoaded] = useState(false);
+    // 관리자 판정 유틸 (jobLevel 기준)
     const isAdminByLevel = (user: any) => {
         if (!user) return false;
         const level = Number(user.jobLevel);
@@ -138,10 +142,10 @@ const EmploymentContractBoard: React.FC = () => {
     };
     // 현재 사용자 정보 가져오기
     useEffect(() => {
-        if (cookies.accessToken) {
+        if (token) {
             loadCurrentUser();
         }
-    }, [cookies.accessToken]);
+    }, [token]);
 
     // 계약서 목록 가져오기 (currentUser 또는 tab 변경 시)
     useEffect(() => {
@@ -157,17 +161,20 @@ const EmploymentContractBoard: React.FC = () => {
 
     // 사용자 목록 가져오기 (관리자만)
     useEffect(() => {
+        if (usersLoaded) return; // ✅ 이미 로드했으면 스킵
+
         if (currentUser && currentUser.role === 'ADMIN' && (
             currentUser.jobLevel >= '2' ||
             (currentUser.permissions?.includes('HR_CONTRACT') && (currentUser.jobLevel === '0' || currentUser.jobLevel === '1'))
         )) {
             loadUsers();
+            setUsersLoaded(true); // ✅ 로드 완료 표시
         }
-    }, [currentUser]);
+    }, [currentUser, usersLoaded]);
 
     const loadCurrentUser = async () => {
         try {
-            const userData = await fetchCurrentUser(cookies.accessToken);
+            const userData = await fetchCurrentUser(token);
             setCurrentUser(userData);
         } catch (err) {
             console.error(err);
@@ -181,16 +188,15 @@ const EmploymentContractBoard: React.FC = () => {
     }, [users]);
 
     const loadContracts = async () => {
+        if (isLoadingContracts) {
+            console.log('⏭️ 이미 로딩 중 - 스킵');
+            return;
+        }
+
+        setIsLoadingContracts(true);
         setLoading(true);
         try {
-            console.log('>>> loadContracts start, tab=', tab);
-            console.log('>>> currentUser raw =', currentUser);
-            console.log('>>> isAdminByLevel(currentUser)=', isAdminByLevel(currentUser));
-
-            const contractsData = await fetchContracts(tab === 'completed', cookies.accessToken);
-            console.log('>>> contractsData length=', (contractsData || []).length);
-            console.log('>>> contractsData sample =', (contractsData || []).slice(0, 10));
-
+            const contractsData = await fetchContracts(tab === 'completed', token);
             const myIdCandidates = [
                 currentUser?.id,
                 currentUser?.userId,
@@ -199,8 +205,6 @@ const EmploymentContractBoard: React.FC = () => {
             ].filter(Boolean).map((v: any) => String(v));
 
             const myId = myIdCandidates.length ? myIdCandidates[0] : null;
-            console.log('>>> normalized myId =', myId, 'candidates=', myIdCandidates);
-
             // 안전하게 빈 배열 처리
             const all = contractsData || [];
 
@@ -245,16 +249,39 @@ const EmploymentContractBoard: React.FC = () => {
             setError('네트워크 오류가 발생했습니다.');
         } finally {
             setLoading(false);
+            setIsLoadingContracts(false);
         }
     };
 
     const loadUsers = async () => {
         try {
-            const usersData = await fetchUsers(cookies.accessToken);
-            console.log('불러온 사용자:', usersData);
-            // 만약 fetchUsers가 필터링 안 한다면 다시 한 번 안전 필터:
+            // ✅ 캐시 먼저 확인
+            const cached = sessionStorage.getItem('employeeList');
+            if (cached) {
+                const { data, timestamp } = JSON.parse(cached);
+                const age = Date.now() - timestamp;
+
+                // 5분 이내면 캐시 사용
+                if (age < 5 * 60 * 1000) {
+                    console.log('✅ 직원 목록 캐시 사용');
+                    setUsers(data);
+                    return;
+                }
+            }
+
+            console.log('🔄 직원 목록 조회 중...');
+            const usersData = await fetchUsers(token);
+
             const activeOnly = (usersData || []).filter((u: any) => String(u.useFlag ?? '1') === '1');
             setUsers(activeOnly as any);
+
+            // ✅ 캐시 저장
+            sessionStorage.setItem('employeeList', JSON.stringify({
+                data: activeOnly,
+                timestamp: Date.now()
+            }));
+
+            console.log('✅ 직원 목록:', activeOnly.length, '명');
         } catch (err) {
             console.error('사용자 목록 조회 실패:', err);
         }
@@ -262,9 +289,9 @@ const EmploymentContractBoard: React.FC = () => {
 
     const handleCreateContract = async (employeeId: string) => {
         try {
-            const newContract = await createContract(employeeId, cookies.accessToken);
+            const newContract = await createContract(employeeId, token);
             if (newContract && (newContract as any).id) {
-                window.location.href = `/detail/employment-contract/edit/${(newContract as any).id}`;
+                navigate(`/detail/employment-contract/edit/${(newContract as any).id}`);
             } else {
                 setError('계약서 생성에 실패했습니다.');
             }
@@ -277,7 +304,7 @@ const EmploymentContractBoard: React.FC = () => {
     const handleContractClick = (contract: Contract) => {
         if (contract.status === 'COMPLETED') {
             // 완료된 계약서는 조회 페이지로
-            window.location.href = `/detail/employment-contract/view/${contract.id}`;
+            navigate(`/detail/employment-contract/view/${contract.id}`);
         } else if (
             contract.status === 'DRAFT' &&
             currentUser.role === 'ADMIN' &&
@@ -287,13 +314,13 @@ const EmploymentContractBoard: React.FC = () => {
             )
         ) {
             // 초안 상태이고 관리자인 경우 편집 페이지로
-            window.location.href = `/detail/employment-contract/edit/${contract.id}`;
+            navigate(`/detail/employment-contract/edit/${contract.id}`);
         } else if (contract.status === 'SENT_TO_EMPLOYEE' && contract.employeeId === currentUser.id) {
             // 발송된 계약서이고 해당 직원인 경우 사인을 넣을 수 있는 편집 페이지로
-            window.location.href = `/detail/employment-contract/edit/${contract.id}`;
+            navigate(`/detail/employment-contract/edit/${contract.id}`);
         } else {
             // 그 외의 경우 조회만 가능
-            window.location.href = `/detail/employment-contract/view/${contract.id}`;
+            navigate(`/detail/employment-contract/view/${contract.id}`);
         }
     };
 

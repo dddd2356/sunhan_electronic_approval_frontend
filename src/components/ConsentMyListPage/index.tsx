@@ -3,6 +3,7 @@ import { useCookies } from 'react-cookie';
 import Layout from '../Layout';
 import { FileText, Clock, CheckCircle, Eye } from 'lucide-react';
 import './style.css';
+import {useNavigate} from "react-router-dom";
 
 const API_BASE = process.env.REACT_APP_API_URL || '';
 
@@ -19,6 +20,8 @@ interface ConsentAgreement {
 
 const ConsentMyListPage: React.FC = () => {
     const [cookies] = useCookies(['accessToken']);
+    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+
     const [pendingList, setPendingList] = useState<ConsentAgreement[]>([]);
     const [completedList, setCompletedList] = useState<ConsentAgreement[]>([]);
     const [loading, setLoading] = useState(true);
@@ -27,6 +30,7 @@ const ConsentMyListPage: React.FC = () => {
         SOFTWARE_USAGE: '소프트웨어 사용 서약서',
         MEDICAL_INFO_SECURITY: '의료정보 보호 및 보안(교육)서약서'
     };
+    const navigate = useNavigate();
     const getConsentTitle = (agreement: ConsentAgreement): string => {
         return agreement.consentForm?.title || typeNames[agreement.type] || '동의서';
     };
@@ -39,7 +43,7 @@ const ConsentMyListPage: React.FC = () => {
         try {
             // 작성 대기 중
             const pendingRes = await fetch(`${API_BASE}/consents/my/pending`, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             if (pendingRes.ok) {
                 setPendingList(await pendingRes.json());
@@ -47,7 +51,7 @@ const ConsentMyListPage: React.FC = () => {
 
             // 작성 완료
             const completedRes = await fetch(`${API_BASE}/consents/my/list`, {
-                headers: { Authorization: `Bearer ${cookies.accessToken}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             if (completedRes.ok) {
                 const all = await completedRes.json();
@@ -61,7 +65,7 @@ const ConsentMyListPage: React.FC = () => {
     };
 
     const goToWrite = (agreementId: number) => {
-        window.location.href = `/detail/consent/write/${agreementId}`;
+        navigate(`/detail/consent/write/${agreementId}`);
     };
 
     if (loading) {
@@ -146,7 +150,7 @@ const ConsentMyListPage: React.FC = () => {
                                         onClick={async () => {
                                             try {
                                                 const response = await fetch(`${API_BASE}/consents/${agreement.id}`, {
-                                                    headers: {Authorization: `Bearer ${cookies.accessToken}`}
+                                                    headers: {Authorization: `Bearer ${token}`}
                                                 });
 
                                                 if (response.ok) {
