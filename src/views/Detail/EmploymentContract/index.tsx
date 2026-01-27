@@ -98,6 +98,7 @@ const EmploymentContract = () => {
     const navigate = useNavigate();
     const [userSignatureImage, setUserSignatureImage] = useState<string | null>(null);
     const addressTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState<FormDataFields>({
         contractTitle: '',
         employerName: '',
@@ -220,17 +221,17 @@ const EmploymentContract = () => {
     const validateAllSignedAndAgreed = (): boolean => {
         // 1) 서명 검사
         // page1~3 검사
-        ['page1', 'page2', 'page3'].forEach(pageKey => {
-            if (!signatures[pageKey].some(sig => sig.isSigned)) {
+        for (const pageKey of ['page1', 'page2', 'page3']) {
+            if (!signatures[pageKey] || !signatures[pageKey].some(sig => sig.isSigned)) {
                 alert(`'${pageKey}' 페이지에 서명이 필요합니다.`);
-                return false;
+                return false;  // 이제 제대로 작동!
             }
-        });
+        }
 
         // page4 서명 3개 검사
         const page4Sigs = ['page4_consent', 'page4_receipt', 'page4_final'];
         for (const sigKey of page4Sigs) {
-            if (!signatures[sigKey].some(sig => sig.isSigned)) {
+            if (!signatures[sigKey] || !signatures[sigKey].some(sig => sig.isSigned)) {
                 alert(`page4 페이지에 서명이 필요합니다.`);
                 return false;
             }
@@ -239,9 +240,20 @@ const EmploymentContract = () => {
         // 2) 동의 검사
         for (const [page, status] of Object.entries(agreements)) {
             if (status !== 'agree') {
-                alert(`‘${page}’ 페이지의 동의 체크박스를 선택해주세요.`);
+                alert(`'${page}' 페이지의 동의 체크박스를 선택해주세요.`);
                 return false;
             }
+        }
+
+        // 3) 근로계약서 교부 확인 검사
+        if (formData.receiptConfirmation1 !== '교부') {
+            alert('근로계약서 교부 확인란에 "교부"를 정확히 입력해주세요.');
+            return false;
+        }
+
+        if (formData.receiptConfirmation2 !== '확인') {
+            alert('근로계약서 교부 확인란에 "확인"을 정확히 입력해주세요.');
+            return false;
         }
 
         return true;
@@ -383,10 +395,18 @@ const EmploymentContract = () => {
 // ② 직원 승인 (서명 + 승인을 한번에 처리)
     const handleApprove = useCallback(async () => {
         if (!contract || !id) return;
+
         if (!validateAllSignedAndAgreed()) {
             alert('모든 서명과 동의를 완료해주세요.');
             return;
         }
+
+        // ✅ 중복 호출 방지
+        if (isSubmitting) {
+            console.warn('이미 제출 중입니다.');
+            return;
+        }
+        setIsSubmitting(true);
 
         try {
             // 🚨 이 부분이 핵심입니다! 현재의 signatures와 agreements 상태를 formData에 통합해야 합니다.
@@ -532,17 +552,6 @@ const EmploymentContract = () => {
             }
         }
         setAgreements(prev => ({...prev, [page]: newStatus}));
-
-        // 동의할 때만 서명도 불러오려면 여기에…
-        if (newStatus === 'agree' && token && id) {
-            fetchSignaturesForContract(token, parseInt(id))
-                .then(({signatures}) => {
-                    if (signatures[page]) {
-                        setSignatures(prev => ({...prev, [page]: [...signatures[page]]}));
-                    }
-                })
-                .catch(err => console.error('서명 로드 실패:', err));
-        }
     };
 
     // 사용자 서명 가져오는 함수
@@ -674,6 +683,9 @@ const EmploymentContract = () => {
                     breakTimeList: dto.breakTimeList?.length > 0
                         ? dto.breakTimeList
                         : ['', '', '', ''],
+                    workingHours: dto.workingHours?.trim() || '209',
+                    salaryMonths: dto.salaryMonths?.trim() || '12',
+
                     employeeName: contractData.employeeName ?? dto.employeeName,
                     employerName: contractData.creatorName ?? dto.employerName,
                     contractSignDate: dto.contractSignDate || new Date().toISOString().split('T')[0]

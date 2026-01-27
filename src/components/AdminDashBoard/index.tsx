@@ -89,6 +89,7 @@ interface AdminStats {
 
 // --- Constants ---
 const PERMISSION_DISPLAY_MAP: Record<string, string> = {
+    'MANAGE_USERS': '회원 및 부서 관리',
     'HR_LEAVE_APPLICATION': '휴가원 관리',
     'HR_CONTRACT': '근로계약서 관리',
     'WORK_SCHEDULE_CREATE': '근무현황표 생성/작성',
@@ -101,6 +102,7 @@ const PERMISSION_DISPLAY_MAP: Record<string, string> = {
 };
 
 const HR_PERMISSION_TYPES_LIST = [
+    'MANAGE_USERS',
     'HR_CONTRACT',
     'HR_LEAVE_APPLICATION',
     'WORK_SCHEDULE_CREATE',
@@ -297,6 +299,46 @@ export const AdminDashboard: React.FC = () => {
             console.error('Departments fetch error:', e.message);
         }
     }, [users]);
+
+    // 5. 퇴사/복직 처리 (기존 toggleUserStatus API 사용)
+    const handleToggleUserStatus = async () => {
+        if (!selectedUser) return;
+
+        const isActive = selectedUser.useFlag === '1';
+        const action = isActive ? '퇴사' : '복직';
+
+        if (!window.confirm(`${selectedUser.userName}(${selectedUser.userId})님을 ${action} 처리하시겠습니까?`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/v1/admin/users/${selectedUser.userId}/toggle-status`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || `${action} 처리 실패`);
+            }
+
+            const data = await res.json();
+            const newUseFlag = data.useFlag;
+
+            // 로컬 상태 업데이트
+            setUsers(prev => prev.map(u =>
+                u.userId === selectedUser.userId ? {...u, useFlag: newUseFlag} : u
+            ));
+            setSelectedUser(prev => prev ? {...prev, useFlag: newUseFlag} : null);
+
+            alert(`${action} 처리가 완료되었습니다.`);
+
+            // 통계 새로고침
+            await fetchStats();
+        } catch (e: any) {
+            alert(e.message);
+        }
+    };
 
     const handleResetPassword = async () => {
         if (!selectedUser || !newPassword) {
@@ -750,6 +792,26 @@ export const AdminDashboard: React.FC = () => {
                                             {selectedUser.deptCode} • {selectedUser.useFlag === '1' ? '재직중' : '퇴사'}
                                         </p>
                                     </div>
+                                </div>
+
+                                {/* ✅ 퇴사/복직 처리 버튼 추가 */}
+                                <div className="retire-section" style={{marginTop: '1.5rem'}}>
+                                    <button
+                                        onClick={handleToggleUserStatus}
+                                        className={`btn-retire ${selectedUser.useFlag === '1' ? 'retire' : 'reactivate'}`}
+                                    >
+                                        {selectedUser.useFlag === '1' ? '🚪 퇴사 처리' : '✅ 복직 처리'}
+                                    </button>
+                                    <p style={{
+                                        fontSize: '0.75rem',
+                                        color: '#6b7280',
+                                        marginTop: '0.5rem',
+                                        lineHeight: '1.4'
+                                    }}>
+                                        {selectedUser.useFlag === '1'
+                                            ? '퇴사 처리 시 시스템 접근이 차단됩니다.'
+                                            : '복직 처리 시 시스템 접근이 복구됩니다.'}
+                                    </p>
                                 </div>
 
                                 {/* ✅ 시스템 관리자는 권한 관리 UI 숨김 */}

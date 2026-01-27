@@ -1364,6 +1364,55 @@ input:checked + .slider:before { transform: translateX(20px); }
     line-height: 1.5;
 }
 
+/* ✅ 퇴사/복직 처리 섹션 */
+.retire-section {
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn-retire {
+    width: 100%;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-retire.retire {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.btn-retire.retire:hover {
+    background-color: #dc2626;
+    color: white;
+    border-color: #dc2626;
+}
+
+.btn-retire.reactivate {
+    background-color: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+}
+
+.btn-retire.reactivate:hover {
+    background-color: #16a34a;
+    color: white;
+    border-color: #16a34a;
+}
+
+.btn-retire:active {
+    transform: translateY(1px);
+}
+
 /* 애니메이션 정의 */
 @keyframes slideDown {
     from { opacity: 0; transform: translateY(-5px); }

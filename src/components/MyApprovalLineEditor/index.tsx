@@ -36,7 +36,7 @@ interface ApproverCandidate {
 interface ApprovalLinePayload {
     name: string;
     description?: string;
-    documentType: 'LEAVE_APPLICATION' | 'EMPLOYMENT_CONTRACT' | 'WORK_SCHEDULE';
+    documentType: 'LEAVE_APPLICATION' | 'WORK_SCHEDULE';
     steps: ApprovalStepData[];
 }
 
@@ -79,7 +79,7 @@ const MyApprovalLineEditor: React.FC = () => {
 
     const [lineName, setLineName] = useState('');
     const [description, setDescription] = useState('');
-    const [documentType, setDocumentType] = useState<'LEAVE_APPLICATION' | 'EMPLOYMENT_CONTRACT' | 'WORK_SCHEDULE'>('LEAVE_APPLICATION');
+    const [documentType, setDocumentType] = useState<'LEAVE_APPLICATION' | 'WORK_SCHEDULE'>('LEAVE_APPLICATION');
     const [steps, setSteps] = useState<ApprovalStepData[]>([]);
     const [showOrgChart, setShowOrgChart] = useState(false);
     const [currentEditingStep, setCurrentEditingStep] = useState<number | null>(null);
@@ -474,7 +474,6 @@ const MyApprovalLineEditor: React.FC = () => {
                                 onChange={(e) => setDocumentType(e.target.value as any)}
                             >
                                 <option value="LEAVE_APPLICATION">휴가원</option>
-                                <option value="EMPLOYMENT_CONTRACT">근로계약서</option>
                                 <option value="WORK_SCHEDULE">근무현황표</option>
                             </select>
                         </div>

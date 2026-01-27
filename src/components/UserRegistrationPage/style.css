@@ -1,0 +1,236 @@
+:root {
+    --primary-color: #2563eb;       /* 전문적인 블루 */
+    --primary-hover: #1d4ed8;
+    --bg-color: #f3f4f6;            /* 부드러운 회색 배경 */
+    --surface-color: #ffffff;
+    --text-main: #111827;
+    --text-sub: #6b7280;
+    --border-color: #e5e7eb;
+    --error-color: #ef4444;
+    --success-color: #10b981;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.ur-container {
+    max-width: 1000px; /* 넓어진 레이아웃 */
+    margin: 60px auto;
+    padding: 0 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* 헤더 영역 */
+.ur-header {
+    margin-bottom: 30px;
+    text-align: left;
+}
+
+.ur-title {
+    color: var(--text-main);
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
+}
+
+.ur-subtitle {
+    color: var(--text-sub);
+    font-size: 15px;
+    margin: 0;
+}
+
+/* 메인 그리드 레이아웃 (좌: 폼, 우: 안내문) */
+.ur-content-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+/* 카드 스타일 */
+.ur-card {
+    background: var(--surface-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    padding: 30px;
+    border: 1px solid var(--border-color);
+}
+
+/* 폼 내부 레이아웃 */
+.ur-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.ur-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.ur-form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.ur-label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 14px;
+}
+
+.ur-label span {
+    color: var(--error-color);
+    margin-left: 2px;
+}
+
+.ur-input,
+.ur-select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 15px;
+    color: var(--text-main);
+    background-color: #fff;
+    transition: all 0.2s ease;
+    box-sizing: border-box; /* 패딩 포함 크기 계산 */
+}
+
+.ur-input::placeholder {
+    color: #9ca3af;
+}
+
+.ur-input:focus,
+.ur-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.ur-input:disabled,
+.ur-select:disabled {
+    background-color: #f9fafb;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.ur-helper-text {
+    display: block;
+    margin-top: 6px;
+    color: var(--text-sub);
+    font-size: 13px;
+}
+
+/* 버튼 스타일 */
+.ur-submit-btn {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    margin-top: 10px;
+}
+
+.ur-submit-btn:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+}
+
+.ur-submit-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.ur-submit-btn:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* 알림 메시지 */
+.ur-alert {
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    line-height: 1.5;
+}
+
+.ur-error {
+    background-color: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.ur-success {
+    background-color: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+/* 우측 정보 박스 (Sticky) */
+.ur-info-card {
+    background-color: #f8fafc; /* 아주 연한 블루그레이 */
+    border: 1px solid #e2e8f0;
+    position: sticky;
+    top: 20px;
+}
+
+.ur-info-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.ur-info-title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.ur-info-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.ur-info-list li {
+    margin-bottom: 12px;
+    color: #475569;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.ur-info-list strong {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* 반응형 처리 */
+@media (max-width: 768px) {
+    .ur-content-grid {
+        grid-template-columns: 1fr; /* 모바일에서 1열로 변경 */
+    }
+
+    .ur-form-row {
+        grid-template-columns: 1fr; /* 폼 내부도 1열로 */
+        gap: 24px;
+    }
+
+    .ur-info-card {
+        order: -1; /* 모바일에서는 안내문이 위로 오게 하거나, 아래로 배치 (현재는 아래) */
+        position: static;
+        margin-top: 0;
+    }
+}

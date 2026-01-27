@@ -116,7 +116,7 @@ const ApprovalLineSelector: React.FC<ApprovalLineSelectorProps> = ({
                         <p>이 문서에 적용할 결재라인을 선택하세요</p>
                     </div>
                     <button className="close-btn" onClick={onCancel}>
-                        <X />
+                        <X/>
                     </button>
                 </div>
 

@@ -16,7 +16,7 @@ import {
     BarChart3,
     RefreshCcw,
     UserCircle,
-    LogOut, Shield, FileSignature
+    LogOut, Shield, FileSignature, UserPlus, Building
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -295,31 +295,47 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
                 {/* 3. 관리자 메뉴 섹션 (조건부 렌더링) */}
                 {(isAdmin) && (
                     <>
-                    <div className="menu-section-label">Administration</div>
+                        <div className="menu-section-label">Administration</div>
 
-                    {isAdmin && jobLevel >= 1 && (
-                        <li onClick={() => navigate('/admin/dashboard')}
-                            className={`menu-item admin ${isActive('/admin/dashboard') ? 'active' : ''}`}>
-                            <ShieldCheck size={18}/> <span>권한 관리자</span>
-                        </li>
-                    )}
-
-                    {/* ✅ 동의서 발송 메뉴 (생성 권한) */}
-                    {canCreateConsent && (
-                        <>
-                            <li onClick={() => navigate('/admin/consent/issue')}
-                                className={`menu-item admin ${isActive('/admin/consent/issue') ? 'active' : ''}`}>
-                                <FileSignature size={18}/> <span>동의서 발송</span>
+                        {isAdmin && jobLevel >= 1 && (
+                            <li onClick={() => navigate('/admin/dashboard')}
+                                className={`menu-item admin ${isActive('/admin/dashboard') ? 'active' : ''}`}>
+                                <ShieldCheck size={18}/> <span>권한 관리자</span>
                             </li>
-                            <li onClick={() => navigate('/admin/consent/my-issued')}
-                                className={`menu-item admin ${isActive('/admin/consent/my-issued') ? 'active' : ''}`}>
-                                <FileText size={18}/> <span>발송 현황</span>
-                            </li>
-                        </>
-                )}
+                        )}
 
-                {/* ✅ 동의서 관리 메뉴 (관리 권한) */}
-                {canManageConsent && (
+                        {/* ✅ 회원 등록 메뉴 (MANAGE_USERS 권한) */}
+                        {permissions.includes('MANAGE_USERS') && (
+                            <li onClick={() => navigate('/admin/users/register')}
+                                className={`menu-item admin ${isActive('/admin/users/register') ? 'active' : ''}`}>
+                                <UserPlus size={18}/> <span>회원 등록</span>
+                            </li>
+                        )}
+
+                        {/* ✅ 부서 관리 메뉴 (MANAGE_USERS 권한) */}
+                        {permissions.includes('MANAGE_USERS') && (
+                            <li onClick={() => navigate('/admin/departments/manage')}
+                                className={`menu-item admin ${isActive('/admin/departments/manage') ? 'active' : ''}`}>
+                                <Building size={18}/> <span>부서 관리</span>
+                            </li>
+                        )}
+
+                        {/* ✅ 동의서 발송 메뉴 (생성 권한) */}
+                        {canCreateConsent && (
+                            <>
+                                <li onClick={() => navigate('/admin/consent/issue')}
+                                    className={`menu-item admin ${isActive('/admin/consent/issue') ? 'active' : ''}`}>
+                                    <FileSignature size={18}/> <span>동의서 발송</span>
+                                </li>
+                                <li onClick={() => navigate('/admin/consent/my-issued')}
+                                    className={`menu-item admin ${isActive('/admin/consent/my-issued') ? 'active' : ''}`}>
+                                    <FileText size={18}/> <span>발송 현황</span>
+                                </li>
+                            </>
+                        )}
+
+                        {/* ✅ 동의서 관리 메뉴 (관리 권한) */}
+                        {canManageConsent && (
                         <li onClick={() => navigate('/admin/consent/management')}
                             className={`menu-item admin ${isActive('/admin/consent/management') ? 'active' : ''}`}>
                                     <BarChart3 size={18}/> <span>동의서 관리</span>
@@ -350,13 +366,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
                             <li onClick={() => navigate('/detail/positions')}
                                 className={`menu-item admin ${isActive('/detail/positions') ? 'active' : ''}`}>
                                 <Users size={18}/> <span>직책 관리</span>
-                            </li>
-                        )}
-
-                        {isAdmin && (
-                            <li onClick={() => navigate('/admin/sync-management-dashboard')}
-                                className={`menu-item admin ${isActive('/admin/sync-management-dashboard') ? 'active' : ''}`}>
-                                <RefreshCcw size={18}/> <span>데이터 동기화</span>
                             </li>
                         )}
                     </>

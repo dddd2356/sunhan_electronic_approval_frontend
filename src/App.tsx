@@ -10,7 +10,6 @@ import LeaveApplicationBoard from "./components/LeaveApplicationBoard";
 import LeaveApplication from "./views/Detail/LeaveApplication";
 import MyPage from "./views/Detail/MyPage";
 import AdminVacationManagement from "./components/AdminVacationManagement";
-import SyncManagementDashboard from "./components/SyncManagementDashboard";
 import AdminVacationStatistics from "./components/AdminVacationStatistics";
 import MyApprovalLineEditor from "./components/MyApprovalLineEditor";
 import MyApprovalLines from "./components/MyApprovalLines";
@@ -25,6 +24,8 @@ import ConsentMyIssuedPage from "./components/ConsentMyIssuedPage";
 import ConsentWritePage from "./components/ConsentWritePage";
 import axios from "axios";
 import {useCookies} from "react-cookie";
+import UserRegistrationPage from "./components/UserRegistrationPage";
+import DepartmentManagementPage from "./components/DepartmentManagementPage";
 
 
 function App() {
@@ -147,11 +148,15 @@ function App() {
         </Route>
           {/* ===== 관리자 페이지 라우트 추가 ===== */}
           <Route path="/admin">
+              {/* ✅ 회원 관리 */}
+              <Route path="users/register" element={<UserRegistrationPage />} />
+
+              {/* ✅ 부서 관리 */}
+              <Route path="departments/manage" element={<DepartmentManagementPage />} />
               <Route path="dashboard" element={<AdminDashboard/>} />
               {/* 근로계약서 */}
               <Route path="memo-management" element={<AdminMemoManagement />} />
               <Route path="vacation" element={<AdminVacationManagement/>}/>
-              <Route path="sync-management-dashboard" element={<SyncManagementDashboard/>}/>
               <Route path="vacation-statistics" element={<AdminVacationStatistics/>} />
               {/* 동의서 관리 (관리 권한 필요) */}
               <Route path="consent/management" element={<ConsentManagementPage />} />

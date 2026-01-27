@@ -958,11 +958,7 @@ const LeaveApplication = () => {
                 setShowRejectModal(false);
             }
 
-            if (currentUser) {
-                const updatedApp = await fetchLeaveApplicationDetail(parseInt(id), token);
-                checkApprovalPermissions(updatedApp, currentUser);
-                navigate("/detail/leave-application");
-            }
+            navigate("/detail/leave-application");
 
         } catch (error: any) {
             console.error(`휴가원 ${action === 'approve' ? '승인' : '반려'} 실패:`, error);
@@ -984,8 +980,7 @@ const LeaveApplication = () => {
         switch (currentStep) {
             case "DEPARTMENT_HEAD_APPROVAL": signatureKey = "departmentHead"; break;
             case "HR_STAFF_APPROVAL":        signatureKey = "hrStaff"; break;
-            case "HR_FINAL_APPROVAL":
-                break;
+            case "HR_FINAL_APPROVAL": break;
             case "CENTER_DIRECTOR_APPROVAL": signatureKey = "centerDirector"; break;
             case "ADMIN_DIRECTOR_APPROVAL":  signatureKey = "adminDirector"; break;
             case "CEO_DIRECTOR_APPROVAL":    signatureKey = "ceoDirector"; break;
@@ -1001,19 +996,16 @@ const LeaveApplication = () => {
         }
 
         try {
-            // ✅ 결재라인 사용 여부에 따라 다른 API 호출
             if (usingApprovalLine) {
                 const signatureImageUrl = (() => {
                     if (!signatureKey) return (userSignatureImage || null);
                     const sigItem = signatures[signatureKey]?.[0];
                     if (sigItem?.imageUrl) return sigItem.imageUrl;
-                    // 이미 로컬에 등록된 서명 이미지가 있으면 사용
                     if (userSignatureImage) return userSignatureImage;
-                    // 없으면 null (이 경우 버튼을 disabled 하거나 사용자에게 알림)
                     return null;
                 })();
 
-                const response = await axios.put(
+                await axios.put(
                     `/api/v1/leave-application/${id}/approve-with-line`,
                     {
                         comment: '전결 승인',
@@ -1022,25 +1014,25 @@ const LeaveApplication = () => {
                     },
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
-
-                setLeaveApplication(response.data);
-                setApplicationStatus(response.data.status);
             } else {
-                // 기존 방식
-                const response = await finalApproveLeaveApplication(parseInt(id), token);
-                setLeaveApplication(response);
-                setApplicationStatus(response.status);
+                await finalApproveLeaveApplication(parseInt(id), token);
             }
 
-            await loadSignatures();
             alert("전결 승인이 완료되었습니다.");
+
+            // ✅ 바로 목록으로 이동
             navigate("/detail/leave-application");
+
         } catch (error: any) {
             console.error('전결 승인 실패:', error);
-            alert(`오류: ${error.message}`);
+            if (axios.isAxiosError(error)) {
+                const errorMessage = error.response?.data?.error || error.message;
+                alert(`오류: ${errorMessage}`);
+            } else {
+                alert(`오류: ${error.message}`);
+            }
         }
     };
-
 
     // 서명 클릭 핸들러 수정
     const handleSignatureClick = useCallback(async (signatureKey: keyof SignatureState) => {
@@ -1052,6 +1044,18 @@ const LeaveApplication = () => {
         if (!leaveApplication) {
             alert('휴가원 정보를 불러올 수 없습니다.');
             return;
+        }
+
+        // 검토 단계(isOptional=true)는 서명 불가
+        if (leaveApplication.approvalLine) {
+            const currentStep = leaveApplication.approvalLine.steps.find(
+                step => step.stepOrder === leaveApplication.currentStepOrder
+            );
+
+            if (currentStep?.isOptional === true) {
+                alert('검토 단계는 서명이 필요하지 않습니다. 승인 버튼을 눌러주세요.');
+                return;
+            }
         }
 
         if (!userSignatureImage) {
@@ -1263,29 +1267,56 @@ if (window.confirm('서명하시겠습니까?')) {
 }
 }, [currentUser, userSignatureImage, signatures, leaveApplication, id, token, applicantInfo.department, checkApprovalPermissions]);
 
-const checkCanSign = useCallback((signatureKey: keyof SignatureState) => {
-    if (!currentUser || !leaveApplication) return false;
+    const checkCanSign = useCallback((signatureKey: keyof SignatureState) => {
+        if (!currentUser || !leaveApplication) return false;
 
-    // ✅ 신청자 서명은 항상 DRAFT 상태에서만 가능
-    if (signatureKey === 'applicant') {
-        return (currentUser.id === leaveApplication.applicantId &&
-            leaveApplication.status === 'DRAFT');
-    }
+        // 신청자 서명은 항상 DRAFT 상태에서만 가능
+        if (signatureKey === 'applicant') {
+            return (currentUser.id === leaveApplication.applicantId &&
+                leaveApplication.status === 'DRAFT');
+        }
 
-    // ✅ DRAFT 상태에서는 신청자 외 다른 서명 불가
-    if (leaveApplication.status === 'DRAFT') {
-        return false;
-    }
+        // DRAFT 상태에서는 신청자 외 다른 서명 불가
+        if (leaveApplication.status === 'DRAFT') {
+            return false;
+        }
 
-    // 결재라인 사용 여부 확인
-    const usingApprovalLine = leaveApplication.approvalLine != null;
+        // ✅ 결재라인 사용 - currentApproverId로만 판단
+        if (leaveApplication.approvalLine) {
+            return currentUser.id === leaveApplication.currentApproverId;
+        }
 
-    if (usingApprovalLine) {
-        // 결재라인 기반 - currentApproverId로만 판단
-        return currentUser.id === leaveApplication.currentApproverId;
-    }
+        // ❌ 하드코딩 방식 (하위 호환용 - 결재라인 없는 경우)
+        const currentStep = leaveApplication.currentApprovalStep;
 
-}, [currentUser, applicantInfo]);
+        switch (signatureKey) {
+            case 'substitute':
+                return (currentUser.id === leaveApplication.substituteId &&
+                    currentStep === 'SUBSTITUTE_APPROVAL');
+            case 'departmentHead':
+                return (currentUser.jobLevel === "1" &&
+                    currentUser.deptCode === applicantInfo.department &&
+                    currentStep === 'DEPARTMENT_HEAD_APPROVAL');
+            case 'hrStaff':
+                return !!(
+                    currentUser.permissions?.includes("HR_LEAVE_APPLICATION") &&
+                    ["0", "1"].includes(currentUser.jobLevel) &&
+                    (currentUser.role === "ADMIN" || currentUser.role === "HR") &&
+                    currentStep === 'HR_STAFF_APPROVAL'
+                );
+            case 'centerDirector':
+                return (currentUser.jobLevel === "2" &&
+                    currentStep === 'CENTER_DIRECTOR_APPROVAL');
+            case 'adminDirector':
+                return (currentUser.jobLevel === "4" &&
+                    currentStep === 'ADMIN_DIRECTOR_APPROVAL');
+            case 'ceoDirector':
+                return (currentUser.jobLevel === "5" &&
+                    currentStep === 'CEO_DIRECTOR_APPROVAL');
+            default:
+                return false;
+        }
+    }, [currentUser, leaveApplication, applicantInfo.department]);
 
 // 인사권한 확인
 useEffect(() => {
@@ -1785,6 +1816,20 @@ return (
                                         const sigKey = positionMap[index];
                                         const signatureState = signatures[sigKey]?.[0];
 
+                                        const correspondingStep = leaveApplication?.approvalLine?.steps?.find(
+                                            step => {
+                                                // SPECIFIC_USER 중에서 서명이 필요한(isOptional=false) 단계만 카운트
+                                                if (step.approverType !== 'SPECIFIC_USER' || step.isOptional) return false;
+
+                                                // 현재 몇 번째 서명 칸인지 계산
+                                                const signatureSteps = leaveApplication.approvalLine!.steps.filter(
+                                                    s => s.approverType === 'SPECIFIC_USER' && !s.isOptional
+                                                );
+                                                const stepIndex = signatureSteps.indexOf(step);
+                                                return stepIndex === index;
+                                            }
+                                        );
+
                                         const flagMap: Record<number, boolean> = {
                                             0: leaveApplication?.isHrStaffApproved ?? false,
                                             1: leaveApplication?.isCenterDirectorApproved ?? false,
@@ -1822,10 +1867,26 @@ return (
                                             <td key={index} className="signature-cell">
                                                 <div
                                                     className="signature-area"
-                                                    onClick={() => handleSignatureClick(sigKey)}
+                                                    onClick={() => {
+                                                        // ✅ 검토 단계는 클릭 불가
+                                                        if (correspondingStep?.isOptional) {
+                                                            alert('검토 단계는 서명이 필요하지 않습니다.');
+                                                            return;
+                                                        }
+                                                        handleSignatureClick(sigKey);
+                                                    }}
+                                                    style={{
+                                                        cursor: correspondingStep?.isOptional ? 'default' : 'pointer',
+                                                        backgroundColor: correspondingStep?.isOptional ? '#f0f0f0' : 'transparent'
+                                                    }}
                                                 >
                                                     {(() => {
-                                                        // ✅ 1. sig.text 우선! (전결 "전결처리!" 표시)
+                                                        // ✅ 검토 단계 표시
+                                                        if (correspondingStep?.isOptional) {
+                                                            return <span style={{ color: '#666', fontSize: '12px' }}>검토 단계</span>;
+                                                        }
+
+                                                        // 기존 로직 유지
                                                         if (signatureState?.text === '전결처리!') {
                                                             return (
                                                                 <div className="final-approval-mark">
@@ -1835,17 +1896,14 @@ return (
                                                             );
                                                         }
 
-                                                        // ✅ 2. 이미지 있음
                                                         if (signatureState?.imageUrl && !signatureState?.isSkipped) {
                                                             return <img src={signatureState.imageUrl.startsWith('data:image/') ? signatureState.imageUrl : `data:image/png;base64,${signatureState.imageUrl}`} alt="" style={{width:70,height:'auto'}} />;
                                                         }
 
-                                                        // ✅ 3. 일반 승인
                                                         if (signatureState?.isSigned) {
-                                                            return <span className="signature-text">{signatureState.text || '승인'}</span>;  // ← text 우선!
+                                                            return <span className="signature-text">{signatureState.text || '승인'}</span>;
                                                         }
 
-                                                        // 4. 대기
                                                         return <span className="signature-placeholder">클릭하여 서명 후 승인</span>;
                                                     })()}
                                                 </div>
@@ -2516,19 +2574,25 @@ return (
                                 onClick={() => handleManagerApproval('approve')}
                                 className="btn-approve"
                                 disabled={(() => {
-                                    // ✅ 결재라인에서 현재 단계의 서명 타입 확인
-                                    const currentProcess = leaveApplication?.approvalLine?.steps?.find(
+                                    const currentStep = leaveApplication?.approvalLine?.steps?.find(
                                         step => step.stepOrder === leaveApplication?.currentStepOrder
                                     );
 
-                                    const signatureKey = currentProcess?.approverType === 'SUBSTITUTE' ? 'substitute' :
-                                        currentProcess?.approverType === 'DEPARTMENT_HEAD' ? 'departmentHead' :
-                                            currentProcess?.approverType === 'HR_STAFF' ? 'hrStaff' :
-                                                currentProcess?.approverType === 'CENTER_DIRECTOR' ? 'centerDirector' :
-                                                    currentProcess?.approverType === 'ADMIN_DIRECTOR' ? 'adminDirector' :
-                                                        currentProcess?.approverType === 'CEO_DIRECTOR' ? 'ceoDirector' : null;
+                                    if (!currentStep) return true;
 
-                                    return signatureKey ? !signatures[signatureKey]?.[0]?.isSigned : true;
+                                    // ✅ 검토 단계는 서명 없이 승인 가능
+                                    if (currentStep.isOptional === true) {
+                                        return false;
+                                    }
+
+                                    // ✅ 대직자는 substitute 서명 확인
+                                    if (currentStep.approverType === 'SUBSTITUTE') {
+                                        return !signatures.substitute?.[0]?.isSigned;
+                                    }
+
+                                    // ✅ SPECIFIC_USER는 간단하게 userSignatureImage 존재 여부로 판단
+                                    // (서명 클릭 시 userSignatureImage를 사용하므로)
+                                    return !userSignatureImage;
                                 })()}
                             >
                                 승인하기
@@ -2538,18 +2602,24 @@ return (
                                     onClick={() => handleFinalApproval()}
                                     className="btn-final-approve"
                                     disabled={(() => {
-                                        const currentProcess = leaveApplication?.approvalLine?.steps?.find(
+                                        const currentStep = leaveApplication?.approvalLine?.steps?.find(
                                             step => step.stepOrder === leaveApplication?.currentStepOrder
                                         );
 
-                                        const signatureKey = currentProcess?.approverType === 'SUBSTITUTE' ? 'substitute' :
-                                            currentProcess?.approverType === 'DEPARTMENT_HEAD' ? 'departmentHead' :
-                                                currentProcess?.approverType === 'HR_STAFF' ? 'hrStaff' :
-                                                    currentProcess?.approverType === 'CENTER_DIRECTOR' ? 'centerDirector' :
-                                                        currentProcess?.approverType === 'ADMIN_DIRECTOR' ? 'adminDirector' :
-                                                            currentProcess?.approverType === 'CEO_DIRECTOR' ? 'ceoDirector' : null;
+                                        if (!currentStep) return true;
 
-                                        return signatureKey ? !signatures[signatureKey]?.[0]?.isSigned : true;
+                                        // ✅ 검토 단계는 서명 없이 전결 가능
+                                        if (currentStep.isOptional === true) {
+                                            return false;
+                                        }
+
+                                        // ✅ 대직자는 substitute 서명 확인
+                                        if (currentStep.approverType === 'SUBSTITUTE') {
+                                            return !signatures.substitute?.[0]?.isSigned;
+                                        }
+
+                                        // ✅ SPECIFIC_USER는 userSignatureImage 존재 여부로 판단
+                                        return !userSignatureImage;
                                     })()}
                                 >
                                     전결
@@ -2590,7 +2660,7 @@ return (
                                 }}
                                 className="btn-view-reason"
                             >
-                                반려 사유 확인
+                            반려 사유 확인
                             </button>
                         </>
                     )}
