@@ -381,6 +381,10 @@
     color: #475569;
 }
 
+.text-blue {
+    color: #3b82f6 !important;
+}
+
 /* 반응형 조정 (작은 화면에서 폰트 축소) */
 @media (max-width: 480px) {
     .work-type {

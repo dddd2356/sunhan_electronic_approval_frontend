@@ -18,6 +18,7 @@ import isBetween from 'dayjs/plugin/isBetween'; // 플러그인 추가
 import RejectModal from '../../../components/RejectModal';
 import LeaveAttachments from "../../../components/LeaveAttachments";
 import ApprovalLineSelector from "../../../components/ApprovalLineSelector";
+import OrganizationChart from "../../../components/OrganizationChart";
 
 dayjs.extend(isBetween);
 
@@ -69,7 +70,7 @@ interface ConfirmedApprovalLineData {
 }
 
 interface UserInfo {
-    userId?: string;
+    userId: string;
     department: string;
     name: string;
     position: string;
@@ -149,7 +150,7 @@ const LeaveApplication = () => {
     const [cookies] = useCookies(['accessToken']);
     const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const navigate = useNavigate();
-    const [candidates, setCandidates] = useState<{ userId: string; userName: string; jobLevel: string }[]>([]);
+    //const [candidates, setCandidates] = useState<{ userId: string; userName: string; jobLevel: string }[]>([]);
     const [signatures, setSignatures] = useState<Record<string, SignatureData[]>>({
         applicant: [{ text: "", imageUrl: undefined, isSigned: false, signatureDate: undefined }],
         substitute: [{ text: "", imageUrl: undefined, isSigned: false, signatureDate: undefined }],
@@ -194,6 +195,7 @@ const LeaveApplication = () => {
 
     // 신청자 정보 (데이터베이스에서 가져올 예정)
     const [applicantInfo, setApplicantInfo] = useState<UserInfo>({
+        userId:'',
         department: '',
         name: '',
         position: '',
@@ -211,6 +213,16 @@ const LeaveApplication = () => {
         phone: ''
     });
 
+    const [departmentHeadInfo, setDepartmentHeadInfo] = useState<UserInfo>({
+        userId: '',
+        department: '',
+        name: '',
+        position: '',
+        contact: '',
+        phone: ''
+    });
+    const [showSubstituteSelector, setShowSubstituteSelector] = useState(false);
+    const [showDeptHeadSelector, setShowDeptHeadSelector] = useState(false);
     const [leaveApplication, setLeaveApplication] = useState<LeaveApplicationData | null>(null);
     const [applicationStatus, setApplicationStatus] = useState<string>('DRAFT'); // status 대신 applicationStatus 사용
     const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -447,6 +459,14 @@ const LeaveApplication = () => {
                 name: substituteInfo.name,
                 position: substituteInfo.position
             } : null,
+            departmentHeadInfo: departmentHeadInfo.userId ? {
+                userId: departmentHeadInfo.userId,
+                name: departmentHeadInfo.name,
+                position: departmentHeadInfo.position,
+                department: departmentHeadInfo.department,
+                contact: departmentHeadInfo.contact,
+                phone: departmentHeadInfo.phone
+            } : null,
             leaveTypes: selectedLeaveTypes,
             leaveContent: leaveContent,
             flexiblePeriods: validFlexiblePeriods, // 유효한 기간만 전송
@@ -623,12 +643,21 @@ const LeaveApplication = () => {
             return;
         }
 
-        // 추가: 대직자 선택 확인 (대직자 필요한 결재라인인데 없으면 막기)
+        // ✅ 1. 대직자/부서장 확인
         if (selectedApprovalLineId) {
             const selectedLine = approvalLines.find(line => line.id === selectedApprovalLineId);
+
             const hasSubstitute = selectedLine?.steps.some(step => step.approverType === 'SUBSTITUTE');
+            const hasDepartmentHead = selectedLine?.steps.some(step => step.approverType === 'DEPARTMENT_HEAD');
+
             if (hasSubstitute && !substituteInfo.userId) {
                 alert('대직자가 포함된 결재라인을 선택하셨습니다. 대직자를 선택해주세요.');
+                return;
+            }
+
+            // ✅ 부서장 확인 추가
+            if (hasDepartmentHead && !departmentHeadInfo.userId) {
+                alert('부서장이 포함된 결재라인을 선택하셨습니다. 부서장을 선택해주세요.');
                 return;
             }
         }
@@ -664,16 +693,21 @@ const LeaveApplication = () => {
         }
 
         try {
-            // 6. 폼 데이터 동기화 (임시저장)
             await syncFormData();
-
-            // 서명 완료 후
             await loadSignatures();
 
-            // 8. 제출 API 호출
+            // ✅ 제출 payload에 substituteInfo와 departmentHeadInfo 추가
             const submitPayload: any = {
-                approvalLineId: selectedApprovalLineId
+                approvalLineId: selectedApprovalLineId,
+                substituteInfo: substituteInfo.userId ? {
+                    userId: substituteInfo.userId,
+                    name: substituteInfo.name,
+                    position: substituteInfo.position
+                } : null,  // ✅ null이 아닌지 확인
+                departmentHeadInfo: departmentHeadInfo.userId ? departmentHeadInfo : null
             };
+
+            console.log('Submit payload:', submitPayload);  // ✅ 로그 추가
 
             const response = await axios.post(
                 `/api/v1/leave-application/${id}/submit`,
@@ -701,7 +735,8 @@ const LeaveApplication = () => {
         id,
         selectedApprovalLineId,
         approvalLines,
-        substituteInfo.userId,
+        substituteInfo,
+        departmentHeadInfo,  // ✅ 추가
         signatures.applicant,
         currentUser,
         leaveTypes,
@@ -709,24 +744,26 @@ const LeaveApplication = () => {
         loadSignatures,
         token,
         navigate
-    ]); // ✅ 필요한 의존성만 추가
+    ]);
 
 
     // 결재라인 선택 확인 핸들러
     const handleApprovalLineConfirm = (data: ConfirmedApprovalLineData) => {
-        const { id, steps, hasSubstitute } = data;
+        const { id, steps } = data;
 
-        // Case 1: 대직자가 있는 결재라인 + 대직자 선택 안 됨 → 경고 (대직자 선택하라고)
-        if (hasSubstitute && !substituteInfo.userId) {  // substituteId 대신 substituteInfo.userId 사용 (코드 일치)
+        // ✅ 대직자/부서장 포함 여부 확인
+        const hasSubstitute = steps.some(step => step.approverType === 'SUBSTITUTE');
+        const hasDepartmentHead = steps.some(step => step.approverType === 'DEPARTMENT_HEAD');
+
+        // ✅ Case 1: 대직자 확인
+        if (hasSubstitute && !substituteInfo.userId) {
             alert('선택한 결재라인에 대직자가 포함되어 있습니다. 대직자를 선택해주세요.');
-            setShowApprovalLineSelector(true);  // 모달 다시 열기
+            setShowApprovalLineSelector(true);
             return;
         }
 
-        // Case 2: 대직자가 없는 결재라인 + 대직자 선택 됨 → confirm으로 제거 여부 물어보기
         if (!hasSubstitute && substituteInfo.userId) {
-            if (window.confirm('선택한 결재라인에 대직자가 포함되어 있지 않습니다. 기존 선택된 대직자를 제거하시겠습니까? 제거하지 않으면 다시 결재라인을 선택해주세요.')) {
-                // 대직자 제거 로직: 상태 초기화
+            if (window.confirm('선택한 결재라인에 대직자가 포함되어 있지 않습니다. 기존 선택된 대직자를 제거하시겠습니까?')) {
                 setSubstituteInfo({
                     userId: '',
                     department: '',
@@ -735,15 +772,37 @@ const LeaveApplication = () => {
                     contact: '',
                     phone: ''
                 });
-                // leaveApplication 상태도 동기화 (대직자 정보 초기화)
                 setLeaveApplication(prev => prev ? { ...prev, substituteId: '', substituteName: '' } : prev);
             } else {
-                setShowApprovalLineSelector(true);  // 모달 다시 열기
+                setShowApprovalLineSelector(true);
                 return;
             }
         }
 
-        // 통과 시 상태 업데이트 (ApprovalLine 타입 맞춤)
+        // ✅ Case 2: 부서장 확인 (동일한 로직)
+        if (hasDepartmentHead && !departmentHeadInfo.userId) {
+            alert('선택한 결재라인에 부서장이 포함되어 있습니다. 부서장을 선택해주세요.');
+            setShowApprovalLineSelector(true);
+            return;
+        }
+
+        if (!hasDepartmentHead && departmentHeadInfo.userId) {
+            if (window.confirm('선택한 결재라인에 부서장이 포함되어 있지 않습니다. 기존 선택된 부서장을 제거하시겠습니까?')) {
+                setDepartmentHeadInfo({
+                    userId: '',
+                    department: '',
+                    name: '',
+                    position: '',
+                    contact: '',
+                    phone: ''
+                });
+            } else {
+                setShowApprovalLineSelector(true);
+                return;
+            }
+        }
+
+        // 통과 시 상태 업데이트
         setApprovalLine({
             id,
             name: approvalLines.find(line => line.id === id)?.name || '',
@@ -752,7 +811,6 @@ const LeaveApplication = () => {
         });
         setSelectedApprovalLineId(id);
         setShowApprovalLineSelector(false);
-
         setIsSubmitPending(true);
     };
 
@@ -1046,6 +1104,21 @@ const LeaveApplication = () => {
             return;
         }
 
+        // ✅ 부서장 서명 시 선택 여부 확인
+        if (signatureKey === 'departmentHead') {
+            // DRAFT 상태에서 부서장이 선택되지 않았으면 선택 모달 열기
+            if (applicationStatus === 'DRAFT' && !departmentHeadInfo.userId) {
+                setShowDeptHeadSelector(true);
+                return;
+            }
+
+            // 부서장이 선택되었는데 본인이 아니면 서명 불가
+            if (departmentHeadInfo.userId && currentUser.id !== departmentHeadInfo.userId) {
+                alert('선택된 부서장만 서명할 수 있습니다.');
+                return;
+            }
+        }
+
         // 검토 단계(isOptional=true)는 서명 불가
         if (leaveApplication.approvalLine) {
             const currentStep = leaveApplication.approvalLine.steps.find(
@@ -1265,7 +1338,9 @@ if (window.confirm('서명하시겠습니까?')) {
         }
     }
 }
-}, [currentUser, userSignatureImage, signatures, leaveApplication, id, token, applicantInfo.department, checkApprovalPermissions]);
+}, [currentUser, userSignatureImage, signatures, leaveApplication, id, token, applicantInfo.department, checkApprovalPermissions,
+        departmentHeadInfo,
+        applicationStatus]);
 
     const checkCanSign = useCallback((signatureKey: keyof SignatureState) => {
         if (!currentUser || !leaveApplication) return false;
@@ -1281,6 +1356,20 @@ if (window.confirm('서명하시겠습니까?')) {
             return false;
         }
 
+        // ✅ 부서장 서명 권한 확인
+        if (signatureKey === 'departmentHead') {
+            // 결재라인 사용 시
+            if (leaveApplication.approvalLine) {
+                return currentUser.id === leaveApplication.currentApproverId;
+            }
+
+            // ❌ 하드코딩 방식 (하위 호환용)
+            const currentStep = leaveApplication.currentApprovalStep;
+            return (currentUser.jobLevel === "1" &&
+                currentUser.deptCode === applicantInfo.department &&
+                currentStep === 'DEPARTMENT_HEAD_APPROVAL');
+        }
+
         // ✅ 결재라인 사용 - currentApproverId로만 판단
         if (leaveApplication.approvalLine) {
             return currentUser.id === leaveApplication.currentApproverId;
@@ -1293,10 +1382,6 @@ if (window.confirm('서명하시겠습니까?')) {
             case 'substitute':
                 return (currentUser.id === leaveApplication.substituteId &&
                     currentStep === 'SUBSTITUTE_APPROVAL');
-            case 'departmentHead':
-                return (currentUser.jobLevel === "1" &&
-                    currentUser.deptCode === applicantInfo.department &&
-                    currentStep === 'DEPARTMENT_HEAD_APPROVAL');
             case 'hrStaff':
                 return !!(
                     currentUser.permissions?.includes("HR_LEAVE_APPLICATION") &&
@@ -1400,99 +1485,101 @@ const handleDownload = useCallback(
     [id, token]
 );
 
-useEffect(() => {
-    const fetchApplicationData = async () => {
-        if (!id || !token) {
-            navigate('/detail/leave-application');
-            return;
-        }
+    useEffect(() => {
+        const fetchApplicationData = async () => {
+            if (!id || !token) {
+                navigate('/detail/leave-application');
+                return;
+            }
 
-        try {
-            // 1. 현재 사용자 정보 및 서명 이미지 가져오기
-            const userRes = await axios.get('/api/v1/user/me', { headers: { Authorization: `Bearer ${token}` } });
-            const userData = userRes.data;
-            const fetchedUser: User = {
-                id: String(userData.userId),
-                name: String(userData.userName || userData.name || ''),
-                jobLevel: String(userData.jobLevel || ''),
-                role: String(userData.role || ''),
-                signatureImageUrl: userData.signatureImageUrl ? String(userData.signatureImageUrl) : undefined,
-                deptCode: userData.deptCode ? String(userData.deptCode) : undefined,
-                jobType: userData.jobType ? String(userData.jobType) : undefined,
-                permissions: userData.permissions || [],
-            };
-            setCurrentUser(fetchedUser);
-
-            // 2. 서명 이미지 가져오기 (404 무시)
             try {
-                const userSigImg = await fetchUserSignatureFromDB(token);
-                setUserSignatureImage(userSigImg);
-            } catch (sigError) {
-                console.warn('서명 이미지 없음 (정상):', sigError);
-                setUserSignatureImage(null);
-            }
+                // 1. 현재 사용자 정보 및 서명 이미지 가져오기
+                const userRes = await axios.get('/api/v1/user/me', { headers: { Authorization: `Bearer ${token}` } });
+                const userData = userRes.data;
+                const fetchedUser: User = {
+                    id: String(userData.userId),
+                    name: String(userData.userName || userData.name || ''),
+                    jobLevel: String(userData.jobLevel || ''),
+                    role: String(userData.role || ''),
+                    signatureImageUrl: userData.signatureImageUrl ? String(userData.signatureImageUrl) : undefined,
+                    deptCode: userData.deptCode ? String(userData.deptCode) : undefined,
+                    jobType: userData.jobType ? String(userData.jobType) : undefined,
+                    permissions: userData.permissions || [],
+                };
+                setCurrentUser(fetchedUser);
 
-            // 2. 휴가원 상세 데이터 가져오기
-            const appResponse = await axios.get(`/api/v1/leave-application/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const appData = appResponse.data;
-            setLeaveApplication(appData);
-
-            // appData.attachments가 있을 경우 AttachmentDto 형태로 안전 매핑합니다 .
-            if (appData.attachments && Array.isArray(appData.attachments)) {
-                const mappedAttachments = appData.attachments.map((a: any) => ({
-                    id: Number(a.id ?? a.attachmentId ?? 0),
-                    originalFileName: String(a.originalFileName ?? a.name ?? a.filename ?? ''),
-                    fileType: String(a.fileType ?? a.contentType ?? a.mimeType ?? ''),
-                    fileSize: Number(a.fileSize ?? a.size ?? 0)
-                }));
-                setAttachments(mappedAttachments);
-            } else {
-                setAttachments([]);
-            }
-
-            setSubstituteInfo(prev => ({
-                ...prev,
-                userId: appData.substituteId,
-                name: appData.substituteName,
-                position: appData.substitutePosition
-            }));
-            setApplicationStatus(appData.status);
-
-            // 2-1. 대직자 후보 목록을 로드
-            try {
-                const subsResp = await axios.get(
-                    '/api/v1/leave-application/substitute-candidates',
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
-                setCandidates(subsResp.data);
-            } catch (e) {
-                console.warn('대직자 후보 로드 실패:', e);
-                setCandidates([]);
-            }
-
-            // ** formData 변수 타입을 'any'로 명시하여 TypeScript 오류 해결**
-            let formData: any = {};
-            if (appData.formDataJson) {
+                // 2. 서명 이미지 가져오기 (404 무시)
                 try {
-                    formData = JSON.parse(appData.formDataJson);
-                    console.log('[fetchApplicationData] Parsed formDataJson:', formData);
-                } catch (e) {
-                    console.error('Failed to parse formDataJson:', e);
+                    const userSigImg = await fetchUserSignatureFromDB(token);
+                    setUserSignatureImage(userSigImg);
+                } catch (sigError) {
+                    console.warn('서명 이미지 없음 (정상):', sigError);
+                    setUserSignatureImage(null);
                 }
-            }
 
-            // **parsedData 또는 appData에서 데이터 추출**
-            const applicantInfoFromData = formData.applicantInfo || {
-                userId: appData.applicantId,
-                department: appData.applicantDept,
-                name: appData.applicantName,
-                position: getPositionByJobLevel(fetchedUser.jobLevel),
-                contact: appData.applicantContact,
-                phone: appData.applicantPhone
-            };
-            setApplicantInfo(applicantInfoFromData);
+                // 3. 휴가원 상세 데이터 가져오기
+                const appResponse = await axios.get(`/api/v1/leave-application/${id}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const appData = appResponse.data;
+                setLeaveApplication(appData);
+
+                // appData.attachments 매핑
+                if (appData.attachments && Array.isArray(appData.attachments)) {
+                    const mappedAttachments = appData.attachments.map((a: any) => ({
+                        id: Number(a.id ?? a.attachmentId ?? 0),
+                        originalFileName: String(a.originalFileName ?? a.name ?? a.filename ?? ''),
+                        fileType: String(a.fileType ?? a.contentType ?? a.mimeType ?? ''),
+                        fileSize: Number(a.fileSize ?? a.size ?? 0)
+                    }));
+                    setAttachments(mappedAttachments);
+                } else {
+                    setAttachments([]);
+                }
+
+                setApplicationStatus(appData.status);
+
+                // ✅ 5. formData 선언 (여기로 이동!)
+                let formData: any = {};
+                if (appData.formDataJson) {
+                    try {
+                        formData = JSON.parse(appData.formDataJson);
+                        console.log('[fetchApplicationData] Parsed formDataJson:', formData);
+                    } catch (e) {
+                        console.error('Failed to parse formDataJson:', e);
+                    }
+                }
+
+                // ✅ 6. 대직자 정보 설정 (formData 선언 후)
+                setSubstituteInfo(prev => ({
+                    ...prev,
+                    userId: appData.substituteId,
+                    name: appData.substituteName,
+                    position: appData.substitutePosition
+                }));
+
+                // ✅ 7. 부서장 정보 설정 (formData 선언 후)
+                if (formData.departmentHeadInfo) {
+                    setDepartmentHeadInfo({
+                        userId: formData.departmentHeadInfo.userId || '',
+                        department: formData.departmentHeadInfo.department || '',
+                        name: formData.departmentHeadInfo.name || '',
+                        position: formData.departmentHeadInfo.position || '',
+                        contact: formData.departmentHeadInfo.contact || '',
+                        phone: formData.departmentHeadInfo.phone || ''
+                    });
+                }
+
+                // 8. 신청자 정보 설정
+                const applicantInfoFromData = formData.applicantInfo || {
+                    userId: appData.applicantId,
+                    department: appData.applicantDept,
+                    name: appData.applicantName,
+                    position: getPositionByJobLevel(fetchedUser.jobLevel),
+                    contact: appData.applicantContact,
+                    phone: appData.applicantPhone
+                };
+                setApplicantInfo(applicantInfoFromData);
 
             // leaveTypes 배열을 Record<string, boolean>으로 변환
             const initialLeaveTypes: Record<string, boolean> = {
@@ -1643,40 +1730,6 @@ useEffect(() => {
 
     fetchApplicationData();
 }, [id, token, navigate]);
-
-useEffect(() => {
-    async function loadCandidates() {
-        try {
-            // 모든 사용자가 같은 부서 직원을 볼 수 있도록 변경
-            const resp = await axios.get('/api/v1/leave-application/substitute-candidates', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (resp.status === 200) {
-                setCandidates(resp.data);
-                console.log('대직자 후보 목록 로드 성공:', resp.data);
-            }
-        } catch (e) {
-            console.error('대직자 후보 로드 실패', e);
-            if (axios.isAxiosError(e)) {
-                if (e.response?.status === 403) {
-                    console.log('대직자 후보 조회 권한 없음');
-                } else if (e.response?.status === 404) {
-                    console.log('같은 부서 직원이 없음');
-                } else {
-                    console.error('대직자 후보 API 오류:', e.response?.data);
-                }
-            }
-            setCandidates([]);
-        }
-    }
-
-    if (applicationStatus === 'DRAFT') {
-        loadCandidates();
-    } else {
-        setCandidates([]);
-    }
-}, [token, applicationStatus]);
 
 // signatures가 바뀔 때마다 approvalData 자동 동기화
 useEffect(() => {
@@ -1883,7 +1936,8 @@ return (
                                                     {(() => {
                                                         // ✅ 검토 단계 표시
                                                         if (correspondingStep?.isOptional) {
-                                                            return <span style={{ color: '#666', fontSize: '12px' }}>검토 단계</span>;
+                                                            return <span
+                                                                style={{color: '#666', fontSize: '12px'}}>검토 단계</span>;
                                                         }
 
                                                         // 기존 로직 유지
@@ -1897,14 +1951,18 @@ return (
                                                         }
 
                                                         if (signatureState?.imageUrl && !signatureState?.isSkipped) {
-                                                            return <img src={signatureState.imageUrl.startsWith('data:image/') ? signatureState.imageUrl : `data:image/png;base64,${signatureState.imageUrl}`} alt="" style={{width:70,height:'auto'}} />;
+                                                            return <img
+                                                                src={signatureState.imageUrl.startsWith('data:image/') ? signatureState.imageUrl : `data:image/png;base64,${signatureState.imageUrl}`}
+                                                                alt="" style={{width: 70, height: 'auto'}}/>;
                                                         }
 
                                                         if (signatureState?.isSigned) {
-                                                            return <span className="signature-text">{signatureState.text || '승인'}</span>;
+                                                            return <span
+                                                                className="signature-text">{signatureState.text || '승인'}</span>;
                                                         }
 
-                                                        return <span className="signature-placeholder">클릭하여 서명 후 승인</span>;
+                                                        return <span
+                                                            className="signature-placeholder">클릭하여 서명 후 승인</span>;
                                                     })()}
                                                 </div>
                                             </td>
@@ -1922,68 +1980,33 @@ return (
                                         const sigKey = positionMap[index];
                                         const signatureState = signatures[sigKey]?.[0];
 
-                                        const flagMap: Record<number, boolean> = {
-                                            0: leaveApplication?.isHrStaffApproved ?? false,
-                                            1: leaveApplication?.isCenterDirectorApproved ?? false,
-                                            2: leaveApplication?.isAdminDirectorApproved ?? false,
-                                            3: leaveApplication?.isCeoDirectorApproved ?? false
-                                        };
-
-                                        const stepMap: Record<number, string> = {
-                                            0: 'HR_STAFF_APPROVAL',
-                                            1: 'CENTER_DIRECTOR_APPROVAL',
-                                            2: 'ADMIN_DIRECTOR_APPROVAL',
-                                            3: 'CEO_DIRECTOR_APPROVAL'
-                                        };
-
-                                        const currentStepForIndex = stepMap[index];
-                                        const finalApprovalStep = leaveApplication?.finalApprovalStep;
-
-                                        // 실제 전결 처리한 단계인지 확인
-                                        const isActualFinalApprovalStep = (
-                                            leaveApplication?.status === 'APPROVED' &&
-                                            leaveApplication?.isFinalApproved &&
-                                            finalApprovalStep === currentStepForIndex
-                                        );
-
-                                        // 전결로 인해 자동 승인된 단계인지 확인
-                                        const isAutoApprovedByFinal = (
-                                            leaveApplication?.status === 'APPROVED' &&
-                                            leaveApplication?.isFinalApproved &&
-                                            finalApprovalStep &&
-                                            flagMap[index] && // 승인 플래그가 true
-                                            !signatureState?.isSigned && // 실제 서명은 없음
-                                            !isActualFinalApprovalStep // 실제 전결 처리한 단계가 아님
-                                        );
-
                                         return (
                                             <td key={index} className="slash-cell">
                                                 {(() => {
-                                                    // 1. 실제 서명이 있는 경우 - 서명 날짜 우선 표시
+                                                    // ✅ 1. "전결처리!" 텍스트가 있으면 signatureDate 표시
+                                                    if (signatureState?.text === '전결처리!' && signatureState?.signatureDate) {
+                                                        return dayjs(signatureState.signatureDate).format('YYYY. MM. DD.');
+                                                    }
+
+                                                    // ✅ 2. 실제 서명이 있는 경우 - 서명 날짜 표시
                                                     if (signatureState?.isSigned && signatureState?.signatureDate) {
                                                         return dayjs(signatureState.signatureDate).format('YYYY. MM. DD.');
                                                     }
 
-                                                    // 2. 전결 승인된 경우의 날짜 로직
+                                                    // ✅ 3. 전결 승인된 경우의 날짜 로직
                                                     if (leaveApplication?.status === 'APPROVED' && leaveApplication?.isFinalApproved) {
-                                                        // 실제 전결 처리한 단계 또는 자동 승인된 단계의 경우 전결 승인 날짜 표시
-                                                        if (isActualFinalApprovalStep || isAutoApprovedByFinal) {
-                                                            // finalApprovalDate가 있으면 사용, 없으면 updatedAt 사용
-                                                            const approvalDate = leaveApplication?.finalApprovalDate || leaveApplication?.updatedAt;
-                                                            return approvalDate
-                                                                // dayjs를 사용하여 형식 변경
-                                                                ? dayjs(approvalDate).format('YYYY. MM. DD.')
-                                                                : '/';
+                                                        const approvalDate = leaveApplication?.finalApprovalDate || leaveApplication?.updatedAt;
+                                                        if (approvalDate) {
+                                                            return dayjs(approvalDate).format('YYYY. MM. DD.');
                                                         }
                                                     }
 
-                                                    // 3. item.date가 있으면 표시 (기존 승인 데이터)
+                                                    // ✅ 4. item.date가 있으면 표시
                                                     if (item.date) {
-                                                        // dayjs를 사용하여 형식 변경
                                                         return dayjs(item.date).format('YYYY. MM. DD.');
                                                     }
 
-                                                    // 4. 그 외의 경우 '/' 표시
+                                                    // ✅ 5. 그 외 '/' 표시
                                                     return '/';
                                                 })()}
                                             </td>
@@ -2034,32 +2057,112 @@ return (
                             <td className="signature-box" rowSpan={3}>
                                 <div
                                     className="signature-area-main"
-                                    onClick={() => handleSignatureClick('departmentHead')}
+                                    onClick={() => {
+                                        // ✅ DRAFT 상태에서는 부서장 선택
+                                        if (applicationStatus === 'DRAFT') {
+                                            if (!departmentHeadInfo.userId) {
+                                                setShowDeptHeadSelector(true);
+                                                return;
+                                            }
+                                            // 부서장이 선택되었는데 본인이면 서명 가능
+                                            if (currentUser?.id === departmentHeadInfo.userId) {
+                                                handleSignatureClick('departmentHead');
+                                                return;
+                                            }
+                                            // 부서장이 선택되었는데 본인이 아니면 안내
+                                            alert('선택된 부서장만 서명할 수 있습니다.');
+                                            return;
+                                        }
+
+                                        // ✅ PENDING 상태에서는 서명 권한 확인
+                                        if (checkCanSign('departmentHead')) {
+                                            handleSignatureClick('departmentHead');
+                                        } else {
+                                            alert('서명할 권한이 없습니다.');
+                                        }
+                                    }}
+                                    style={{
+                                        cursor: 'pointer'
+                                    }}
                                 >
-                                    {(
-                                        signatures.departmentHead?.[0]?.isSigned
-                                        || leaveApplication?.isDeptHeadApproved
-                                    ) ? (
-                                        signatures.departmentHead?.[0]?.imageUrl
-                                            ? <img
-                                                src={
-                                                    signatures.departmentHead[0].imageUrl.startsWith('data:image/')
-                                                        ? signatures.departmentHead[0].imageUrl
-                                                        : `data:image/png;base64,${signatures.departmentHead[0].imageUrl}`
-                                                }
-                                                alt="부서장 서명"
-                                                className="signature-image"
-                                                style={{
-                                                    width: 120,
-                                                    height: 'auto',
-                                                    objectFit: 'contain'
-                                                }}
-                                            />
-                                            : <div className="signature-text">확인</div>
-                                    ) : (
-                                        <div className="signature-placeholder">클릭하여 서명</div>
-                                    )}
+                                    {(() => {
+                                        // ✅ 서명이 완료된 경우
+                                        if (signatures.departmentHead?.[0]?.isSigned || leaveApplication?.isDeptHeadApproved) {
+                                            if (signatures.departmentHead?.[0]?.imageUrl) {
+                                                return (
+                                                    <img
+                                                        src={
+                                                            signatures.departmentHead[0].imageUrl.startsWith('data:image/')
+                                                                ? signatures.departmentHead[0].imageUrl
+                                                                : `data:image/png;base64,${signatures.departmentHead[0].imageUrl}`
+                                                        }
+                                                        alt="부서장 서명"
+                                                        className="signature-image"
+                                                        style={{
+                                                            width: 120,
+                                                            height: 'auto',
+                                                            objectFit: 'contain'
+                                                        }}
+                                                    />
+                                                );
+                                            } else {
+                                                return <div className="signature-text">확인</div>;
+                                            }
+                                        }
+
+                                        // ✅ 부서장이 선택되었지만 서명은 안 된 경우
+                                        if (departmentHeadInfo.userId && departmentHeadInfo.name) {
+                                            return (
+                                                <div className="signature-placeholder">
+                                                    <div style={{fontSize: '12px', marginBottom: '5px'}}>
+                                                        {departmentHeadInfo.name}
+                                                    </div>
+                                                    <div>클릭하여 서명</div>
+                                                </div>
+                                            );
+                                        }
+
+                                        // ✅ 아직 부서장이 선택되지 않은 경우
+                                        if (applicationStatus === 'DRAFT') {
+                                            return <div className="signature-placeholder">클릭하여 부서장 선택</div>;
+                                        }
+
+                                        // ✅ DRAFT가 아닌데 부서장 정보가 없는 경우
+                                        return <div className="signature-placeholder">-</div>;
+                                    })()}
                                 </div>
+
+                                {/* ✅ 선택 해제 버튼 (DRAFT 상태 + 부서장 선택됨) */}
+                                {applicationStatus === 'DRAFT' && departmentHeadInfo.userId && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm('부서장 선택을 해제하시겠습니까?')) {
+                                                setDepartmentHeadInfo({
+                                                    userId: '',
+                                                    department: '',
+                                                    name: '',
+                                                    position: '',
+                                                    contact: '',
+                                                    phone: ''
+                                                });
+                                            }
+                                        }}
+                                        style={{
+                                            marginTop: '5px',
+                                            padding: '3px 8px',
+                                            fontSize: '11px',
+                                            cursor: 'pointer',
+                                            backgroundColor: '#dc3545',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '3px'
+                                        }}
+                                    >
+                                        해제
+                                    </button>
+                                )}
                             </td>
                         </tr>
                         <tr>
@@ -2323,70 +2426,73 @@ return (
                             <th className="main-header" colSpan={2}>대직자</th>
                             <td className="substitute-cell" colSpan={3}>
                                 <div className="substitute-info">
-                                    {/* 직책 입력은 항상 가능 */}
+                                    {/* 직책 */}
                                     <span>직책:</span>
                                     <input
                                         type="text"
-                                        value={substituteInfo.position}
+                                        value={substituteInfo.position || ''}
                                         readOnly
                                         className="form-input-inline"
                                         placeholder="직책"
                                     />
 
-                                    {/* 성명 선택은 JobLevel=0 사용자만 */}
+                                    {/* 성명 */}
                                     <span>성명:</span>
                                     {applicationStatus === 'DRAFT' ? (
-                                        <select
-                                            value={substituteInfo.userId}
-                                            onChange={e => {
-                                                const val = e.target.value;
-
-                                                if (val === "") {
-                                                    setSubstituteInfo({
-                                                        userId: '',
-                                                        name: '',
-                                                        position: '',
-                                                        department: '',
-                                                        contact: '',
-                                                        phone: ''
-                                                    });
-                                                    // ✅ 여기서 직접 동기화
-                                                    setLeaveApplication(prev => prev ? {
-                                                        ...prev,
-                                                        substituteId: '',
-                                                        substituteName: ''
-                                                    } : prev);
-                                                    return;
-                                                }
-
-                                                const sel = candidates.find(u => u.userId === val);
-                                                if (sel) {
-                                                    setSubstituteInfo({
-                                                        userId: sel.userId,
-                                                        name: sel.userName,
-                                                        position: getPositionByJobLevel(sel.jobLevel),
-                                                        department: '',
-                                                        contact: '',
-                                                        phone: ''
-                                                    });
-                                                    // ✅ 여기서 직접 동기화
-                                                    setLeaveApplication(prev => prev ? {
-                                                        ...prev,
-                                                        substituteId: sel.userId,
-                                                        substituteName: sel.userName
-                                                    } : prev);
-                                                }
-                                            }}
-                                        >
-                                            {/* [수정] 선택 없음 옵션 명시적으로 추가 */}
-                                            <option value="">— 선택 없음 —</option>
-
-                                            {candidates.map(u => (
-                                                <option key={u.userId} value={u.userId}>
-                                                    {u.userName} ({getPositionByJobLevel(u.jobLevel)})
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div style={{display: 'inline-flex', alignItems: 'center', gap: '8px'}}>
+                                            <input
+                                                type="text"
+                                                value={substituteInfo.name || ''}
+                                                readOnly
+                                                className="form-input-inline"
+                                                placeholder="조직도에서 선택"
+                                                style={{width: '150px'}}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowSubstituteSelector(true)}
+                                                style={{
+                                                    padding: '5px 10px',
+                                                    fontSize: '12px',
+                                                    backgroundColor: '#007bff',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '3px'
+                                                }}
+                                            >
+                                                선택
+                                            </button>
+                                            {substituteInfo.userId && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSubstituteInfo({
+                                                            userId: '',
+                                                            department: '',
+                                                            name: '',
+                                                            position: '',
+                                                            contact: '',
+                                                            phone: ''
+                                                        });
+                                                        setLeaveApplication(prev => prev ? {
+                                                            ...prev,
+                                                            substituteId: '',
+                                                            substituteName: ''
+                                                        } : prev);
+                                                    }}
+                                                    style={{
+                                                        padding: '5px 10px',
+                                                        fontSize: '12px',
+                                                        backgroundColor: '#dc3545',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '3px'
+                                                    }}
+                                                >
+                                                    해제
+                                                </button>
+                                            )}
+                                        </div>
                                     ) : (
                                         <input
                                             type="text"
@@ -2396,18 +2502,14 @@ return (
                                         />
                                     )}
 
-                                    {/* 선택된 대직자가 해당 API로 전송되고,
-                                            그 사람은 사인 클릭(handleSignatureClick('substitute'))로 서명 가능 */}
+                                    {/* 서명 */}
                                     <div
                                         className="signature-inline"
                                         onClick={() => handleSignatureClick('substitute')}
                                     >
-                                        {(
-                                            signatures.substitute?.[0]?.isSigned
-                                            || leaveApplication?.isSubstituteApproved
-                                        ) ? (
-                                            signatures.substitute[0]?.imageUrl
-                                                ? <img
+                                        {(signatures.substitute?.[0]?.isSigned || leaveApplication?.isSubstituteApproved) ? (
+                                            signatures.substitute[0]?.imageUrl ? (
+                                                <img
                                                     src={
                                                         signatures.substitute[0].imageUrl.startsWith('data:image/')
                                                             ? signatures.substitute[0].imageUrl
@@ -2415,13 +2517,11 @@ return (
                                                     }
                                                     alt="대직자 서명"
                                                     className="signature-image-inline"
-                                                    style={{
-                                                        width: 60,
-                                                        height: 'auto',
-                                                        objectFit: 'contain'
-                                                    }}
+                                                    style={{width: 60, height: 'auto', objectFit: 'contain'}}
                                                 />
-                                                : '(사인이 이미 서명되었습니다.)'
+                                            ) : (
+                                                '(사인이 이미 서명되었습니다.)'
+                                            )
                                         ) : (
                                             '(인)'
                                         )}
@@ -2429,6 +2529,80 @@ return (
                                 </div>
                             </td>
                         </tr>
+                        {/* 대직자 선택 모달 */}
+                        {showSubstituteSelector && (
+                            <div className="approval-line-modal-overlay"
+                                 onClick={() => setShowSubstituteSelector(false)}>
+                                <div className="approval-line-modal-content" onClick={(e) => e.stopPropagation()}>
+                                    <div className="approval-line-modal-header">
+                                        <h3>대직자 선택</h3>
+                                        <button
+                                            className="approval-line-modal-close"
+                                            onClick={() => setShowSubstituteSelector(false)}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    <div className="approval-line-modal-body">
+                                        <OrganizationChart
+                                            onUserSelect={(userId: string, userName: string, jobLevel: string) => {
+                                                setSubstituteInfo({
+                                                    userId: userId,
+                                                    department: applicantInfo.department,
+                                                    name: userName,
+                                                    position: getPositionByJobLevel(jobLevel),
+                                                    contact: '',
+                                                    phone: ''
+                                                });
+                                                setLeaveApplication(prev => prev ? {
+                                                    ...prev,
+                                                    substituteId: userId,
+                                                    substituteName: userName
+                                                } : prev);
+                                                setShowSubstituteSelector(false);
+                                            }}
+                                            selectedUserId={substituteInfo.userId || undefined}
+                                            allDepartments={true}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 부서장 선택 모달 */}
+                        {showDeptHeadSelector && (
+                            <div className="approval-line-modal-overlay" onClick={() => setShowDeptHeadSelector(false)}>
+                                <div className="approval-line-modal-content" onClick={(e) => e.stopPropagation()}>
+                                    <div className="approval-line-modal-header">
+                                        <h3>부서장 선택</h3>
+                                        <button
+                                            className="approval-line-modal-close"
+                                            onClick={() => setShowDeptHeadSelector(false)}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    <div className="approval-line-modal-body">
+                                        <OrganizationChart
+                                            onUserSelect={(userId: string, userName: string, jobLevel: string) => {
+                                                setDepartmentHeadInfo({
+                                                    userId: userId,
+                                                    department: applicantInfo.department,
+                                                    name: userName,
+                                                    position: getPositionByJobLevel(jobLevel),
+                                                    contact: '',
+                                                    phone: ''
+                                                });
+                                                setShowDeptHeadSelector(false);
+                                            }}
+                                            selectedUserId={departmentHeadInfo.userId || undefined}
+                                            allDepartments={true}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         </tbody>
                     </table>
 

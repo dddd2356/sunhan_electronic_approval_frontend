@@ -18,19 +18,12 @@ import './style.css';
 interface ApprovalStepData {
     stepOrder: number;
     stepName: string;
-    approverType: 'SPECIFIC_USER' | 'JOB_LEVEL' | 'DEPARTMENT_HEAD' | 'HR_STAFF' | 'SUBSTITUTE' | 'CENTER_DIRECTOR' | 'ADMIN_DIRECTOR' | 'CEO_DIRECTOR';
+    approverType: 'SPECIFIC_USER' | 'SUBSTITUTE' | 'DEPARTMENT_HEAD';
     approverId?: string | null;
     approverName?: string | null;
     jobLevel?: string | null;
     deptCode?: string | null;
     isOptional: boolean;
-}
-
-interface ApproverCandidate {
-    userId: string;
-    userName: string;
-    jobLevel: string;
-    deptCode?: string;
 }
 
 interface ApprovalLinePayload {
@@ -42,12 +35,8 @@ interface ApprovalLinePayload {
 
 const approverTypeOptions = [
     { value: 'SPECIFIC_USER', label: '특정 사용자 (조직도 선택)' },
-    { value: 'SUBSTITUTE', label: '대직자' },
-    { value: 'DEPARTMENT_HEAD', label: '부서장' },
-    { value: 'HR_STAFF', label: '인사팀' },
-    { value: 'CENTER_DIRECTOR', label: '센터장' },
-    { value: 'ADMIN_DIRECTOR', label: '행정원장' },
-    { value: 'CEO_DIRECTOR', label: '대표원장' }
+    { value: 'SUBSTITUTE', label: '대직자 (신청 시 선택)' },
+    { value: 'DEPARTMENT_HEAD', label: '부서장 (신청 시 선택)' }
 ];
 
 const jobLevelOptions = [
@@ -89,12 +78,6 @@ const MyApprovalLineEditor: React.FC = () => {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [ownerId, setOwnerId] = useState<string | null>(null); // createdBy from server when editing
     const isEditMode = Boolean(id);
-    const [approverCandidates, setApproverCandidates] = useState<Record<number, any[]>>({});
-    // 후보 목록 모달 상태 추가
-    const [showCandidatesModal, setShowCandidatesModal] = useState(false);
-    const [candidatesList, setCandidatesList] = useState<ApproverCandidate[]>([]);
-    const [loadingCandidates, setLoadingCandidates] = useState(false);
-
     const getJobLevelText = (jobLevel: string): string => {
         const levels: Record<string, string> = {
             '0': '사원',
@@ -230,17 +213,23 @@ const MyApprovalLineEditor: React.FC = () => {
 
     const validate = (): boolean => {
         const newErrors: Record<string, string> = {};
-        if (!lineName.trim()) newErrors.lineName = '결재라인 이름을 입력하세요';
-        if (steps.length === 0) newErrors.steps = '최소 1개 이상의 단계를 추가하세요';
+
+        if (!lineName.trim()) {
+            newErrors.lineName = '결재라인 이름을 입력하세요';
+        }
+
+        if (steps.length === 0) {
+            newErrors.steps = '최소 1개 이상의 단계를 추가하세요';
+        }
 
         steps.forEach((step, index) => {
-            //  SUBSTITUTE는 approverId 검증 제외
-            if (step.approverType === 'SUBSTITUTE') {
-                return; // 대직자는 제출 시점에 선택
+            // ✅ SUBSTITUTE와 DEPARTMENT_HEAD는 approverId 검증 제외
+            if (step.approverType === 'SUBSTITUTE' || step.approverType === 'DEPARTMENT_HEAD') {
+                return; // 제출 시점에 선택하므로 결재라인 생성 시에는 비어있어도 됨
             }
 
-            //  나머지 타입은 모두 approverId 필수
-            if (!step.approverId) {
+            // ✅ SPECIFIC_USER만 approverId 필수 (isOptional이 아닌 경우)
+            if (step.approverType === 'SPECIFIC_USER' && !step.isOptional && !step.approverId) {
                 newErrors[`step_${index}`] = `${step.stepOrder}단계: 승인자를 선택하세요`;
             }
         });
@@ -338,7 +327,7 @@ const MyApprovalLineEditor: React.FC = () => {
     };
 
     //  "사용자 선택" 버튼 클릭 시 후보 목록 조회
-    const handleOpenCandidatesModal = async (index: number) => {
+    const handleOpenCandidatesModal = (index: number) => {
         const step = steps[index];
 
         // SPECIFIC_USER는 조직도 사용
@@ -348,50 +337,16 @@ const MyApprovalLineEditor: React.FC = () => {
             return;
         }
 
-        // SUBSTITUTE는 후보 조회 불필요
+        // SUBSTITUTE는 제출 시 선택
         if (step.approverType === 'SUBSTITUTE') {
             alert('대직자는 휴가원 작성 시 신청자가 직접 선택합니다.');
             return;
         }
 
-        setCurrentEditingStep(index);
-        setLoadingCandidates(true);
-        setShowCandidatesModal(true);
-
-        try {
-            const res = await fetch(
-                `/api/v1/approval-lines/candidates?approverType=${step.approverType}`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            if (res.ok) {
-                const data = await res.json();
-                setCandidatesList(data);
-            } else {
-                const err = await res.json().catch(() => null);
-                alert(`후보 조회 실패: ${err?.error || res.statusText}`);
-                setShowCandidatesModal(false);
-            }
-        } catch (error) {
-            console.error('후보 조회 실패:', error);
-            alert('후보 목록을 불러오는 중 오류가 발생했습니다.');
-            setShowCandidatesModal(false);
-        } finally {
-            setLoadingCandidates(false);
-        }
-    };
-
-    //  후보 목록에서 사용자 선택 시
-    const handleCandidateSelected = (candidate: ApproverCandidate) => {
-        if (currentEditingStep !== null) {
-            const updatedSteps = [...steps];
-            updatedSteps[currentEditingStep].approverId = candidate.userId;
-            updatedSteps[currentEditingStep].approverName = candidate.userName;
-            updatedSteps[currentEditingStep].stepName = `${candidate.userName} 승인`;
-            setSteps(updatedSteps);
-            setShowCandidatesModal(false);
-            setCandidatesList([]);
-            setCurrentEditingStep(null);
+        // DEPARTMENT_HEAD는 제출 시 선택
+        if (step.approverType === 'DEPARTMENT_HEAD') {
+            alert('부서장은 휴가원 작성 시 신청자가 직접 선택합니다.');
+            return;
         }
     };
 
@@ -562,9 +517,14 @@ const MyApprovalLineEditor: React.FC = () => {
                                         </div>
 
                                         {/*  승인자 선택 UI - 타입별 분기 */}
+                                        {/*  승인자 선택 UI - 타입별 분기 */}
                                         {step.approverType === 'SUBSTITUTE' ? (
                                             <div className="approval-line-info-message">
                                                 ✅ 대직자는 휴가원 작성 시 신청자가 직접 선택합니다.
+                                            </div>
+                                        ) : step.approverType === 'DEPARTMENT_HEAD' ? (
+                                            <div className="approval-line-info-message">
+                                                ✅ 부서장은 휴가원 작성 시 신청자가 직접 선택합니다.
                                             </div>
                                         ) : (
                                             <div className="approval-line-form-group">
@@ -574,11 +534,7 @@ const MyApprovalLineEditor: React.FC = () => {
                                                         type="text"
                                                         value={step.approverName || ''}
                                                         readOnly
-                                                        placeholder={
-                                                            step.approverType === 'SPECIFIC_USER'
-                                                                ? "조직도에서 선택하세요"
-                                                                : "후보 목록에서 선택하세요"
-                                                        }
+                                                        placeholder="조직도에서 선택하세요"
                                                     />
                                                     <button
                                                         className="approval-line-btn-select-user"
@@ -590,8 +546,8 @@ const MyApprovalLineEditor: React.FC = () => {
                                                 </div>
                                                 {errors[`step_${index}`] && (
                                                     <span className="approval-line-error-message">
-                                                    {errors[`step_${index}`]}
-                                                </span>
+                                                        {errors[`step_${index}`]}
+                                                    </span>
                                                 )}
                                             </div>
                                         )}
@@ -639,61 +595,6 @@ const MyApprovalLineEditor: React.FC = () => {
                                     }
                                     allDepartments={true}
                                 />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* 후보 목록 모달 추가 */}
-                {showCandidatesModal && (
-                    <div className="approval-line-modal-overlay" onClick={() => {
-                        setShowCandidatesModal(false);
-                        setCandidatesList([]);
-                        setCurrentEditingStep(null);
-                    }}>
-                        <div className="approval-line-modal-content" onClick={(e) => e.stopPropagation()}>
-                            <div className="approval-line-modal-header">
-                                <h3>승인자 선택</h3>
-                                <button
-                                    className="approval-line-modal-close"
-                                    onClick={() => {
-                                        setShowCandidatesModal(false);
-                                        setCandidatesList([]);
-                                        setCurrentEditingStep(null);
-                                    }}
-                                >
-                                    <XCircle className="approval-line-icon" />
-                                </button>
-                            </div>
-                            <div className="approval-line-modal-body">
-                                {loadingCandidates ? (
-                                    <div className="loading-message">후보 목록을 불러오는 중...</div>
-                                ) : candidatesList.length === 0 ? (
-                                    <div className="empty-message">
-                                        해당 조건에 맞는 승인자가 없습니다.
-                                    </div>
-                                ) : (
-                                    <div className="candidates-list">
-                                        {candidatesList.map(candidate => (
-                                            <div
-                                                key={candidate.userId}
-                                                className="candidate-item"
-                                                onClick={() => handleCandidateSelected(candidate)}
-                                            >
-                                                <div className="candidate-info">
-                                                    <span className="candidate-name">{candidate.userName}</span>
-                                                    <span className="candidate-details">
-                                        {candidate.deptCode || ''} | {getJobLevelText(candidate.jobLevel)}
-                                    </span>
-                                                </div>
-                                                {currentEditingStep !== null &&
-                                                    steps[currentEditingStep]?.approverId === candidate.userId && (
-                                                        <CheckCircle className="selected-icon" />
-                                                    )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>

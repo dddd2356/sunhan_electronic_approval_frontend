@@ -549,11 +549,25 @@ const MainPage: React.FC = () => {
                                             </div>
                                             <div className="mp-stat-box highlight">
                                                 <span className="mp-stat-label">이월 사용</span>
-                                                <span className="mp-stat-value">{vacationStatus?.usedCarryoverDays || 0}</span>
+                                                <span
+                                                    className="mp-stat-value">{vacationStatus?.usedCarryoverDays || 0}</span>
                                             </div>
                                             <div className="mp-stat-box highlight">
                                                 <span className="mp-stat-label">정상 사용</span>
-                                                <span className="mp-stat-value">{vacationStatus?.usedRegularDays || 0}</span>
+                                                <span
+                                                    className="mp-stat-value">{vacationStatus?.usedRegularDays || 0}</span>
+                                            </div>
+                                            <div className="mp-stat-box">
+                                                <span className="mp-stat-label">이월 미사용</span>
+                                                <span className="mp-stat-value text-blue">
+                                                {(vacationStatus?.annualCarryoverDays || 0) - (vacationStatus?.usedCarryoverDays || 0)}
+                                            </span>
+                                            </div>
+                                            <div className="mp-stat-box">
+                                                <span className="mp-stat-label">정상 미사용</span>
+                                                <span className="mp-stat-value text-blue">
+                                                {(vacationStatus?.annualRegularDays || 0) - (vacationStatus?.usedRegularDays || 0)}
+                                            </span>
                                             </div>
                                             <div className="mp-stat-box">
                                                 <span className="mp-stat-label">잔여</span>
