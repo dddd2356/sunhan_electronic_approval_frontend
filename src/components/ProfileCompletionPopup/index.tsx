@@ -302,7 +302,6 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
             }
 
             const updatedUser = await response.json(); // 업데이트된 사용자 객체를 받음
-            alert('프로필 정보가 성공적으로 업데이트되었습니다.');
             onUpdateSuccess(updatedUser); // 업데이트 성공 콜백 호출, 업데이트된 사용자 정보 전달
             onClose(); // 팝업 닫기
 
@@ -451,7 +450,17 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
                                     <SignatureCanvas
                                         ref={sigCanvas}
                                         penColor="black"
-                                        canvasProps={{width: 400, height: 200, className: 'signature-canvas'}}
+                                        canvasProps={{
+                                            width: 400,
+                                            height: 200,
+                                            className: 'signature-canvas',
+                                            style: {
+                                                touchAction: 'none',
+                                                maxWidth: '100%',
+                                                display: 'block',
+                                                margin: '0 auto'
+                                            }
+                                        }}
                                     />
                                 )}
 

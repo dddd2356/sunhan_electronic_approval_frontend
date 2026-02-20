@@ -194,19 +194,122 @@
 }
 
 /* 반응형 */
+/* ========== 결재라인 관리 모바일 최적화 ========== */
+
 @media (max-width: 768px) {
     .my-approval-lines {
-        padding: 20px 16px;
+        padding: 12px;
     }
 
+    /* 헤더 */
+    .my-approval-lines .approval-lines-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+    }
+
+    .my-approval-lines .approval-lines-header h1 {
+        font-size: 20px;
+    }
+
+    .my-approval-lines .approval-lines-header .btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+        font-size: 14px;
+    }
+
+    /* 빈 상태 */
+    .my-approval-lines .empty {
+        padding: 40px 20px;
+        font-size: 14px;
+    }
+
+    .my-approval-lines .empty .actions {
+        width: 100%;
+    }
+
+    .my-approval-lines .empty .actions .btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+    }
+
+    /* 리스트 카드 */
     .my-approval-lines .line-card {
         flex-direction: column;
         align-items: flex-start;
         gap: 16px;
+        padding: 16px;
     }
 
+    .my-approval-lines .line-card:hover {
+        transform: none; /* 모바일에서는 hover 효과 최소화 */
+    }
+
+    .my-approval-lines .line-left {
+        width: 100%;
+    }
+
+    .my-approval-lines .line-left h3 {
+        font-size: 16px;
+        flex-wrap: wrap;
+    }
+
+    .my-approval-lines .badge {
+        font-size: 11px;
+        padding: 3px 8px;
+    }
+
+    .my-approval-lines .desc {
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+
+    .my-approval-lines .meta {
+        font-size: 12px;
+    }
+
+    /* 액션 버튼들 */
     .my-approval-lines .line-actions {
         width: 100%;
-        justify-content: flex-end;
+        justify-content: flex-start;
+        gap: 6px;
+    }
+
+    .my-approval-lines .line-actions button {
+        flex: 1;
+        min-width: 44px;
+        min-height: 44px;
+        max-width: calc(25% - 5px); /* 4개 버튼 균등 배치 */
+    }
+
+    .my-approval-lines .line-actions button svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* 로딩 */
+    .my-approval-lines .loading {
+        padding: 40px 20px;
+        font-size: 14px;
+    }
+}
+
+/* 작은 화면 추가 최적화 */
+@media (max-width: 480px) {
+    .my-approval-lines .line-left h3 {
+        font-size: 15px;
+    }
+
+    .my-approval-lines .line-actions button {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
+        max-width: none;
+        flex: 0 0 auto;
     }
 }

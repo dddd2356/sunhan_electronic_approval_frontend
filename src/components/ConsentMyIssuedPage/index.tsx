@@ -74,8 +74,37 @@ const ConsentMyIssuedPage: React.FC = () => {
         }
     };
 
-    const downloadPdf = (pdfUrl: string) => {
-        window.open(API_BASE + pdfUrl, '_blank');
+    const downloadPdf = async (agreementId: number) => {
+        try {
+            const pdfResp = await fetch(`${API_BASE}/consents/${agreementId}/pdf`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!pdfResp.ok) {
+                if (pdfResp.status === 404) {
+                    alert('PDF 파일이 아직 생성되지 않았거나 찾을 수 없습니다.');
+                } else if (pdfResp.status === 403) {
+                    alert('조회 권한이 없습니다.');
+                } else {
+                    alert('PDF 조회에 실패했습니다.');
+                }
+                return;
+            }
+
+            const blob = await pdfResp.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error('PDF 조회 실패:', error);
+            alert('PDF 조회 중 오류가 발생했습니다.');
+        }
     };
 
     const typeNames: Record<string, string> = {
@@ -235,7 +264,7 @@ const ConsentMyIssuedPage: React.FC = () => {
                                         <div className="action-buttons">
                                             {agreement.pdfUrl && (
                                                 <button
-                                                    onClick={() => downloadPdf(agreement.pdfUrl!)}
+                                                    onClick={() => downloadPdf(agreement.id)}
                                                     className="btn-icon"
                                                     title="PDF 다운로드"
                                                 >

@@ -852,42 +852,236 @@
     justify-content: center;
 }
 
-/* 반응형 디자인 */
+/* ========== 휴가원 모바일 최적화 ========== */
+
+/* 1. 탭 영역 */
 @media (max-width: 768px) {
-    .tabs-container {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-    }
-
-    .inline-search-section {
-        justify-content: center;
-        flex-wrap: wrap;
-        gap: 5px;
-        padding: 8px;
-    }
-
-    .inline-search-input {
-        width: 120px;
-    }
-
-    .inline-search-select {
-        min-width: 60px;
-    }
-}
-
-@media (max-width: 480px) {
     .tabs {
-        flex-wrap: wrap;
-        justify-content: center;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px;
+        margin-bottom: 16px;
+        padding: 0;
+        overflow-x: visible !important;
+        border-bottom: none;
     }
 
     .tabs button {
-        padding: 8px 12px;
-        font-size: 12px;
+        flex: 1 1 calc(33.33% - 6px); /* 3개 탭이므로 */
+        min-height: 44px;
+        font-size: 13px !important;
+        padding: 10px 8px !important;
+        white-space: nowrap;
+        border-radius: 8px !important;
+        border: 1px solid #e9ecef !important;
+        background: white !important;
+        color: #333 !important;
+        transition: all 0.2s;
+    }
+
+    .tabs button.active {
+        background: #667eea !important;
+        color: white !important;
+        border-color: #667eea !important;
+        border-bottom: 2px solid #667eea !important;
+    }
+
+    /* 검색 섹션 */
+    .inline-search-section {
+        width: 100%;
+        margin-left: 0 !important;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+    }
+
+    .inline-search-select {
+        width: 100%;
+        min-width: unset;
+        height: 44px;
+        font-size: 14px;
     }
 
     .inline-search-input {
-        width: 100px;
+        width: 100% !important;
+        min-width: unset !important;
+        height: 44px;
+        font-size: 14px;
+    }
+
+    .inline-search-reset {
+        width: 44px;
+        height: 44px;
+        font-size: 24px;
+    }
+
+    .inline-search-count {
+        width: 100%;
+        text-align: center;
+    }
+
+    /* 날짜 검색 필터 */
+    .search-filters {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .date-input {
+        flex: 1;
+        min-width: calc(50% - 4px);
+        height: 44px;
+        font-size: 14px;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+    }
+
+    .date-separator {
+        display: none; /* 모바일에서 ~ 숨김 */
+    }
+
+    .search-button,
+    .reset-button {
+        flex: 1;
+        min-width: calc(50% - 4px);
+        min-height: 44px;
+        font-size: 14px;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+    }
+
+    .search-button {
+        background: #667eea;
+        color: white;
+    }
+
+    .reset-button {
+        background: #6c757d;
+        color: white;
+    }
+}
+
+/* 2. 휴가원 리스트 아이템 */
+@media (max-width: 768px) {
+    .leave-application-list-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 16px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .leave-application-list-item:hover {
+        border-left: none;
+        padding-left: 16px;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* ✅ 모든 항목 크기 통일 + 가운데 정렬 */
+    .leave-application-item-id,
+    .leave-application-item-applicant,
+    .leave-application-item-substitute,
+    .leave-application-item-type,
+    .leave-application-item-start,
+    .leave-application-item-end,
+    .leave-application-item-days,
+    .leave-application-item-created,
+    .leave-application-item-updated {
+        font-size: 13px !important;
+        font-weight: normal !important;
+        justify-content: center !important;  /* ✅ 가운데 정렬 */
+        text-align: center !important;  /* ✅ 텍스트 가운데 정렬 */
+        display: flex !important;  /* ✅ flex 유지 */
+        align-items: center !important;  /* ✅ 세로 중앙 정렬 */
+    }
+
+    /* 라벨 추가 */
+    .leave-application-item-id::before {
+        content: 'ID: ';
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    .leave-application-item-applicant::before {
+        content: '신청자: ';
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    .leave-application-item-substitute::before {
+        content: '대직자: ';
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    .leave-application-item-type::before {
+        content: '휴가 종류: ';
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    .leave-application-item-start::before {
+        content: '시작일: ';
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    .leave-application-item-end::before {
+        content: '종료일: ';
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    .leave-application-item-days::before {
+        content: '총 일수: ';
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    .leave-application-item-created::before {
+        content: '작성일: ';
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    .leave-application-item-updated::before {
+        content: '수정일: ';
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    /* 상태 배지 */
+    .leave-application-item-status {
+        width: 100%;
+        margin-top: 8px;
+        justify-content: center !important;  /* ✅ 상태 배지도 가운데 */
+    }
+}
+
+/* 3. 페이지네이션 */
+@media (max-width: 768px) {
+    .pagination {
+        padding: 16px 0;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .pagination button {
+        min-width: 40px;
+        min-height: 40px;
+        padding: 8px;
+        font-size: 14px;
     }
 }

@@ -90,3 +90,72 @@
 .org-btn-confirm:hover {
     background: #1565c0;
 }
+
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    .org-modal-overlay {
+        padding: 0;
+    }
+
+    .org-modal-content {
+        width: 95%;
+        max-width: none;
+        max-height: 90vh;
+        margin: 5vh auto;
+        border-radius: 12px;
+    }
+
+    .org-modal-header {
+        padding: 16px;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .org-modal-title {
+        font-size: 18px;
+    }
+
+    .org-search-input {
+        width: 100%;
+        font-size: 14px;
+        padding: 10px;
+    }
+
+    .org-modal-body {
+        padding: 12px;
+        max-height: calc(90vh - 160px);
+    }
+
+    .org-modal-footer {
+        padding: 16px;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .org-btn-cancel,
+    .org-btn-confirm {
+        width: 100%;
+        min-height: 44px;
+        font-size: 14px;
+    }
+
+    .selected-users-section {
+        margin-bottom: 16px;
+    }
+
+    .selected-user-tag {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .org-modal-content {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        margin: 0;
+        border-radius: 0;
+    }
+}

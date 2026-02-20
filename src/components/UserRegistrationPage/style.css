@@ -217,20 +217,81 @@
     font-weight: 600;
 }
 
-/* 반응형 처리 */
+/* 반응형 처리 - 중복 제거하고 하나로 통합 */
 @media (max-width: 768px) {
+    .ur-container {
+        padding: 12px;
+        margin: 20px auto; /* 60px → 20px */
+    }
+
+    .ur-header {
+        padding: 16px;
+        margin-bottom: 16px; /* 30px → 16px */
+    }
+
+    .ur-title {
+        font-size: 20px; /* 28px → 20px */
+    }
+
+    .ur-subtitle {
+        font-size: 14px; /* 15px → 14px */
+    }
+
     .ur-content-grid {
-        grid-template-columns: 1fr; /* 모바일에서 1열로 변경 */
+        grid-template-columns: 1fr;
+        gap: 16px; /* 30px → 16px */
+    }
+
+    .ur-card {
+        padding: 20px; /* 30px → 20px */
     }
 
     .ur-form-row {
-        grid-template-columns: 1fr; /* 폼 내부도 1열로 */
-        gap: 24px;
+        grid-template-columns: 1fr;
+        gap: 16px; /* 20px → 16px */
     }
 
     .ur-info-card {
-        order: -1; /* 모바일에서는 안내문이 위로 오게 하거나, 아래로 배치 (현재는 아래) */
+        order: -1;
         position: static;
         margin-top: 0;
+        margin-bottom: 16px;
+    }
+
+    /* ✅ input/select 최적화 */
+    .ur-input,
+    .ur-select {
+        font-size: 11px !important; /* iOS 줌 방지 */
+        padding: 12px 16px;
+        min-height: 44px;
+    }
+
+    .ur-input::placeholder {
+        font-size: 11px;
+    }
+
+    .ur-input[type="date"] {
+        -webkit-appearance: none;
+        appearance: none;
+    }
+
+    .ur-label {
+        font-size: 13px; /* 14px → 13px */
+    }
+
+    .ur-form-group {
+        margin-bottom: 0; /* gap으로 처리되므로 */
+    }
+
+    /* ✅ 버튼 최적화 */
+    .ur-submit-btn {
+        min-height: 48px; /* 터치 영역 확보 */
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .ur-card {
+        padding: 16px; /* 20px → 16px */
     }
 }

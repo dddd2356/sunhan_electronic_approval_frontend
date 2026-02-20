@@ -1,0 +1,152 @@
+/* ========================================
+   모바일 유틸리티 클래스
+   ======================================== */
+
+/* 반응형 숨김/보임 */
+@media (max-width: 768px) {
+    .mobile-hidden {
+        display: none !important;
+    }
+
+    .mobile-visible {
+        display: block !important;
+    }
+
+    .desktop-hidden {
+        display: block !important;
+    }
+}
+
+@media (min-width: 769px) {
+    .desktop-hidden {
+        display: none !important;
+    }
+
+    .mobile-visible {
+        display: none !important;
+    }
+}
+
+/* 모바일 전체 너비 */
+@media (max-width: 768px) {
+    .mobile-full-width {
+        width: 100% !important;
+    }
+}
+
+/* 모바일 스크롤 */
+@media (max-width: 768px) {
+    .mobile-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mobile-scroll-y {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* 터치 타겟 최소 크기 */
+@media (max-width: 768px) {
+    button,
+    a.button,
+    .btn,
+    input[type="button"],
+    input[type="submit"],
+    input[type="checkbox"],
+    input[type="radio"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* 텍스트 크기 조정 */
+@media (max-width: 768px) {
+    .text-mobile-sm {
+        font-size: 12px !important;
+    }
+
+    .text-mobile-base {
+        font-size: 14px !important;
+    }
+
+    .text-mobile-lg {
+        font-size: 16px !important;
+    }
+}
+
+/* 패딩/마진 조정 */
+@media (max-width: 768px) {
+    .p-mobile-sm {
+        padding: 8px !important;
+    }
+
+    .p-mobile-base {
+        padding: 12px !important;
+    }
+
+    .p-mobile-lg {
+        padding: 16px !important;
+    }
+
+    .m-mobile-sm {
+        margin: 8px !important;
+    }
+
+    .m-mobile-base {
+        margin: 12px !important;
+    }
+
+    .m-mobile-lg {
+        margin: 16px !important;
+    }
+}
+
+/* Flexbox 반응형 */
+@media (max-width: 768px) {
+    .mobile-flex-col {
+        flex-direction: column !important;
+    }
+
+    .mobile-flex-wrap {
+        flex-wrap: wrap !important;
+    }
+}
+
+/* Grid 반응형 */
+@media (max-width: 768px) {
+    .mobile-grid-1 {
+        grid-template-columns: 1fr !important;
+    }
+
+    .mobile-grid-2 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* 텍스트 정렬 */
+@media (max-width: 768px) {
+    .mobile-text-center {
+        text-align: center !important;
+    }
+
+    .mobile-text-left {
+        text-align: left !important;
+    }
+}
+
+/* 입력 필드 자동 줌 방지 */
+@media (max-width: 768px) {
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="date"],
+    input[type="month"],
+    textarea,
+    select {
+        font-size: 16px !important;
+    }
+}

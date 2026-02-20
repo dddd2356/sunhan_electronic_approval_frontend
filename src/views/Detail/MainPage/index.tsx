@@ -140,7 +140,11 @@ const MainPage: React.FC = () => {
     const handleRefreshVacation = () => setRefreshTrigger(prev => prev + 1);
     const handleShowHistoryPopup = () => setShowHistoryPopup(true);
     const handleCloseHistoryPopup = () => setShowHistoryPopup(false);
-
+// 현재 날짜가 3월 이상인지 판단하는 함수 추가 (useEffect 위쪽에 추가)
+    const isAfterFebruary = () => {
+        const now = new Date();
+        return now.getMonth() >= 2; // 0-based이므로 2 = 3월
+    };
     // 캘린더 렌더링 헬퍼 함수
     const renderWorkCalendar = () => {
         if (!mySchedule || !mySchedule.hasSchedule) {
@@ -149,52 +153,116 @@ const MainPage: React.FC = () => {
 
         const [year, month] = selectedMonth.split('-').map(Number);
         const daysInMonth = new Date(year, month, 0).getDate();
-        const firstDayOfWeek = new Date(year, month - 1, 1).getDay(); // 0: 일요일, 1: 월요일...
+        const firstDayOfWeek = new Date(year, month - 1, 1).getDay();
 
         const weeks = [];
         let days = [];
+        const renderedDays = new Set<number>();
+        let dayCounter = 0; // ✅ 주 내 위치 추적 (0~6)
 
-        // 1. 빈 칸 채우기 (일요일부터 시작하는 달력이면 firstDayOfWeek 그대로, 월요일 시작이면 조정 필요)
-        // 여기서는 일요일(0) 시작 기준 캘린더로 가정합니다.
+        // 1. 빈 칸 채우기
         for (let i = 0; i < firstDayOfWeek; i++) {
             days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
+            dayCounter++;
         }
 
         // 2. 날짜 채우기
         for (let day = 1; day <= daysInMonth; day++) {
-            const workType = mySchedule.workData[day.toString()] || '';
+            if (renderedDays.has(day)) {
+                continue;
+            }
+
             const date = new Date(year, month - 1, day);
             const dayOfWeek = date.getDay();
-
-            // 요일 체크
             const isSunday = dayOfWeek === 0;
             const isSaturday = dayOfWeek === 6;
 
-            days.push(
-                <div key={day} className="calendar-day">
-                    <div className={`day-number ${isSunday ? 'sun' : ''} ${isSaturday ? 'sat' : ''}`}>
-                        {day}
-                    </div>
-                    {workType && (
-                        <div className={`work-type ${getWorkTypeClass(workType)}`}>
-                            {workType}
-                        </div>
-                    )}
-                </div>
-            );
+            let workType = mySchedule.workData[day.toString()] || '';
+            let isTextCell = false;
+            let displayValue = workType;
+            let rangeSpan = 1;
 
-            // 주 단위 줄바꿈 (토요일(6)이거나, 7개 찼을 때)
-            if (days.length === 7) {
+            // 범위 키 검색
+            if (!workType) {
+                for (const key in mySchedule.workData) {
+                    if (key.includes('-')) {
+                        const [start, end] = key.split('-').map(Number);
+                        if (day >= start && day <= end) {
+                            workType = mySchedule.workData[key];
+                            isTextCell = workType.startsWith('텍스트:');
+                            displayValue = isTextCell ? workType.substring(4) : workType;
+                            rangeSpan = end - start + 1;
+
+                            for (let i = start; i <= end; i++) {
+                                renderedDays.add(i);
+                            }
+                            break;
+                        }
+                    }
+                }
+            } else {
+                isTextCell = workType.startsWith('텍스트:');
+                displayValue = isTextCell ? workType.substring(4) : workType;
+                renderedDays.add(day);
+            }
+
+            if (isTextCell) {
+                // ✅ 텍스트 범위 셀
+                days.push(
+                    <div
+                        key={`text-${day}`}
+                        className="calendar-day text-range-cell"
+                        style={{ gridColumn: `span ${Math.min(rangeSpan, 7 - dayCounter)}` }}
+                    >
+                        <div className="text-range-dates">
+                        <span className={`day-number ${isSunday ? 'sun' : ''} ${isSaturday ? 'sat' : ''}`}>
+                            {day}
+                        </span>
+                            {rangeSpan > 1 && (
+                                <>
+                                    <span className="range-separator">~</span>
+                                    <span className="day-number">
+                                    {day + rangeSpan - 1}
+                                </span>
+                                </>
+                            )}
+                        </div>
+                        <div className="work-type type-text">
+                            {displayValue}
+                        </div>
+                    </div>
+                );
+                dayCounter += Math.min(rangeSpan, 7 - dayCounter);
+            } else {
+                // ✅ 일반 셀
+                days.push(
+                    <div key={day} className="calendar-day">
+                        <div className={`day-number ${isSunday ? 'sun' : ''} ${isSaturday ? 'sat' : ''}`}>
+                            {day}
+                        </div>
+                        {workType && (
+                            <div className={`work-type ${getWorkTypeClass(workType)}`}>
+                                {workType}
+                            </div>
+                        )}
+                    </div>
+                );
+                dayCounter++;
+            }
+
+            // ✅ 주 단위 줄바꿈 (7칸 채워지면)
+            if (dayCounter >= 7) {
                 weeks.push(<div key={`week-${weeks.length}`} className="calendar-week">{days}</div>);
                 days = [];
+                dayCounter = 0;
             }
         }
 
         // 남은 날짜 처리
         if (days.length > 0) {
-            // 남은 칸 빈칸으로 채우기 (선택사항, 레이아웃 유지를 위해 권장)
-            while (days.length < 7) {
-                days.push(<div key={`empty-end-${days.length}`} className="calendar-day empty"></div>);
+            while (dayCounter < 7) {
+                days.push(<div key={`empty-end-${dayCounter}`} className="calendar-day empty"></div>);
+                dayCounter++;
             }
             weeks.push(<div key={`week-${weeks.length}`} className="calendar-week">{days}</div>);
         }
@@ -542,38 +610,43 @@ const MainPage: React.FC = () => {
                                     <div className="inner-loader">로딩 중...</div>
                                 ) : (
                                     <>
+                                        {/* 첫 번째 줄: 정상 연차 */}
                                         <div className="mp-stats-row">
                                             <div className="mp-stat-box">
-                                                <span className="mp-stat-label">총 연차</span>
-                                                <span className="mp-stat-value">{total}</span>
-                                            </div>
-                                            <div className="mp-stat-box highlight">
-                                                <span className="mp-stat-label">이월 사용</span>
-                                                <span
-                                                    className="mp-stat-value">{vacationStatus?.usedCarryoverDays || 0}</span>
+                                                <span className="mp-stat-label">정상 개수</span>
+                                                <span className="mp-stat-value">{vacationStatus?.annualRegularDays || 0}</span>
                                             </div>
                                             <div className="mp-stat-box highlight">
                                                 <span className="mp-stat-label">정상 사용</span>
-                                                <span
-                                                    className="mp-stat-value">{vacationStatus?.usedRegularDays || 0}</span>
-                                            </div>
-                                            <div className="mp-stat-box">
-                                                <span className="mp-stat-label">이월 미사용</span>
-                                                <span className="mp-stat-value text-blue">
-                                                {(vacationStatus?.annualCarryoverDays || 0) - (vacationStatus?.usedCarryoverDays || 0)}
-                                            </span>
+                                                <span className="mp-stat-value">{vacationStatus?.usedRegularDays || 0}</span>
                                             </div>
                                             <div className="mp-stat-box">
                                                 <span className="mp-stat-label">정상 미사용</span>
                                                 <span className="mp-stat-value text-blue">
-                                                {(vacationStatus?.annualRegularDays || 0) - (vacationStatus?.usedRegularDays || 0)}
-                                            </span>
-                                            </div>
-                                            <div className="mp-stat-box">
-                                                <span className="mp-stat-label">잔여</span>
-                                                <span className="mp-stat-value text-green">{remaining}</span>
+            {(vacationStatus?.annualRegularDays || 0) - (vacationStatus?.usedRegularDays || 0)}
+        </span>
                                             </div>
                                         </div>
+
+                                        {/* 두 번째 줄: 이월 연차 (3월 이전에만 표시) */}
+                                        {!isAfterFebruary() && (
+                                            <div className="mp-stats-row">
+                                                <div className="mp-stat-box">
+                                                    <span className="mp-stat-label">이월 개수</span>
+                                                    <span className="mp-stat-value">{vacationStatus?.annualCarryoverDays || 0}</span>
+                                                </div>
+                                                <div className="mp-stat-box highlight">
+                                                    <span className="mp-stat-label">이월 사용</span>
+                                                    <span className="mp-stat-value">{vacationStatus?.usedCarryoverDays || 0}</span>
+                                                </div>
+                                                <div className="mp-stat-box">
+                                                    <span className="mp-stat-label">이월 미사용</span>
+                                                    <span className="mp-stat-value text-blue">
+                {(vacationStatus?.annualCarryoverDays || 0) - (vacationStatus?.usedCarryoverDays || 0)}
+            </span>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="mp-progress-section">
                                             <div className="progress-labels">

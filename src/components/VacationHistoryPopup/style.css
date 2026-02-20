@@ -21,6 +21,8 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    justify-content: center;  /* 세로 중앙 */
+    align-items: center;      /* 가로 중앙 - 이 줄 추가 */
 }
 
 .popup-header {
@@ -30,6 +32,8 @@
     padding: 1.5rem;
     border-bottom: 1px solid #e2e8f0;
     background-color: #f1f5f9;
+    flex-shrink: 0;
+    width: 100%;  /* 이 줄 추가 - header는 전체 너비 */
 }
 
 .popup-title {
@@ -56,8 +60,9 @@
 
 .popup-content {
     padding: 1.82rem;
-    flex: 1;
-    overflow-y: auto; /* 추가됨 */
+    flex: 0 1 auto;
+    overflow-y: auto;
+    width: 100%;  /* 이 줄 추가 - content도 전체 너비 */
 }
 
 .history-list {
@@ -179,4 +184,120 @@
 
 .popup-content::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
+}
+
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    .popup-overlay {
+        padding: 0;
+    }
+
+    .popup-container {
+        width: 95%;
+        max-width: none;
+        max-height: 90vh;
+        border-radius: 12px;
+    }
+
+    .popup-header {
+        padding: 16px;
+        flex-wrap: wrap;
+    }
+
+    .popup-title {
+        font-size: 18px;
+    }
+
+    .popup-close-btn {
+        font-size: 1.5rem;
+        margin-bottom: 0;
+        padding: 8px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .popup-content {
+        padding: 16px;
+        max-height: calc(90vh - 140px);
+    }
+
+    .history-item {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .history-date-range {
+        font-size: 14px;
+        flex-wrap: wrap;
+    }
+
+    .history-days {
+        font-size: 12px;
+    }
+
+    .history-reason {
+        font-size: 13px;
+        word-break: break-word;
+    }
+
+    .history-status {
+        font-size: 11px;
+        padding: 4px 10px;
+    }
+
+    .pagination-controls {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px 0;
+    }
+
+    .pagination-controls button {
+        padding: 10px 16px;
+        font-size: 14px;
+        min-height: 44px;
+    }
+
+    .pagination-controls span {
+        font-size: 13px;
+        width: 100%;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .popup-container {
+        width: 94%;
+        max-width: none;
+        max-height: 85vh;
+        border-radius: 12px;
+    }
+
+    .popup-content {
+        max-height: calc(85vh - 120px);
+        overflow-y: auto;
+    }
+
+    .popup-header {
+        padding: 12px;
+    }
+
+    .popup-title {
+        font-size: 16px;
+    }
+
+    .popup-content {
+        padding: 12px;
+    }
+
+    .history-item {
+        padding: 10px;
+    }
+
+    .pagination-controls {
+        flex-direction: column;
+    }
+
+    .pagination-controls button {
+        width: 100%;
+    }
 }

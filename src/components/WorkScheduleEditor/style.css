@@ -461,15 +461,55 @@
 }
 
 /* 로딩 & 에러 */
-.wse-loading,
-.wse-error {
-    text-align: center;
-    padding: 60px 20px;
-    font-size: 18px;
+.wse-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    min-height: 400px;
+}
+
+.wse-loading .loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+.wse-loading p {
+    font-size: 16px;
+    color: #6c757d;
+    margin: 0;
+    font-weight: 500;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 .wse-error {
-    color: #d32f2f;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    min-height: 400px;
+    color: #dc3545;
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 12px;
+    margin: 20px 0;
+}
+
+.wse-error p {
+    font-size: 16px;
+    margin: 0;
+    font-weight: 500;
 }
 
 .wse-day-header {
@@ -1081,34 +1121,772 @@
     background-color: #ffebee !important; /* 연한 빨간색 배경 */
 }
 
+/* 1. 성명란 내 부서장 선택 박스 */
+.wse-dept-head-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px; /* 이름과 해제 버튼 사이 간격 */
+    height: 100%;
+}
 
-/* 반응형 */
+.wse-name-badge {
+    /* 일반 텍스트와 동일한 폰트 설정 */
+    font-family: inherit;
+    font-size: 11px; /* 작성 부분 폰트 크기에 맞춰 조절 (보통 14~15px) */
+    font-weight: normal; /* 너무 굵다면 500, 일반적이라면 normal */
+    color: #333; /* 작성 부분 글자색과 통일 */
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* 2. 현대적인 미니 버튼 */
+.wse-mini-btn {
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.wse-btn-primary {
+    background-color: #eff6ff;
+    color: #2563eb;
+    border-color: #bfdbfe;
+}
+.wse-btn-primary:hover { background-color: #dbeafe; }
+.wse-mini-btn.wse-btn-danger {
+    padding: 1px 5px;
+    font-size: 10px;
+    line-height: 1;
+    background-color: #fff1f2;
+    color: #e11d48;
+    border: 1px solid #fda4af;
+    border-radius: 3px;
+}
+.wse-btn-danger {
+    background-color: #fef2f2;
+    color: #ef4444;
+    border-color: #fecaca;
+}
+.wse-btn-danger:hover { background-color: #fee2e2; }
+
+/* 3. 서명 셀 내부 디자인 */
+.wse-signature-cell {
+    position: relative;
+    height: 70px; /* 높이 고정 */
+    vertical-align: middle !important;
+    transition: background-color 0.2s;
+}
+
+.wse-sign-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #3b82f6;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.wse-sign-prompt svg {
+    margin-bottom: 2px;
+}
+
+/* 전결 처리 텍스트 */
+.wse-final-status {
+    color: #f43f5e;
+    font-size: 11px;
+    font-weight: 800;
+    background-color: #fff1f2;
+    padding: 2px 4px;
+    border-radius: 3px;
+    border: 1px solid #fecdd3;
+}
+
+/* 대기 상태 표시 */
+.wse-wait-text {
+    color: #cbd5e1;
+    font-size: 12px;
+}
+
+/* 텍스트 범위 셀 스타일 */
+.wse-text-range-cell {
+    background-color: #fff9e6;
+    border: 2px solid #ffd700 !important;
+    padding: 4px;
+}
+
+.wse-text-range-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    padding: 4px;
+    font-size: 12px;
+    font-family: inherit;
+}
+
+.wse-text-range-input:focus {
+    outline: none;
+    background-color: #fffbf0;
+}
+
+.wse-text-range-input::placeholder {
+    color: #999;
+    font-size: 11px;
+}
+
+/* 1. 래퍼: 버튼 위치 기준점 */
+.wse-text-cell-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    background-color: #fff; /* 기본 흰색 배경 */
+}
+
+/* 2. 입력 필드: 모던한 'Override' 스타일 */
+.wse-text-cell-input {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    border: none;
+    /* 텍스트 모드임을 알리는 왼쪽 강조선 (오렌지/노란색 계열) */
+    box-shadow: inset 3px 0 0 0 #f59e0b;
+    background-color: #fffbef; /* 아주 연한 미색 배경 (눈 안 아프게) */
+    text-align: center;
+    font-size: 12px;
+    font-family: inherit;
+    color: #333;
+
+    /* 텍스트가 버튼 뒤로 숨지 않도록 우측 여백 확보 */
+    padding: 0 26px 0 8px;
+
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+/* 포커스 시: 전체 테두리로 입력 중임을 강조 */
+.wse-text-cell-input:focus {
+    background-color: #ffffff;
+    box-shadow: inset 3px 0 0 0 #f59e0b, inset 0 0 0 1px #e5e7eb;
+}
+
+/* 3. 삭제(복원) 버튼: Ghost Icon 스타일 */
+.wse-text-cell-close {
+    position: absolute;
+    right: 4px; /* 우측 끝에서 약간 띄움 */
+    top: 50%;
+    transform: translateY(-50%) scale(0.8); /* 기본은 약간 작게 */
+
+    width: 22px;
+    height: 22px;
+
+    border: none;
+    background-color: transparent;
+    color: #9ca3af; /* 비활성 시 회색 */
+    border-radius: 50%; /* 원형 버튼 */
+
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 16px;
+    line-height: 1;
+    font-family: Arial, sans-serif; /* 특수문자 정렬을 위해 폰트 고정 */
+
+    opacity: 0; /* 평소에는 숨김 */
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+}
+
+/* 4. 인터랙션: 셀에 마우스를 올리면 버튼 등장 */
+.wse-text-cell-wrapper:hover .wse-text-cell-close {
+    opacity: 1;
+    transform: translateY(-50%) scale(1); /* 원래 크기로 복귀 */
+}
+
+/* 5. 버튼 호버 효과: 빨간색 강조 */
+.wse-text-cell-close:hover {
+    background-color: #fee2e2; /* 연한 빨간 배경 */
+    color: #ef4444; /* 진한 빨간 아이콘 */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* ========== 모바일 최적화 (768px 이하) ========== */
 @media (max-width: 768px) {
-    .member-management-buttons {
+    /* 1. 전체 컨테이너 */
+    .work-schedule-editor {
+        padding: 8px;
+        margin: 0;
+        max-width: 100%;
+        box-shadow: none;
+        border-radius: 0;
+    }
+
+    /* 2. 헤더 영역 */
+    .wse-schedule-header {
         flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+    }
+
+    .wse-header-logo {
+        gap: 6px;
+        justify-content: center;
+    }
+
+    .wse-header-logo img {
+        width: 28px;
+        height: 28px;
+    }
+
+    .wse-header-logo span {
+        font-size: 16px;
+    }
+
+    .wse-schedule-title {
+        font-size: 18px;
+        text-align: center;
+        width: 100%;
+        margin: 0;
+    }
+
+    .wse-header-info {
+        font-size: 13px;
+        padding-right: 0;
+        text-align: center;
+    }
+
+    .wse-header-actions {
+        width: 100%;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .wse-btn-config,
+    .wse-btn-copy {
+        width: 100%;
+        justify-content: center;
+        padding: 10px 16px;
+        font-size: 13px;
+        min-height: 44px;
+    }
+
+    /* 3. 결재란 */
+    .wse-approval-section {
+        margin: 12px 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .wse-approval-table {
+        min-width: auto;
+        font-size: 9px;
+        width: auto;
+    }
+
+    .wse-approval-table th,
+    .wse-approval-table td {
+        padding: 2px 4px;
+        min-width: 40px;
+        font-size: 9px;
+        line-height: 1.3;
+    }
+
+    .wse-signature-cell {
+        height: 28px;
+        padding: 2px;
+    }
+
+    .wse-signature-cell img {
+        max-width: 35px;
+        max-height: 23px;
+    }
+
+    .wse-dept-head-container {
+        flex-direction: row;
+        gap: 2px;
+        font-size: 9px;
+    }
+
+    .wse-mini-btn {
+        font-size: 7px;
+        padding: 1px 3px;
+    }
+
+    .wse-name-badge {
+        font-size: 9px;
+    }
+
+    .wse-sign-prompt {
+        font-size: 7px;
+        line-height: 1.2;
+    }
+
+    .wse-sign-prompt span {
+        display: block;
+    }
+
+    .wse-final-status,
+    .wse-wait-text {
+        font-size: 8px;
+    }
+
+    .wse-date-cell {
+        font-size: 8px;
+    }
+
+    /* 4. 근무 타입 버튼 */
+    .wse-work-type-buttons {
+        position: static;
+        flex-wrap: wrap;
+        padding: 8px 6px;
+        gap: 4px;
+        margin: 10px 0;
+    }
+
+    .wse-btn-work-type {
+        flex: 1 1 calc(25% - 4px);
+        min-width: calc(25% - 4px);
+        padding: 8px 4px;
+        font-size: 11px;
+        min-height: 44px;
+        white-space: nowrap;
+    }
+
+    .wse-btn-work-type:nth-child(n+9) {
+        flex: 1 1 calc(33.33% - 4px);
+        min-width: calc(33.33% - 4px);
+    }
+
+    .wse-selected-count {
+        flex: 1 1 100%;
+        text-align: center;
+        font-size: 12px;
+        margin-top: 6px;
+        padding: 4px;
+        background-color: #f0f9ff;
+        border-radius: 4px;
+    }
+
+    /* 5. 근무표 테이블 */
+    .wse-schedule-table-container {
+        overflow-x: auto;
+        overflow-y: visible;
+        -webkit-overflow-scrolling: touch;
+        margin: 12px -8px;
+        padding: 0 8px;
+        scrollbar-width: thin;
+    }
+
+    .wse-schedule-table-container::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .wse-schedule-table-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .wse-schedule-table-container::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .wse-schedule-table {
+        min-width: 950px;
+        font-size: 8px !important;
+    }
+
+    /* No 열만 고정 */
+    .wse-schedule-table th:nth-child(1),
+    .wse-schedule-table td:nth-child(1) {
+        position: sticky;
+        left: 0;
+        background-color: #fff;
+        z-index: 2;
+        min-width: 28px;
+        font-size: 8px !important;
+    }
+
+    /* 직책 열 */
+    .wse-schedule-table th:nth-child(2) {
+        min-width: 38px !important;
+        max-width: 38px !important;
+        width: 38px !important;
+        padding: 1px !important;
+        vertical-align: middle !important;
+        font-size: 8px !important;
+        overflow: hidden;
+        line-height: 1.1;
+    }
+
+    .wse-schedule-table tbody td:nth-child(2) {
+        min-width: 38px !important;
+        max-width: 38px !important;
+        width: 38px !important;
+        padding: 0 !important;
+        vertical-align: middle !important;
+        height: 22px !important;
+        overflow: hidden !important;
+        font-size: 8px !important;
+        text-align: center !important;
+        line-height: 22px !important;
+    }
+
+    /* 성명 열 */
+    .wse-schedule-table th:nth-child(3),
+    .wse-schedule-table td:nth-child(3) {
+        min-width: 45px !important;
+        max-width: 45px !important;
+        vertical-align: middle !important;
+        font-size: 8px !important;
+    }
+
+    /* 전체 셀 기본 설정 */
+    .wse-schedule-table th,
+    .wse-schedule-table td {
+        padding: 1px;
+        font-size: 8px !important;
+        min-width: 22px;
+        height: 22px;
+        line-height: 1.2;
+        vertical-align: middle;
+    }
+
+    .wse-day-header {
+        min-width: 26px;
+        font-size: 9px;
+        padding: 2px 1px;
+    }
+
+    .wse-day-number {
+        font-size: 9px;
+    }
+
+    .wse-day-of-week {
+        font-size: 7px;
+    }
+
+    .wse-work-cell {
+        min-width: 22px;
+        height: 22px;
+        font-size: 8px !important;
+        line-height: 22px;
+        padding: 0;
+    }
+
+    /* 직책 선택박스 - 완전 고정 */
+    .wse-position-select {
+        font-size: 8px !important;
+        width: 38px !important;
+        max-width: 38px !important;
+        min-width: 38px !important;
+        height: 22px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        background-color: transparent !important;
+        box-sizing: border-box !important;
+        vertical-align: middle !important;
+        line-height: 22px !important;
+        display: block !important;
+        text-align: center !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+        font-family: inherit !important;
+        color: inherit !important;
+    }
+
+    /* 나이트/당직 헤더 행 (의무 개수, 실제 개수, 추가 개수) */
+    .wse-schedule-table thead th {
+        background-color: #f5f5f5 !important; /* 회색 배경 */
+        font-size: 8px !important; /* 다른 헤더와 동일 */
+        padding: 1px !important;
+    }
+
+    /* 의무개수 입력 */
+    .wse-number-input-text {
+        height: 22px !important;
+        font-size: 8px !important;
+        padding: 0 !important;
+        max-width: 38px !important;
+        min-width: 38px !important;
+        width: 38px !important;
+        text-align: center;
+        box-sizing: border-box;
+        line-height: 22px;
+    }
+
+    /* 비고 입력 */
+    .wse-remarks-input {
+        height: 22px !important;
+        font-size: 8px !important;
+        padding: 1px 2px !important;
+        box-sizing: border-box;
+    }
+
+    /* 텍스트 셀 */
+    .wse-text-cell-wrapper {
+        height: 22px;
+    }
+
+    .wse-text-cell-input {
+        font-size: 8px !important;
+        padding: 0 18px 0 4px;
+        height: 22px;
+    }
+
+    .wse-text-cell-close {
+        width: 16px;
+        height: 16px;
+        right: 1px;
+        opacity: 0.5;
+    }
+
+    .wse-text-cell-wrapper:active .wse-text-cell-close {
+        opacity: 1;
+    }
+
+    /* 6. 인원 관리 버튼 */
+    .member-management-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        padding: 12px 0;
+        margin: 12px 0;
+        border-top: 2px solid #e9ecef;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .member-management-buttons p {
+        grid-column: 1 / -1; /* 안내 문구는 전체 너비 */
+        font-size: 11px;
+        text-align: center;
+        margin: 4px 0;
+        order: -1; /* 버튼보다 위에 표시 */
     }
 
     .member-management-buttons button {
         width: 100%;
-        justify-content: center;
+        min-height: 44px;
+        font-size: 13px;
+        padding: 10px 16px;
     }
 
+    /* 7. 하단 비고 */
+    .wse-bottom-remarks {
+        margin: 12px 0;
+        padding: 10px;
+    }
+
+    .wse-bottom-remarks label {
+        font-size: 13px;
+    }
+
+    .wse-remarks-textarea {
+        font-size: 13px;
+        padding: 8px;
+        min-height: 80px;
+    }
+
+    .wse-remarks-display {
+        padding: 8px;
+        font-size: 13px;
+        min-height: 60px;
+    }
+
+    /* 9-13. 모달들 */
+    .wse-modal-overlay {
+        padding: 10px;
+        align-items: flex-start;
+        padding-top: 20px;
+    }
+
+    .wse-modal-content,
+    .wse-copy-modal-content,
     .remove-member-modal {
-        width: 95%;
-        padding: 20px;
+        width: 100%;
+        max-width: none;
+        padding: 16px;
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+
+    .wse-modal-content h2,
+    .wse-copy-modal-content h2,
+    .remove-member-modal h2 {
+        font-size: 16px;
+    }
+
+    .config-section {
+        padding: 10px;
+    }
+
+    .config-section label {
+        font-size: 13px;
+        padding: 8px;
+        min-height: 40px;
+    }
+
+    .wse-modal-action-buttons,
+    .wse-copy-modal-actions,
+    .remove-member-modal-actions {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .wse-modal-action-buttons button,
+    .wse-copy-modal-actions button,
+    .remove-member-cancel-btn,
+    .remove-member-delete-btn {
+        width: 100%;
+        min-height: 44px;
+    }
+
+    .wse-btn-view-reason {
+        width: 100%;
+        min-height: 44px;
+        margin-left: 0;
+    }
+
+    /* 의무개수 입력 - 인라인 스타일보다 우선 */
+    input.wse-number-input-text,
+    input[type="text"].wse-number-input-text {
+        width: 30px !important;
+        max-width: 30px !important;
+        min-width: 30px !important;
+        height: 22px !important;
+        font-size: 8px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        line-height: 22px !important;
+        text-align: center !important;
+        border: 1px solid #ddd !important;
+        border-radius: 4px !important;
+        box-sizing: border-box !important;
+    }
+
+    .wse-loading {
+        padding: 60px 20px;
+        min-height: 300px;
+    }
+
+    .wse-loading .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border-width: 3px;
+        margin-bottom: 16px;
+    }
+
+    .wse-loading p {
+        font-size: 14px;
+    }
+
+    .wse-error {
+        padding: 40px 20px;
+        min-height: 300px;
+        margin: 16px 0;
+    }
+
+    .wse-error p {
+        font-size: 14px;
     }
 }
 
-/* 반응형 */
-    .wse-work-cell,
-    .wse-day-header {
-        min-width: 30px;
-        height: 30px;
-        @media (max-width: 1200px) {
-            .wse-schedule-table {
-                font-size: 12px;
-            }
+/* ========== 480px 이하 ========== */
+@media (max-width: 480px) {
+    .wse-schedule-table {
+        min-width: 800px;
+    }
 
-            font-size: 11px;
+    .wse-schedule-table th,
+    .wse-schedule-table td {
+        font-size: 7px !important;
+        height: 20px;
+    }
+
+    .wse-schedule-table th:nth-child(2),
+    .wse-schedule-table tbody td:nth-child(2) {
+        min-width: 32px !important;
+        max-width: 32px !important;
+        width: 32px !important;
+        font-size: 7px !important;
+    }
+
+    .wse-schedule-table th:nth-child(3),
+    .wse-schedule-table td:nth-child(3) {
+        font-size: 7px !important;
+    }
+
+    .wse-position-select {
+        font-size: 7px !important;
+        width: 32px !important;
+        height: 20px !important;
+        line-height: 20px !important;
+    }
+
+    .wse-number-input-text {
+        font-size: 7px !important;
+        height: 20px !important;
+        width: 32px !important;
+    }
+
+    .wse-work-cell {
+        font-size: 7px !important;
+        line-height: 20px;
+    }
+}
+
+/* ========== 가로 모드 ========== */
+@media (max-width: 768px) and (orientation: landscape) {
+    .wse-schedule-header {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+
+    .wse-schedule-table-container {
+        max-height: 55vh;
+        overflow-y: auto;
+    }
+
+    .wse-work-type-buttons {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+
+    .wse-btn-work-type {
+        flex: 0 0 auto;
+        min-width: 70px;
+    }
+}
+
+/* ========== 터치 최적화 ========== */
+@media (hover: none) {
+    .wse-btn-work-type,
+    .wse-btn {
+        min-height: 44px;
+    }
+
+    .wse-text-cell-close {
+        opacity: 0.6;
+    }
+
+    .wse-work-cell {
+        -webkit-touch-callout: none;
+        user-select: none;
     }
 }

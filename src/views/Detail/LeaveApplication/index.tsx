@@ -477,8 +477,6 @@ const LeaveApplication = () => {
             // currentApprovalStep은 제출할 때만 필요하므로 임시저장에서는 제외
         };
 
-        console.log('임시저장 payload:', payload); // 디버깅용
-
         try {
             // 새로운 API 함수 사용
             await saveLeaveApplication(parseInt(id), payload, token);
@@ -487,7 +485,7 @@ const LeaveApplication = () => {
             console.error('폼 데이터 동기화 실패:', error);
             throw error;
         }
-    }, [id, applicantInfo, substituteInfo, leaveTypes, leaveContent, flexiblePeriods, consecutivePeriod, totalDays, applicationDate, signatures, token]);
+    }, [id, applicantInfo, substituteInfo, departmentHeadInfo, leaveTypes, leaveContent, flexiblePeriods, consecutivePeriod, totalDays, applicationDate, signatures, token]);
 
     // 임시저장 함수 (수정된 버전)
     const handleSave = useCallback(async () => {
@@ -2054,114 +2052,92 @@ return (
                                     placeholder="성명 입력"
                                 />
                             </td>
-                            <td className="signature-box" rowSpan={3}>
+                            <td className="signature-box" rowSpan={3} style={{padding: '4px'}}>
                                 <div
                                     className="signature-area-main"
                                     onClick={() => {
-                                        // ✅ DRAFT 상태에서는 부서장 선택
                                         if (applicationStatus === 'DRAFT') {
                                             if (!departmentHeadInfo.userId) {
                                                 setShowDeptHeadSelector(true);
                                                 return;
                                             }
-                                            // 부서장이 선택되었는데 본인이면 서명 가능
                                             if (currentUser?.id === departmentHeadInfo.userId) {
                                                 handleSignatureClick('departmentHead');
                                                 return;
                                             }
-                                            // 부서장이 선택되었는데 본인이 아니면 안내
                                             alert('선택된 부서장만 서명할 수 있습니다.');
                                             return;
                                         }
-
-                                        // ✅ PENDING 상태에서는 서명 권한 확인
                                         if (checkCanSign('departmentHead')) {
                                             handleSignatureClick('departmentHead');
                                         } else {
                                             alert('서명할 권한이 없습니다.');
                                         }
                                     }}
-                                    style={{
-                                        cursor: 'pointer'
-                                    }}
+                                    style={{cursor: 'pointer'}}
                                 >
                                     {(() => {
-                                        // ✅ 서명이 완료된 경우
+                                        // 1. 서명 완료
                                         if (signatures.departmentHead?.[0]?.isSigned || leaveApplication?.isDeptHeadApproved) {
                                             if (signatures.departmentHead?.[0]?.imageUrl) {
                                                 return (
                                                     <img
-                                                        src={
-                                                            signatures.departmentHead[0].imageUrl.startsWith('data:image/')
-                                                                ? signatures.departmentHead[0].imageUrl
-                                                                : `data:image/png;base64,${signatures.departmentHead[0].imageUrl}`
-                                                        }
+                                                        src={signatures.departmentHead[0].imageUrl.startsWith('data:image/')
+                                                            ? signatures.departmentHead[0].imageUrl
+                                                            : `data:image/png;base64,${signatures.departmentHead[0].imageUrl}`}
                                                         alt="부서장 서명"
-                                                        className="signature-image"
-                                                        style={{
-                                                            width: 120,
-                                                            height: 'auto',
-                                                            objectFit: 'contain'
-                                                        }}
+                                                        style={{width: 100, height: 'auto', objectFit: 'contain'}}
                                                     />
                                                 );
-                                            } else {
-                                                return <div className="signature-text">확인</div>;
                                             }
+                                            return <div className="sig-name-display"
+                                                        style={{color: '#10b981'}}>확인</div>;
                                         }
 
-                                        // ✅ 부서장이 선택되었지만 서명은 안 된 경우
+                                        // 2. 부서장 선택됨 (서명 전)
                                         if (departmentHeadInfo.userId && departmentHeadInfo.name) {
                                             return (
-                                                <div className="signature-placeholder">
-                                                    <div style={{fontSize: '12px', marginBottom: '5px'}}>
-                                                        {departmentHeadInfo.name}
-                                                    </div>
-                                                    <div>클릭하여 서명</div>
-                                                </div>
+                                                <>
+                                                    <div className="sig-name-display">{departmentHeadInfo.name}</div>
+                                                    <div className="sig-placeholder-text">(서명대기)</div>
+                                                </>
                                             );
                                         }
 
-                                        // ✅ 아직 부서장이 선택되지 않은 경우
+                                        // 3. 미선택 (DRAFT)
                                         if (applicationStatus === 'DRAFT') {
-                                            return <div className="signature-placeholder">클릭하여 부서장 선택</div>;
+                                            return <div className="sig-placeholder-text"
+                                                        style={{color: '#3b82f6', fontWeight: 600}}>클릭하여<br/>부서장 선택
+                                            </div>;
                                         }
 
-                                        // ✅ DRAFT가 아닌데 부서장 정보가 없는 경우
-                                        return <div className="signature-placeholder">-</div>;
+                                        return <div className="sig-placeholder-text">-</div>;
                                     })()}
                                 </div>
 
-                                {/* ✅ 선택 해제 버튼 (DRAFT 상태 + 부서장 선택됨) */}
+                                {/* 해제 버튼 (DRAFT 전용) */}
                                 {applicationStatus === 'DRAFT' && departmentHeadInfo.userId && (
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (window.confirm('부서장 선택을 해제하시겠습니까?')) {
-                                                setDepartmentHeadInfo({
-                                                    userId: '',
-                                                    department: '',
-                                                    name: '',
-                                                    position: '',
-                                                    contact: '',
-                                                    phone: ''
-                                                });
-                                            }
-                                        }}
-                                        style={{
-                                            marginTop: '5px',
-                                            padding: '3px 8px',
-                                            fontSize: '11px',
-                                            cursor: 'pointer',
-                                            backgroundColor: '#dc3545',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '3px'
-                                        }}
-                                    >
-                                        해제
-                                    </button>
+                                    <div style={{textAlign: 'center', marginTop: '4px'}}>
+                                        <button
+                                            type="button"
+                                            className="btn-mini-action btn-mini-red"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (window.confirm('부서장 선택을 해제하시겠습니까?')) {
+                                                    setDepartmentHeadInfo({
+                                                        userId: '',
+                                                        department: '',
+                                                        name: '',
+                                                        position: '',
+                                                        contact: '',
+                                                        phone: ''
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            해제
+                                        </button>
+                                    </div>
                                 )}
                             </td>
                         </tr>
@@ -2219,7 +2195,7 @@ return (
                                     <div className="leave-type-row">
                                         {Object.entries(leaveTypes).slice(0, 3).map(([type, checked]) => (
                                             <label key={type} className="checkbox-label">
-                                                <input
+                                            <input
                                                     type="checkbox"
                                                     checked={checked}
                                                     onChange={() => handleLeaveTypeChange(type)}
@@ -2421,10 +2397,10 @@ return (
                             </td>
                         </tr>
 
-                        {/* 대직자 */}
+                        {/* 대직자 선택 모달 */}
                         <tr>
                             <th className="main-header" colSpan={2}>대직자</th>
-                            <td className="substitute-cell" colSpan={3}>
+                            <td className="substitute-cell" colSpan={4}>
                                 <div className="substitute-info">
                                     {/* 직책 */}
                                     <span>직책:</span>
@@ -2450,46 +2426,21 @@ return (
                                             />
                                             <button
                                                 type="button"
+                                                className="btn-mini-action btn-mini-blue"
                                                 onClick={() => setShowSubstituteSelector(true)}
-                                                style={{
-                                                    padding: '5px 10px',
-                                                    fontSize: '12px',
-                                                    backgroundColor: '#007bff',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    borderRadius: '3px'
-                                                }}
                                             >
                                                 선택
                                             </button>
                                             {substituteInfo.userId && (
                                                 <button
                                                     type="button"
+                                                    className="btn-mini-action btn-mini-red"
                                                     onClick={() => {
-                                                        setSubstituteInfo({
-                                                            userId: '',
-                                                            department: '',
-                                                            name: '',
-                                                            position: '',
-                                                            contact: '',
-                                                            phone: ''
-                                                        });
-                                                        setLeaveApplication(prev => prev ? {
-                                                            ...prev,
-                                                            substituteId: '',
-                                                            substituteName: ''
-                                                        } : prev);
-                                                    }}
-                                                    style={{
-                                                        padding: '5px 10px',
-                                                        fontSize: '12px',
-                                                        backgroundColor: '#dc3545',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '3px'
+                                                        setSubstituteInfo({ userId: '', department: '', name: '', position: '', contact: '', phone: '' });
+                                                        setLeaveApplication(prev => prev ? { ...prev, substituteId: '', substituteName: '' } : prev);
                                                     }}
                                                 >
-                                                    해제
+                                                    삭제
                                                 </button>
                                             )}
                                         </div>
@@ -2529,7 +2480,6 @@ return (
                                 </div>
                             </td>
                         </tr>
-                        {/* 대직자 선택 모달 */}
                         {showSubstituteSelector && (
                             <div className="approval-line-modal-overlay"
                                  onClick={() => setShowSubstituteSelector(false)}>
@@ -2694,7 +2644,7 @@ return (
                             alt="Logo"
                             style={{width: '40px', height: '40px'}}
                         />
-                        <span style={{fontSize: '30px', color: '#000', marginLeft:'5px'}}>
+                        <span style={{fontSize: '30px', color: '#000', marginLeft: '5px'}}>
                                 선한병원
                             </span>
                     </div>
@@ -2710,7 +2660,7 @@ return (
                         readOnly={applicationStatus !== 'DRAFT'}
                         onChange={(newAttachments) => {
                             setAttachments(newAttachments);
-                            setLeaveApplication(prev => prev ? { ...prev, attachments: newAttachments } : prev);
+                            setLeaveApplication(prev => prev ? {...prev, attachments: newAttachments} : prev);
                         }}
                     />
 

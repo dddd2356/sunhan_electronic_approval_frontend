@@ -294,6 +294,20 @@
     box-shadow: 0 4px 8px rgba(245, 87, 108, 0.4);
 }
 
+.back-button {
+    padding: 8px 16px;
+    background-color: #f0f0f0;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.back-button:hover {
+    background-color: #e0e0e0;
+}
+
 /* 선택된 멤버 리스트 개선 */
 .selected-members-list {
     max-height: 200px;
@@ -599,29 +613,270 @@
     animation: modalFadeIn 0.3s ease-out;
 }
 
-/* 반응형 디자인 */
-@media (max-width: 480px) {
+/* ========== 근무현황표 모바일 최적화 ========== */
+
+/* 1. 탭 영역 */
+@media (max-width: 768px) {
+    .tabs {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px;
+        margin-bottom: 16px;
+        padding: 0;
+        overflow-x: visible !important;
+        border-bottom: none;
+    }
+
+    .tabs button {
+        flex: 1 1 calc(33.33% - 6px);
+        min-height: 44px;
+        font-size: 13px !important;
+        padding: 10px 8px !important;
+        white-space: nowrap;
+        border-radius: 8px !important;
+        border: 1px solid #e9ecef !important;
+        background: white !important;
+        color: #333 !important;
+        transition: all 0.2s;
+    }
+
+    .tabs button.active {
+        background: #667eea !important;
+        color: white !important;
+        border-color: #667eea !important;
+        border-bottom: 2px solid #667eea !important;
+    }
+
+    .tabs button .badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+
+    /* 검색 섹션 */
+    .inline-search-section {
+        width: 100%;
+        margin-left: 0 !important;
+        flex-direction: row;
+        gap: 8px;
+        padding: 8px;
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+    }
+
+    .inline-search-input {
+        flex: 1;
+        min-width: 150px !important;
+        height: 44px;
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+
+    .inline-search-reset {
+        width: 44px;
+        height: 44px;
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+
+    .inline-search-count {
+        font-size: 12px;
+        padding: 4px 8px;
+        white-space: nowrap;
+    }
+}
+
+/* 2. 테이블 → 카드형 변환 */
+/* 2. 테이블 → 카드형 변환 */
+@media (max-width: 768px) {
+    .wsb-schedule-list {
+        overflow: visible;
+    }
+
+    .wsb-schedule-table {
+        display: block;
+        box-shadow: none;
+    }
+
+    .wsb-schedule-table thead {
+        display: none; /* 헤더 숨김 */
+    }
+
+    .wsb-schedule-table tbody {
+        display: block;
+    }
+
+    .wsb-schedule-table tr {
+        display: flex;
+        flex-direction: column;
+        /* gap: 12px; */  /* ✅ 제거 - td padding으로 처리 */
+        padding: 20px;
+        margin-bottom: 12px;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .wsb-schedule-table tr:hover {
+        background: #f8f9fa;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* ✅ 모든 셀 가운데 정렬 (휴가원과 동일) */
+    .wsb-schedule-table td {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        padding: 8px 0 !important;  /* ✅ 0 → 8px 0으로 복구 */
+        border: none !important;
+        font-size: 14px !important;
+        font-weight: normal !important;
+        text-align: center !important;
+        line-height: 1.6 !important;
+    }
+
+    /* ✅ 라벨도 가운데 정렬 */
+    .wsb-schedule-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #6c757d;
+        margin-right: 8px;
+    }
+
+    /* 각 셀에 라벨 추가 */
+    .wsb-schedule-table td:nth-child(1)::before { content: '년월: '; }
+    .wsb-schedule-table td:nth-child(2)::before { content: '부서: '; }
+    .wsb-schedule-table td:nth-child(3)::before { content: '작성자: '; }
+    .wsb-schedule-table td:nth-child(5)::before { content: '작성일: '; }
+    .wsb-schedule-table td:nth-child(6)::before { content: '수정일: '; }
+
+    /* ✅ 상태 배지 스타일 (휴가원과 동일) */
+    .wsb-schedule-status {
+        flex: 1;
+        font-size: 12px !important;  /* ✅ 11px → 12px */
+        padding: 8px 16px !important;
+        display: inline-flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: auto !important;
+        margin: 0 auto !important;
+        border-radius: 16px !important;  /* ✅ 추가 */
+    }
+}
+
+/* 3. 모달 개선 */
+@media (max-width: 768px) {
+    .wsb-modal-content {
+        width: 95%;
+        max-width: none;
+        padding: 20px;
+        min-width: unset;
+    }
+
+    .wsb-modal-content h2 {
+        font-size: 18px;
+    }
+
+    .wsb-modal-content input[type="month"],
+    .wsb-modal-content input[type="text"] {
+        font-size: 16px; /* iOS 자동 줌 방지 */
+        padding: 12px;
+    }
+
     .wsb-radio-group {
         flex-direction: column;
         gap: 10px;
     }
 
+    .wsb-radio-group label {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .selected-members-list {
+        max-height: 150px;
+    }
+
+    .selected-members-list > div {
+        font-size: 13px;
+        padding: 8px 12px;
+    }
+
     .wsb-modal-actions {
         flex-direction: column;
+        gap: 8px;
     }
 
     .wsb-btn-cancel,
     .wsb-btn-confirm {
         width: 100%;
+        min-height: 44px;
     }
 
-    .inline-search-input {
-        min-width: 200px;
+    /* 모달 내 버튼들 */
+    .wsb-modal-content button:not(.wsb-btn-cancel):not(.wsb-btn-confirm) {
+        min-height: 44px;
         font-size: 13px;
-    }
-
-    .inline-search-input::placeholder {
-        font-size: 12px;
     }
 }
 
+/* 4. 빈 상태 */
+@media (max-width: 768px) {
+    .wsb-empty-state {
+        padding: 40px 16px;
+    }
+
+    .wsb-empty-state p {
+        font-size: 14px;
+    }
+
+    .wsb-btn-secondary {
+        width: 100%;
+        min-height: 44px;
+    }
+}
+
+/* 5. 페이지네이션 */
+@media (max-width: 768px) {
+    .pagination {
+        padding: 16px 0;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .pagination button {
+        min-width: 40px;
+        min-height: 40px;
+        padding: 8px;
+        font-size: 14px;
+    }
+}
+
+/* 6. 헤더 */
+@media (max-width: 768px) {
+    .wsb-board-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .wsb-board-header h1 {
+        font-size: 20px;
+    }
+
+    .wsb-create-button {
+        width: 100%;
+        min-height: 44px;
+    }
+}
+
+/* 7. 로딩/에러 */
+@media (max-width: 768px) {
+    .wsb-loading,
+    .wsb-error {
+        padding: 40px 16px;
+        font-size: 14px;
+    }
+}

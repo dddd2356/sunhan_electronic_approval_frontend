@@ -6,7 +6,7 @@ import {
     fetchContracts,
     fetchUsers,
     fetchCurrentUser,
-    createContract,
+    createContract, fetchPreviousContracts,
 } from '../../apis/contract';
 import {useNavigate} from "react-router-dom";
 
@@ -44,73 +44,247 @@ interface CreateContractModalProps {
     onClose: () => void;
     onSubmit: (employeeId: string) => void;
     users: User[];
+    token: string;
 }
 
 // 조직도 모달 컴포넌트
-const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen, onClose, onSubmit, users }) => {
+const CreateContractModal: React.FC<CreateContractModalProps> = ({
+                                                                     isOpen,
+                                                                     onClose,
+                                                                     onSubmit,
+                                                                     users,
+                                                                     token  // 추가
+                                                                 }) => {
+    const navigate = useNavigate();
     const [selectedEmployee, setSelectedEmployee] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [showPreviousContracts, setShowPreviousContracts] = useState(false);
+    const [previousContracts, setPreviousContracts] = useState<Contract[]>([]);
+    const [loadingPrevious, setLoadingPrevious] = useState(false);
+
     const filteredUsers = users.filter(user =>
         (user.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             user.userId?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
+
+    function getStatusText(s: string) {
+        switch (s) {
+            case 'DRAFT': return '작성중';
+            case 'SENT_TO_EMPLOYEE': return '직원 검토중';
+            case 'SIGNED_BY_EMPLOYEE': return '직원 서명 완료';
+            case 'RETURNED_TO_ADMIN': return '반려됨';
+            case 'COMPLETED': return '완료';
+            default: return s;
+        }
+    }
+
+    const getStatusClass = (status: string) => {
+        switch (status) {
+            case 'DRAFT': return 'status-draft';
+            case 'SENT_TO_EMPLOYEE': return 'status-sent';
+            case 'SIGNED_BY_EMPLOYEE': return 'status-signed';
+            case 'RETURNED_TO_ADMIN': return 'status-return';
+            case 'COMPLETED': return 'status-completed';
+            default: return '';
+        }
+    };
+
+    // 이전 계약서 목록 조회
+    const handleLoadPrevious = async () => {
+        if (!selectedEmployee) {
+            alert('먼저 직원을 선택해주세요.');
+            return;
+        }
+
+        setLoadingPrevious(true);
+        try {
+            const contracts = await fetchPreviousContracts(selectedEmployee, token);
+            setPreviousContracts(contracts);
+            setShowPreviousContracts(true);
+        } catch (error) {
+            console.error('이전 계약서 조회 실패:', error);
+            alert('이전 계약서를 불러오는데 실패했습니다.');
+        } finally {
+            setLoadingPrevious(false);
+        }
+    };
+
+    // 이전 계약서로 새 계약서 생성
+    const handleSelectPrevious = async (previousContractId: number) => {
+        try {
+            // 빈 계약서 생성
+            const newContract = await createContract(selectedEmployee, token);
+            if (newContract && newContract.id) {
+                // 편집 페이지로 이동하면서 이전 계약서 ID 전달
+                navigate(`/detail/employment-contract/edit/${newContract.id}?loadFrom=${previousContractId}`);
+                handleClose();
+            }
+        } catch (error) {
+            console.error('계약서 생성 실패:', error);
+            alert('계약서 생성에 실패했습니다.');
+        }
+    };
+
     const handleSubmit = () => {
         if (selectedEmployee) {
             onSubmit(selectedEmployee);
-            setSelectedEmployee('');
-            setSearchTerm('');
-            onClose();
+            handleClose();
         }
+    };
+
+    const handleClose = () => {
+        setSelectedEmployee('');
+        setSearchTerm('');
+        setShowPreviousContracts(false);
+        setPreviousContracts([]);
+        onClose();
     };
 
     if (!isOpen) return null;
 
     return (
         <div className="modal-overlay">
-            <div className="modal-content">
+            <div className="modal-content" style={{ maxWidth: showPreviousContracts ? '800px' : '500px' }}>
                 <div className="modal-header">
-                    <h2>근로계약서 작성 대상 선택</h2>
-                    <button className="close-button" onClick={onClose}>×</button>
+                    <h2>근로계약서 작성</h2>
+                    <button className="close-button" onClick={handleClose}>×</button>
                 </div>
 
                 <div className="modal-body">
-                    <div className="search-section">
-                        <input
-                            type="text"
-                            placeholder="직원 이름 또는 ID로 검색"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="search-input"
-                        />
-                    </div>
-
-                    <div className="user-list">
-                        {filteredUsers.map(user => (
-                            <div
-                                key={user.userId}
-                                className={`user-item ${selectedEmployee === user.userId ? 'selected' : ''}`}
-                                onClick={() => setSelectedEmployee(user.userId)}
-                            >
-                                <div className="user-info">
-                                    <div className="user-name">{user.userName}</div>
-                                    <div className="user-details">
-                                        {user.userId} | {user.deptName || user.deptCode}
-                                    </div>
-                                </div>
+                    {!showPreviousContracts ? (
+                        // 1단계: 직원 선택
+                        <>
+                            <div className="search-section">
+                                <input
+                                    type="text"
+                                    placeholder="직원 이름 또는 ID로 검색"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="search-input"
+                                />
                             </div>
-                        ))}
-                    </div>
+
+                            <div className="user-list">
+                                {filteredUsers.map(user => (
+                                    <div
+                                        key={user.userId}
+                                        className={`user-item ${selectedEmployee === user.userId ? 'selected' : ''}`}
+                                        onClick={() => setSelectedEmployee(user.userId)}
+                                    >
+                                        <div className="user-info">
+                                            <div className="user-name">{user.userName}</div>
+                                            <div className="user-details">
+                                                {user.userId} | {user.deptName || user.deptCode}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    ) : (
+                        // 2단계: 이전 계약서 목록
+                        <>
+                            <div style={{ marginBottom: '20px' }}>
+                                <button
+                                    className="back-button"
+                                    onClick={() => setShowPreviousContracts(false)}
+                                    style={{ marginBottom: '10px' }}
+                                >
+                                    ← 직원 선택으로 돌아가기
+                                </button>
+                                <h3>이전 계약서 선택</h3>
+                                <p style={{ color: '#666', fontSize: '14px' }}>
+                                    선택한 직원: <strong>{users.find(u => u.userId === selectedEmployee)?.userName}</strong>
+                                </p>
+                            </div>
+
+                            {previousContracts.length === 0 ? (
+                                <div className="empty-state">
+                                    <p>이전 계약서가 없습니다.</p>
+                                    <p style={{ fontSize: '14px', color: '#666' }}>
+                                        새로 작성하기 버튼을 눌러주세요.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="contract-history-list">
+                                    {previousContracts.map(contract => (
+                                        <div
+                                            key={contract.id}
+                                            className="contract-history-item"
+                                            onClick={() => handleSelectPrevious(contract.id)}
+                                            style={{
+                                                padding: '15px',
+                                                border: '1px solid #ddd',
+                                                borderRadius: '8px',
+                                                marginBottom: '10px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.backgroundColor = '#f5f5f5';
+                                                e.currentTarget.style.borderColor = '#4CAF50';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'white';
+                                                e.currentTarget.style.borderColor = '#ddd';
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                                                        <span className={`status-badge ${getStatusClass(contract.status)}`}>
+                                                            {getStatusText(contract.status)}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ fontSize: '14px', color: '#666' }}>
+                                                        작성일: {new Date(contract.createdAt).toLocaleDateString()}
+                                                    </div>
+                                                    <div style={{ fontSize: '14px', color: '#666' }}>
+                                                        최종수정: {new Date(contract.updatedAt).toLocaleDateString()}
+                                                    </div>
+                                                </div>
+                                                <div style={{ fontSize: '24px', color: '#4CAF50' }}>→</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
 
                 <div className="modal-footer">
-                    <button className="cancel-button" onClick={onClose}>취소</button>
-                    <button
-                        className="confirm-button"
-                        onClick={handleSubmit}
-                        disabled={!selectedEmployee}
-                    >
-                        선택 완료
-                    </button>
+                    <button className="cancel-button" onClick={handleClose}>취소</button>
+
+                    {!showPreviousContracts ? (
+                        <>
+                            <button
+                                className="history-button"
+                                onClick={handleLoadPrevious}
+                                disabled={!selectedEmployee || loadingPrevious}
+                                style={{
+                                    backgroundColor: '#2196F3',
+                                    color: 'white'
+                                }}
+                            >
+                                {loadingPrevious ? '조회중...' : '이전 계약서 불러오기'}
+                            </button>
+                            <button
+                                className="confirm-button"
+                                onClick={handleSubmit}
+                                disabled={!selectedEmployee}
+                            >
+                                새로 작성
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            className="confirm-button"
+                            onClick={handleSubmit}
+                        >
+                            새로 작성하기
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -582,6 +756,7 @@ const EmploymentContractBoard: React.FC = () => {
                     onClose={() => setIsCreateModalOpen(false)}
                     onSubmit={handleCreateContract}
                     users={users}
+                    token={token}
                 />
             </div>
         </Layout>

@@ -260,3 +260,81 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    .consent-form-container {
+        padding: 12px;
+        max-width: 100%;
+    }
+
+    .consent-form-title {
+        font-size: 20px;
+    }
+
+    .consent-form-section {
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+
+    .consent-section-title {
+        font-size: 16px;
+    }
+
+    .consent-type-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .consent-type-card {
+        padding: 12px;
+    }
+
+    .consent-form-group {
+        margin-bottom: 16px;
+    }
+
+    .consent-form-label {
+        font-size: 13px;
+    }
+
+    .consent-form-input,
+    .consent-form-select,
+    .consent-form-textarea {
+        font-size: 14px;
+        padding: 10px;
+    }
+
+    .consent-selected-users {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .consent-users-list {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .consent-user-tag {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .consent-form-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .consent-btn-cancel,
+    .consent-btn-submit {
+        width: 100%;
+        min-height: 44px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .consent-form-section {
+        padding: 12px;
+    }
+}

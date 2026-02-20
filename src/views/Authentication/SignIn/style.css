@@ -127,3 +127,67 @@
     font-size: 13px;
     color: var(--text-muted);
 }
+
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    #sign-in-wrapper {
+        flex-direction: column;
+        min-height: 100vh;
+    }
+
+    .sign-in-image {
+        display: none; /* 모바일에서 이미지 숨김 */
+    }
+
+    .sign-in-container {
+        width: 100%;
+        padding: 20px;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sign-in-box {
+        width: 100%;
+        max-width: 400px;
+        padding: 32px 24px;
+    }
+
+    .sign-in-title {
+        font-size: 24px;
+    }
+
+    .sign-in-subtitle {
+        font-size: 14px;
+    }
+
+    .sign-in-input-box {
+        margin-bottom: 16px;
+    }
+
+    .sign-in-input {
+        font-size: 16px; /* iOS 자동 줌 방지 */
+        padding: 12px;
+        height: 48px;
+    }
+
+    .sign-in-button {
+        height: 48px;
+        font-size: 16px;
+    }
+
+    .sign-in-link {
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .sign-in-box {
+        padding: 24px 16px;
+    }
+
+    .sign-in-title {
+        font-size: 22px;
+    }
+}

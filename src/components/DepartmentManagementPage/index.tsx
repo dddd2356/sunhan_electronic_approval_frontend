@@ -258,38 +258,37 @@ export const DepartmentManagementPage: React.FC = () => {
                             ) : (
                                 departments.map((dept) => (
                                     <tr key={dept.deptCode} className={dept.useFlag === '0' ? 'dm-inactive-row' : ''}>
-                                        <td>
+                                        <td data-label="부서 코드">
                                             <span className="dm-badge">{dept.deptCode}</span>
-                                            </td>
-                                            <td style={{fontWeight: 500}}>{dept.deptName}</td>
-                                            <td>
-                                                <span className={`dm-status-badge ${dept.useFlag === '1' ? 'active' : 'inactive'}`}>
-                                                    {dept.useFlag === '1' ? '활성' : '비활성'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div className="dm-action-group" style={{justifyContent: 'flex-end'}}>
-                                                    <button
-                                                        onClick={() => handleOpenMembersModal(dept)}
-                                                        className="dm-btn-icon"
-                                                        title="구성원 관리"
-                                                        disabled={dept.useFlag === '0'}
-                                                    >
-                                                        <Users size={18}/>
-                                                        <span style={{marginLeft: 6, fontSize: 13}}>구성원</span>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleToggleDeptStatus(dept)}
-                                                        className={`dm-btn-icon ${dept.useFlag === '1' ? 'danger' : 'success'}`}
-                                                        title={dept.useFlag === '1' ? '비활성화' : '활성화'}
-                                                    >
-                                                        {dept.useFlag === '1' ? <Trash2 size={18}/> :
-                                                            <CheckCircle size={18}/>}
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
+                                        </td>
+                                        <td data-label="부서 이름" style={{fontWeight: 500}}>{dept.deptName}</td>
+                                        <td data-label="상태">
+            <span className={`dm-status-badge ${dept.useFlag === '1' ? 'active' : 'inactive'}`}>
+                {dept.useFlag === '1' ? '활성' : '비활성'}
+            </span>
+                                        </td>
+                                        <td>
+                                            <div className="dm-action-group" style={{justifyContent: 'flex-end'}}>
+                                                <button
+                                                    onClick={() => handleOpenMembersModal(dept)}
+                                                    className="dm-btn-icon"
+                                                    title="구성원 관리"
+                                                    disabled={dept.useFlag === '0'}
+                                                >
+                                                    <Users size={18}/>
+                                                    <span style={{marginLeft: 6, fontSize: 13}}>구성원</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleToggleDeptStatus(dept)}
+                                                    className={`dm-btn-icon ${dept.useFlag === '1' ? 'danger' : 'success'}`}
+                                                    title={dept.useFlag === '1' ? '비활성화' : '활성화'}
+                                                >
+                                                    {dept.useFlag === '1' ? <Trash2 size={18}/> : <CheckCircle size={18}/>}
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
                                 )}
                             </tbody>
                         </table>

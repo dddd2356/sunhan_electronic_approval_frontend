@@ -87,6 +87,32 @@
     text-align: left;
 }
 
+/* 주소 셀만 높이 자동 조절 */
+.parties-table tr:has(textarea[name="employeeAddress"]) {
+    height: auto !important;
+}
+
+.parties-table td:has(textarea[name="employeeAddress"]) {
+    height: auto !important;
+    vertical-align: middle !important;
+    overflow: visible !important;
+}
+
+.parties-table td.input-cell textarea[name="employeeAddress"] {
+    display: block !important;
+    width: 100% !important;
+    min-height: 24px !important;
+    max-height: none !important;
+    line-height: 1.4 !important;
+    text-align: center;
+    resize: none;
+    overflow: hidden;
+    padding: 6px 8px;
+    box-sizing: border-box;
+    border: none;
+    background: transparent;
+}
+
 /* 계약 내용 */
 .contract-content {
     line-height: 1.8;
@@ -120,7 +146,7 @@
 .input-group {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
 }
 
@@ -156,7 +182,7 @@
 
 .input-group .wide-input {
     flex: 1;            /* 남은 공간 전부 차지 */
-    min-width: 200px;   /* 최소 너비를 지정할 수도 있고 */
+    min-width: 350px;   /* 최소 너비를 지정할 수도 있고 */
     width: 100%;        /* 강제 100% 너비 */
     margin-bottom: 10px;
 }
@@ -213,38 +239,6 @@
     color: #333;
 }
 
-/* 반응형 디자인 */
-@media (max-width: 768px) {
-    .contract-container {
-        padding: 20px;
-        margin: 10px;
-    }
-
-    .contract-header h1 {
-        font-size: 36px;
-        letter-spacing: 4px;
-    }
-
-    .parties-table th,
-    .parties-table td {
-        padding: 8px 4px;
-        font-size: 12px;
-    }
-
-    .contract-content {
-        font-size: 13px;
-    }
-
-    .input-group .wide-input {
-        width: 100%;
-    }
-
-    .signature-boxes {
-        flex-direction: column;
-        gap: 20px;
-    }
-}
-
 /* 페이지네이션 컨트롤 */
 .pagination-controls {
     display: flex;
@@ -289,6 +283,13 @@
     font-weight: bold;
     color: #333;
     white-space: nowrap; /* 줄바꿈 방지 */
+}
+
+.signature-image {
+    max-width: 100px; /* 또는 원하는 너비 */
+    max-height: 70px; /* 또는 원하는 높이 */
+    vertical-align: middle; /* 텍스트와 이미지 정렬 */
+    margin-bottom: 2px;
 }
 
 .actual-signature-image {
@@ -484,4 +485,746 @@ input:focus {
 
 .page::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
+}
+
+/* 완료된 계약서 PDF 뷰어 스타일 */
+.completed-contract-notice {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 8px;
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.notice-icon {
+    font-size: 24px;
+}
+
+.notice-text {
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.pdf-viewer-container {
+    background: #f5f5f5;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 기본 PDF 스타일 추가 (line 550 이후에) */
+.pdf-viewer {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.pdf-iframe {
+    width: 100%;
+    height: 800px;
+    border: none;
+}
+
+@media (max-width: 768px) {
+    .completed-contract-notice {
+        padding: 12px 16px;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .notice-icon {
+        font-size: 20px;
+    }
+
+    .notice-text {
+        font-size: 14px;
+    }
+
+    .pdf-iframe {
+        height: 600px !important;
+    }
+}
+
+/* 📱 페이지 스크롤 */
+@media (max-width: 768px) {
+    .page {
+        width: 100% !important;
+        min-width: 100% !important; /* ✅ 640px → 100% */
+        max-width: 100% !important; /* ✅ 추가 */
+        min-height: auto !important;
+        margin: 0 !important; /* ✅ auto 제거 */
+        box-shadow: none !important; /* ✅ 모바일에서는 그림자 제거 */
+        max-height: none !important; /* ✅ 높이 제한 제거 */
+        overflow-y: visible !important; /* ✅ 페이지 전체 스크롤 */
+        overflow-x: hidden !important; /* ✅ 가로 스크롤 차단 */
+        -webkit-overflow-scrolling: touch;
+        padding: 8px !important; /* ✅ 12px → 8px */
+    }
+}
+/* 📱 테이블 및 주소창 짤림 해결 (수정됨) */
+@media (max-width: 768px) {
+    .parties-table {
+        overflow-x: hidden !important; /* ✅ auto → hidden */
+        margin: 8px 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        display: block !important;
+    }
+
+    .parties-table table {
+        min-width: 100% !important; /* ✅ 640px → 100% */
+        width: 100% !important; /* ✅ 640px → 100% */
+        margin: 0 !important;
+        table-layout: fixed !important;
+        display: table !important;
+    }
+
+    .parties-table th,
+    .parties-table td {
+        font-size: 8px !important; /* ✅ 10px → 8px */
+        padding: 3px 1px !important; /* ✅ 4px 2px → 3px 1px */
+        white-space: normal !important;
+        word-break: break-word !important;
+        line-height: 1.2 !important; /* ✅ 1.3 → 1.2 */
+    }
+
+    .parties-table td:has(textarea[name="employeeAddress"]) {
+        white-space: normal !important;
+    }
+    .parties-table input,
+    .parties-table textarea {
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        font-size: 8px !important; /* ✅ 10px → 8px */
+        padding: 1px !important; /* ✅ 2px → 1px */
+        line-height: 1.2 !important; /* ✅ 추가 */
+    }
+}
+
+/* 📱 자동 줌 방지하되 폰트 크기 유지 */
+@media (max-width: 768px) {
+    input[type="text"],
+    input[type="date"] {
+        font-size: 14px !important;
+    }
+
+    textarea {
+        font-size: 16px !important;
+    }
+
+    /* ✅ parties-table 내부는 8px로 재정의 */
+    .parties-table input[type="text"]:disabled,
+    .parties-table input[type="date"]:disabled,
+    .parties-table textarea:disabled {
+        font-size: 8px !important;
+        padding: 1px !important;
+    }
+}
+
+
+
+@media (max-width: 768px) {
+    .consent-row {
+        padding: 8px 4px !important;
+        height: auto !important;
+        min-height: 48px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        position: relative !important;
+        z-index: 1 !important;
+        gap: 4px !important; /* ✅ 추가 */
+    }
+
+    .checkbox-section {
+        flex: 0 0 auto !important;
+        max-width: 50% !important; /* ✅ 60% → 50% */
+        gap: 2px !important; /* ✅ 4px → 2px */
+        display: flex !important;
+        align-items: center !important;
+        position: relative !important;
+        z-index: 10 !important;
+    }
+
+    .checkbox-item {
+        padding: 6px 8px !important; /* ✅ 8px 12px → 6px 8px */
+        min-height: 40px !important; /* ✅ 44px → 40px */
+        display: flex !important;
+        align-items: center !important;
+        cursor: pointer !important;
+        position: relative !important;
+        z-index: 10 !important;
+        gap: 3px !important; /* ✅ 추가 - 체크박스와 텍스트 간격 */
+    }
+    .checkbox-input {
+        width: 16px !important; /* ✅ 20px → 16px */
+        height: 16px !important; /* ✅ 20px → 16px */
+        min-width: 16px !important;
+        min-height: 16px !important;
+        transform: none !important;
+        margin: 0 4px !important; /* ✅ 6px → 4px */
+        cursor: pointer !important;
+        pointer-events: auto !important;
+        position: relative !important;
+        z-index: 10 !important;
+    }
+
+    .checkbox-text {
+        font-size: 11px !important; /* ✅ 12px → 11px */
+        cursor: pointer !important;
+        user-select: none !important;
+    }
+
+    .signature-label {
+        font-size: 11px !important; /* ✅ 추가 */
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+    }
+
+    .signature-input {
+        width: 55px !important;
+        min-width: 55px !important;
+        max-width: 55px !important;
+        font-size: 11px !important;
+        padding: 4px !important;
+        height: 32px !important;
+        flex-shrink: 0 !important; /* ✅ 추가 */
+    }
+
+
+    .signature-suffix-container {
+        width: 55px !important;
+        min-width: 55px !important;
+        max-width: 55px !important;
+        height: 32px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        position: relative !important;
+        z-index: 10 !important;
+        flex-shrink: 0 !important; /* ✅ 추가 */
+    }
+
+    .signature-suffix-container.clickable {
+        min-width: 55px !important;
+        min-height: 32px !important;
+        cursor: pointer !important;
+        -webkit-tap-highlight-color: rgba(0, 123, 255, 0.3) !important;
+    }
+
+    .signature-text {
+        font-size: 9px !important; /* ✅ 10px → 9px */
+    }
+
+    .signature-image {
+        max-width: 70px !important; /* ✅ 80px → 70px */
+        max-height: 50px !important; /* ✅ 60px → 50px */
+        object-fit: contain !important;
+    }
+}
+
+/* 📱 페이지네이션 & 푸터 버튼 가로 배치 (수정됨) */
+@media (max-width: 768px) {
+    .pagination-controls {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: 100% !important;        /* 부모 내부에서 정확히 가운데로 */
+        margin: 16px 0 !important;
+        padding: 0 !important;
+        position: relative !important; /* 다른 절대/고정 규칙보다 우선 표시 위해 */
+        z-index: 9999 !important;
+        background: transparent !important;
+    }
+
+    /* 내부 모든 요소에 float/position/auto-width 강제 적용(외부 규칙 무력화) */
+    .pagination-controls,
+    .pagination-controls * {
+        float: none !important;
+        position: static !important;
+        width: auto !important;
+        max-width: none !important;
+        margin: 0 !important;
+    }
+
+    /* 버튼은 중앙 클러스터 안에서만 움직이게 고정 */
+    .pagination-controls > button {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex: 0 0 auto !important;
+        min-width: 60px !important;
+        max-width: 120px !important;
+        height: 40px !important;
+        padding: 8px 14px !important;
+        border-radius: 8px !important;
+        white-space: nowrap !important;
+        margin: 10px 4px !important;
+    }
+
+    /* 숫자는 항상 가운데(버튼들 사이) */
+    .pagination-controls > span {
+        display: inline-block !important;
+        margin: 0 6px !important;
+        white-space: nowrap !important;
+        font-weight: 600 !important;
+        color: #333 !important;
+    }
+
+    /* 안전장치: editor-footer의 버튼 규칙이 pagination 버튼에 적용되지 않도록 direct-child로 제한 */
+    .editor-footer > button {
+        flex: 1 1 auto !important;
+    }
+}
+
+/* 📱 터치 피드백 */
+@media (max-width: 768px) {
+    button:active,
+    .clickable:active,
+    .checkbox-item:active,
+    .signature-suffix-container:active {
+        opacity: 0.7 !important;
+        transform: scale(0.98) !important;
+        transition: all 0.1s ease !important;
+    }
+
+    /* ✅ 터치 하이라이트 색상 추가 */
+    .checkbox-input:active,
+    .checkbox-item:active {
+        -webkit-tap-highlight-color: rgba(0, 123, 255, 0.2) !important;
+    }
+
+    .signature-suffix-container.clickable:active {
+        -webkit-tap-highlight-color: rgba(255, 193, 7, 0.3) !important;
+    }
+}
+
+/* 📱 가로 스크롤 차단 */
+@media (max-width: 768px) {
+    .contract-container {
+        overflow-x: hidden !important; /* ✅ auto → hidden */
+        overflow-y: visible !important;
+        max-width: 100vw !important;
+        padding: 8px !important; /* ✅ 12px → 8px */
+        margin: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .viewer {
+        overflow-x: hidden !important; /* ✅ auto → hidden */
+        overflow-y: visible !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .contract-content {
+        padding: 0 8px !important; /* ✅ 12px → 8px */
+        min-width: 100% !important; /* ✅ 640px → 100% */
+        max-width: 100% !important; /* ✅ 추가 */
+    }
+}
+
+/* 📱 입력 필드 통일 */
+@media (max-width: 768px) {
+    .input-group {
+        gap: 4px !important; /* ✅ 8px → 4px */
+        flex-wrap: wrap !important; /* ✅ 줄바꿈 허용 */
+    }
+
+    .input-group input {
+        padding: 6px 8px !important; /* ✅ 8px 12px → 6px 8px */
+        min-height: 32px !important; /* ✅ 40px → 32px */
+        font-size: 12px !important; /* ✅ 14px → 12px */
+    }
+
+    .input-group .wide-input {
+        min-width: 100% !important; /* ✅ 350px → 100% */
+        margin-bottom: 6px !important; /* ✅ 10px → 6px */
+    }
+
+    .clause input[name="receiptConfirmation1"],
+    .clause input[name="receiptConfirmation2"] {
+        font-size: 12px !important; /* ✅ 14px → 12px */
+        padding: 4px 8px !important; /* ✅ 추가 */
+    }
+}
+
+/* 📱 계약 내용 텍스트 - 통일된 폰트 크기 */
+@media (max-width: 768px) {
+    .contract-content {
+        font-size: 12px !important; /* ✅ 14px → 12px */
+        line-height: 1.5 !important; /* ✅ 1.6 → 1.5 */
+    }
+
+    .clause {
+        font-size: 12px !important; /* ✅ 14px → 12px */
+        margin-bottom: 12px !important; /* ✅ 추가 */
+    }
+
+    .clause h3 {
+        font-size: 13px !important; /* ✅ 15px → 13px */
+        font-weight: bold !important;
+        margin-bottom: 8px !important; /* ✅ 추가 */
+    }
+
+    .clause p {
+        font-size: 12px !important; /* ✅ 14px → 12px */
+        word-break: keep-all !important;
+        line-height: 1.5 !important; /* ✅ 추가 */
+        margin-bottom: 8px !important; /* ✅ 추가 */
+    }
+
+    .contract-content p,
+    .contract-content span,
+    .contract-content div {
+        font-size: 12px !important; /* ✅ 14px → 12px */
+    }
+
+    .date-section,
+    .date-section span,
+    .date-section input {
+        font-size: 12px !important; /* ✅ 14px → 12px */
+    }
+
+}
+
+/* 📱 특정 필드 크기 고정 */
+@media (max-width: 768px) {
+    input[name="contractSignDate"],
+    input[name="employeeName"],
+    input[name="employeeSSN"] {
+        font-size: 14px !important;
+    }
+}
+
+/* 📱 모바일 PDF 뷰어 */
+
+@media (max-width: 768px) {
+    .pdf-viewer {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important; /* ✅ 100vw → 100% */
+        max-width: 100% !important; /* ✅ 100vw → 100% */
+        height: calc(100vh - 150px) !important; /* ✅ 헤더/푸터 공간 확보 */
+        overflow: hidden !important; /* ✅ auto → hidden */
+        position: relative !important;
+        background: #f5f5f5 !important; /* ✅ 배경색 추가 */
+    }
+
+    .pdf-iframe {
+        width: 100% !important; /* ✅ 100vw → 100% */
+        height: 100% !important; /* ✅ calc(...) → 100% */
+        min-height: 500px !important; /* ✅ 600px → 500px */
+        max-height: none !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important; /* ✅ 추가 */
+    }
+}
+
+@media (max-width: 768px) {
+    .editor-footer {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        padding: 12px !important;
+        margin: 16px 0 !important;
+    }
+
+    .editor-footer button {
+        flex: 1 1 auto !important;
+        min-width: 80px !important;
+        max-width: 150px !important;
+        padding: 10px 16px !important;
+        font-size: 14px !important;
+        white-space: nowrap !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .ec-contract-title-input {
+        font-size: 20px !important; /* ✅ 36px → 20px */
+        letter-spacing: 2px !important; /* ✅ 4px → 2px */
+        padding: 6px 0 !important; /* ✅ 10px → 6px */
+    }
+
+    .contract-header {
+        margin-bottom: 12px !important; /* ✅ 20px → 12px */
+    }
+}
+/* 📱 전역 터치 이벤트 활성화 */
+@media (max-width: 768px) {
+    .contract-container,
+    .contract-content,
+    .clause {
+        pointer-events: auto !important;
+    }
+
+    input,
+    textarea,
+    button,
+    .checkbox-input,
+    .checkbox-item,
+    .clickable,
+    .signature-suffix-container {
+        pointer-events: auto !important;
+        touch-action: manipulation !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .signature-section {
+        flex: 0 0 auto !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        gap: 4px !important;
+        flex-wrap: nowrap !important;
+        margin-left: auto !important;
+        position: relative !important;
+        z-index: 10 !important;
+        max-width: 35% !important; /* ✅ 추가 */
+        min-width: 150px !important; /* ✅ 추가 */
+    }
+
+    .consent-row .signature-section {
+        margin-left: 0 !important;
+        justify-content: flex-end !important;
+        max-width: 50% !important; /* ✅ 45% → 50% */
+        min-width: 130px !important; /* ✅ 120px → 130px */
+        gap: 3px !important; /* ✅ 2px → 3px */
+    }
+
+    .consent-row .signature-label {
+        display: none !important; /* ✅ 추가 - "동의자:" 텍스트 숨김 */
+    }
+
+    .consent-row .signature-input {
+        width: 50px !important; /* ✅ 45px → 50px */
+        min-width: 50px !important;
+        max-width: 50px !important;
+        font-size: 10px !important;
+        padding: 3px !important; /* ✅ 2px → 3px */
+        height: 30px !important; /* ✅ 28px → 30px */
+        flex-shrink: 0 !important;
+    }
+
+    .consent-row .signature-suffix-container {
+        width: 50px !important; /* ✅ 45px → 50px */
+        min-width: 50px !important;
+        max-width: 50px !important;
+        height: 30px !important; /* ✅ 28px → 30px */
+    }
+
+    .consent-row .signature-image {
+        max-width: 65px !important; /* ✅ 60px → 65px */
+        max-height: 45px !important; /* ✅ 40px → 45px */
+    }
+
+    /* ✅ 4페이지 작성일자 섹션만 중앙 정렬 */
+    .clause[style*="justify-content: center"] > .signature-section,
+    .clause > .signature-section:has(.date-section) {
+        justify-content: center !important;
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 768px) {
+    /* 4페이지 개인정보 동의 영역 */
+    .parties-table .consent-row {
+        background-color: transparent !important;
+        border: none !important;
+        padding: 8px 4px !important;
+        min-height: 48px !important;
+    }
+
+    .parties-table .checkbox-section {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 2px !important; /* 10px → 2px */
+        max-width: 50% !important;
+    }
+
+    .parties-table .checkbox-item {
+        padding: 6px 8px !important;
+        min-height: 40px !important;
+        gap: 3px !important;
+    }
+
+    .parties-table .checkbox-input {
+        width: 16px !important;
+        height: 16px !important;
+        min-width: 16px !important;
+        min-height: 16px !important;
+        margin: 0 4px !important;
+    }
+
+    .parties-table .checkbox-text {
+        font-size: 11px !important;
+    }
+
+    /* 4페이지 서명 영역 */
+    .parties-table .signature-section {
+        justify-content: flex-end !important;
+        max-width: 50% !important;
+        min-width: 130px !important;
+        gap: 3px !important;
+        margin-left: 0 !important;
+    }
+
+    .parties-table .signature-label {
+        display: none !important; /* "동의자:" 숨김 */
+    }
+
+    .parties-table .signature-input {
+        width: 50px !important;
+        min-width: 50px !important;
+        max-width: 50px !important;
+        font-size: 10px !important;
+        padding: 3px !important;
+        height: 30px !important;
+    }
+
+    .parties-table .signature-suffix-container {
+        width: 50px !important;
+        min-width: 50px !important;
+        max-width: 50px !important;
+        height: 30px !important;
+    }
+
+    .parties-table .signature-image {
+        max-width: 65px !important;
+        max-height: 45px !important;
+    }
+}
+
+/* ✅ PDF.js 전용 스타일 */
+.pdf-document-container {
+    width: 100%;
+    max-width: 100%;
+    background: #f5f5f5;
+    padding: 20px 0;
+}
+
+.react-pdf__Document {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.react-pdf__Page {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin: 0 auto 20px;
+    background: white;
+}
+
+.react-pdf__Page__canvas {
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+.pdf-navigation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    background: white;
+    border-top: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+    position: sticky;
+    bottom: 0;
+    z-index: 100;
+}
+
+.pdf-nav-button {
+    padding: 12px 24px;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pdf-nav-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.pdf-nav-button:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.pdf-nav-button:not(:disabled):active {
+    transform: translateY(0);
+}
+
+.pdf-page-info {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    min-width: 80px;
+    text-align: center;
+}
+
+/* 📱 모바일 최적화 */
+@media (max-width: 768px) {
+    .pdf-document-container {
+        padding: 10px 0;
+    }
+
+    .react-pdf__Page {
+        margin: 0 auto 10px;
+        box-shadow: none;
+    }
+
+    .pdf-navigation {
+        gap: 10px;
+        padding: 12px;
+        position: sticky;
+        bottom: 0;
+    }
+
+    .pdf-nav-button {
+        padding: 10px 16px;
+        font-size: 14px;
+        min-width: 70px;
+    }
+
+    .pdf-page-info {
+        font-size: 16px;
+        min-width: 60px;
+    }
+
+    /* ✅ 기존 pdf-viewer 스타일 */
+    .pdf-viewer {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        min-height: calc(100vh - 200px) !important;
+    }
 }

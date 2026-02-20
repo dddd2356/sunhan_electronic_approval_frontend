@@ -1,0 +1,198 @@
+/* ========================================
+   글로벌 모바일 스타일
+   ======================================== */
+
+/* Box Sizing */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/* iOS 텍스트 크기 조정 방지 */
+html {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+}
+
+/* 부드러운 스크롤 */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Body 기본 설정 */
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Pull to Refresh 방지 */
+body {
+    overscroll-behavior-y: contain;
+}
+
+/* 모바일 전용 스타일 */
+@media (max-width: 768px) {
+    /* Body 가로 스크롤 방지 */
+    body {
+        overflow-x: hidden;
+        max-width: 100%;
+    }
+
+    /* 모든 요소 최대 너비 제한 */
+    * {
+        max-width: 100%;
+    }
+
+    /* 터치 액션 최적화 */
+    a,
+    button,
+    input,
+    select,
+    textarea {
+        touch-action: manipulation;
+    }
+
+    /* 이미지 최적화 */
+    img {
+        max-width: 100%;
+        height: auto;
+        -webkit-user-drag: none;
+        user-select: none;
+    }
+
+    /* 테이블 스크롤 */
+    table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 모달 열릴 때 body 스크롤 방지 */
+    body.modal-open {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+    }
+
+    /* 스크롤 컨테이너 */
+    .scrollable,
+    .modal-body,
+    .list-container {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 긴 텍스트 줄바꿈 */
+    p,
+    span,
+    div {
+        word-wrap: break-word;
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+
+    /* 링크/URL 줄바꿈 */
+    a {
+        word-break: break-all;
+    }
+}
+
+/* Safe Area 대응 (노치) */
+@supports (padding: max(0px)) {
+    body {
+        padding-left: max(0px, env(safe-area-inset-left));
+        padding-right: max(0px, env(safe-area-inset-right));
+    }
+}
+
+/* 가로 모드 */
+@media (max-width: 768px) and (orientation: landscape) {
+    /* 가로 모드에서 헤더 축소 */
+    #header,
+    .header {
+        height: 48px;
+    }
+}
+
+/* 애니메이션 최적화 */
+@media (max-width: 768px) {
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+}
+
+/* 다크모드 대응 */
+@media (max-width: 768px) {
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-page: #1a1a1a;
+            --bg-card: #2d2d2d;
+            --text-main: #ffffff;
+            --text-sub: #a0a0a0;
+            --border: #404040;
+        }
+
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+        }
+    }
+}
+
+/* 포커스 가시성 강화 */
+@media (max-width: 768px) {
+    *:focus {
+        outline: 3px solid #2563eb;
+        outline-offset: 2px;
+    }
+
+    /* 버튼/링크 포커스 */
+    button:focus,
+    a:focus {
+        outline: 3px solid #2563eb;
+        outline-offset: 2px;
+    }
+}
+
+/* 프린트 스타일 */
+@media print {
+    .no-print,
+    #header,
+    .header,
+    #sidebar,
+    .sidebar,
+    button,
+    .btn {
+        display: none !important;
+    }
+
+    * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+/* ========================================
+   계약서 전용 모바일 최적화
+   ======================================== */
+
+@media (max-width: 768px) {
+    /* 안전 영역 확보 */
+    #root {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* 가로 스크롤 완전 차단 */
+    html, body {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+        position: relative;
+    }
+}

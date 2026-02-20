@@ -219,6 +219,7 @@ const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose }) => {
             'COMPLETED': '완료됨',
 
             // 휴가원 전용
+            'PENDING': '승인 대기',
             'PENDING_SUBSTITUTE': '대직자 승인 대기',
             'PENDING_DEPT_HEAD': '부서장 승인 대기',
             'PENDING_CENTER_DIRECTOR': '센터장 승인 대기',
@@ -226,7 +227,7 @@ const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose }) => {
             'PENDING_CEO_DIRECTOR': '대표원장 승인 대기',
             'PENDING_HR_STAFF': '인사팀 승인 대기',
             'PENDING_HR_FINAL': '인사팀 최종 승인 대기',
-            'APPROVED': '승인됨',
+            'APPROVED': '완료됨',
             'REJECTED': '반려됨'
         };
         return statusMap[status] || status;
@@ -316,7 +317,8 @@ const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose }) => {
                                                         <span className={`reports-document-badge ${
                                                             doc.type === 'EMPLOYMENT_CONTRACT' ? 'reports-document-badge-contract'
                                                                 : doc.type === 'LEAVE_APPLICATION' ? 'reports-document-badge-vacation'
-                                                                    : 'reports-document-badge-other'
+                                                                    : doc.type === 'WORK_SCHEDULE' ? 'reports-document-badge-schedule'
+                                                                        : 'reports-document-badge-other'
                                                         }`}>
                                                             {doc.type === 'EMPLOYMENT_CONTRACT' ? '근로계약서'
                                                                 : doc.type === 'LEAVE_APPLICATION' ? '휴가원'

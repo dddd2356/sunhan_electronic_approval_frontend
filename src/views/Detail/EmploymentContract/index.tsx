@@ -1,9 +1,8 @@
 import React, {ChangeEvent, useCallback, useEffect, useRef, useState} from 'react';
 import {useCookies} from "react-cookie";
-import {ContractSignatures, fetchSignaturesForContract} from "../../../apis/signatures";
 import {SignatureState} from '../../../types/signature';
 import './style.css';
-import {useNavigate, useParams} from "react-router-dom";
+import {useNavigate, useParams, useSearchParams} from "react-router-dom";
 import Layout from "../../../components/Layout";
 import {
     returnToAdmin, sendContract, signContract, updateContract,
@@ -11,6 +10,9 @@ import {
 } from "../../../apis/contract";
 import RejectModal from "../../../components/RejectModal";
 import CeoDirectorSignImage from './assets/images/선한병원직인.png';
+import { Document, Page, pdfjs } from 'react-pdf';
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+
 interface PageData {
     id: number;
     title: string;
@@ -99,6 +101,8 @@ const EmploymentContract = () => {
     const [userSignatureImage, setUserSignatureImage] = useState<string | null>(null);
     const addressTextareaRef = useRef<HTMLTextAreaElement>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [searchParams] = useSearchParams();
+    const loadFromId = searchParams.get('loadFrom');
     const [formData, setFormData] = useState<FormDataFields>({
         contractTitle: '',
         employerName: '',
@@ -306,6 +310,15 @@ const EmploymentContract = () => {
         setRejectModalOpen(true);
     };
 
+    useEffect(() => {
+        const textarea = addressTextareaRef.current;
+        if (textarea && formData.employeeAddress !== undefined) {
+            // 높이를 초기화하고 다시 계산
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+    }, [formData.employeeAddress, currentPage]); // employeeAddress가 변경될 때마다 실행
+
     // 배열 필드 변경 핸들러
     const handleArrayInputChange = useCallback((
         fieldName: 'workTimeList' | 'breakTimeList',
@@ -397,7 +410,6 @@ const EmploymentContract = () => {
         if (!contract || !id) return;
 
         if (!validateAllSignedAndAgreed()) {
-            alert('모든 서명과 동의를 완료해주세요.');
             return;
         }
 
@@ -453,6 +465,9 @@ const EmploymentContract = () => {
                 errorMessage = error;
             }
             alert(`계약서 승인 중 오류가 발생했습니다: ${errorMessage}`);
+        }
+        finally {
+            setIsSubmitting(false);
         }
     }, [id, contract, formData, signatures, agreements, token, navigate, setContract, setFormData, setSignatures, setAgreements]); // 의존성 배열 확인
 
@@ -527,6 +542,11 @@ const EmploymentContract = () => {
         const {name, value} = e.target;
         // 주민등록번호 필드인 경우 포맷팅 적용
         const formattedValue = name === 'employeeSSN' ? formatSSN(value) : value;
+
+        if (name === 'employeeAddress' && e.target instanceof HTMLTextAreaElement) {
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+        }
 
         setFormData((prevData: FormDataFields) => { // prevData에 타입 적용
             const updatedData = {...prevData, [name]: formattedValue};
@@ -656,6 +676,46 @@ const EmploymentContract = () => {
         [id, token]
     );
 
+    const loadPreviousContractData = async (previousId: string) => {
+        try {
+            const previousContract = await fetchContract(parseInt(previousId), token);
+            const previousData = JSON.parse(previousContract.formDataJson);
+
+            // 서명과 동의 초기화
+            const cleanedData = {
+                ...previousData,
+                signatures: {
+                    page1: [{text: '', imageUrl: undefined, isSigned: false}],
+                    page2: [{text: '', imageUrl: undefined, isSigned: false}],
+                    page3: [{text: '', imageUrl: undefined, isSigned: false}],
+                    page4_consent: [{text: '', imageUrl: undefined, isSigned: false}],
+                    page4_receipt: [{text: '', imageUrl: undefined, isSigned: false}],
+                    page4_final: [{text: '', imageUrl: undefined, isSigned: false}],
+                },
+                agreements: {
+                    page1: '',
+                    page4: ''
+                },
+                receiptConfirmation1: '',
+                receiptConfirmation2: '',
+                contractSignDate: new Date().toISOString().split('T')[0]
+            };
+
+            // 상태 업데이트
+            setFormData(cleanedData);
+            setSignatures(cleanedData.signatures);
+            setAgreements(cleanedData.agreements);
+
+            // ✅ 서버에 즉시 저장 (임시저장)
+            await updateContract(parseInt(id!), cleanedData, token);
+
+            alert('이전 계약서 데이터를 불러왔습니다.');
+        } catch (error) {
+            console.error('이전 계약서 로드 실패:', error);
+            alert('이전 계약서 데이터를 불러오는데 실패했습니다.');
+        }
+    };
+
     // ✅ 통합된 하나의 useEffect
     useEffect(() => {
         if (!token || !id) return;
@@ -663,42 +723,28 @@ const EmploymentContract = () => {
         const loadContractDetails = async () => {
             try {
                 const contractData = await fetchContract(parseInt(id), token);
-
-                // 👉 첫 번째 useEffect의 기능
                 setContract(contractData);
                 setStatus(contractData.status);
 
-                // 👉 두 번째 useEffect의 기능
                 const dto = JSON.parse(contractData.formDataJson);
 
-                // 1) formDataJson → formData 상태 반영
-                setFormData(dto);
-
-                // 2) employeeName, employerName(creatorName) 반영
                 setFormData({
                     ...dto,
-                    workTimeList: dto.workTimeList?.length > 0
-                        ? dto.workTimeList
-                        : ['', '', ''],
-                    breakTimeList: dto.breakTimeList?.length > 0
-                        ? dto.breakTimeList
-                        : ['', '', '', ''],
+                    workTimeList: dto.workTimeList?.length > 0 ? dto.workTimeList : ['', '', ''],
+                    breakTimeList: dto.breakTimeList?.length > 0 ? dto.breakTimeList : ['', '', '', ''],
                     workingHours: dto.workingHours?.trim() || '209',
                     salaryMonths: dto.salaryMonths?.trim() || '12',
-
                     employeeName: contractData.employeeName ?? dto.employeeName,
                     employerName: contractData.creatorName ?? dto.employerName,
                     contractSignDate: dto.contractSignDate || new Date().toISOString().split('T')[0]
                 });
 
-                // 3) 서명 데이터가 있으면 반영
-                if (dto.signatures) {
-                    setSignatures(dto.signatures);
-                }
+                if (dto.signatures) setSignatures(dto.signatures);
+                if (dto.agreements) setAgreements(dto.agreements);
 
-                // 4) 동의 데이터가 있으면 반영
-                if (dto.agreements) {
-                    setAgreements(dto.agreements);
+                // ✅ 이전 계약서 ID가 있으면 데이터 로드
+                if (loadFromId) {
+                    await loadPreviousContractData(loadFromId);
                 }
             } catch (error) {
                 console.error('계약서 상세 정보 로드 실패:', error);
@@ -706,7 +752,76 @@ const EmploymentContract = () => {
         };
 
         loadContractDetails();
-    }, [token, id]);
+    }, [token, id, loadFromId]);  // ✅ loadFromId 의존성 추가
+
+    const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+    const [pdfLoading, setPdfLoading] = useState<boolean>(false);
+    const [pdfError, setPdfError] = useState<string | null>(null);
+    const [numPages, setNumPages] = useState<number>(0); // ✅ 추가
+    const [pageNumber, setPageNumber] = useState<number>(1); // ✅ 추가
+    const [isMobile, setIsMobile] = useState(false); // ✅ 추가
+
+    /* ✅ 모바일 감지 useEffect 추가 (다른 useEffect들 근처) */
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    /* ✅ 기존 PDF useEffect 수정 */
+    useEffect(() => {
+        if (status === 'COMPLETED' && contract?.pdfUrl && id && token) {
+            setPdfLoading(true);
+            setPdfError(null);
+
+            fetch(`/api/v1/employment-contract/${id}/pdf`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+                .then(res => {
+                    if (!res.ok) throw new Error(`PDF 로드 실패 (상태: ${res.status})`);
+                    return res.blob();
+                })
+                .then(blob => {
+                    console.log('PDF Blob 크기:', blob.size, 'Blob 타입:', blob.type);
+
+                    if (blob.size === 0) {
+                        throw new Error('PDF 파일이 비어있습니다.');
+                    }
+
+                    const pdfBlob = blob.type === 'application/pdf'
+                        ? blob
+                        : new Blob([blob], { type: 'application/pdf' });
+
+                    const url = URL.createObjectURL(pdfBlob);
+                    console.log('생성된 Blob URL:', url);
+                    setPdfBlobUrl(url);
+                    setPdfLoading(false);
+                })
+                .catch(err => {
+                    console.error('PDF 로드 에러:', err);
+                    setPdfError(err.message || 'PDF를 불러올 수 없습니다.');
+                    setPdfLoading(false);
+                });
+
+            // ✅ 클린업 함수 수정
+            return () => {
+                setPdfBlobUrl(prevUrl => {
+                    if (prevUrl) {
+                        console.log('Blob URL 정리:', prevUrl);
+                        URL.revokeObjectURL(prevUrl);
+                    }
+                    return null;
+                });
+            };
+        }
+    }, [status, contract?.pdfUrl, id, token]); // ✅ pdfBlobUrl 제거
 
     const isAdmin = currentUser?.role === 'ADMIN';
     const isEmployee = currentUser?.id === contract?.employeeId;
@@ -781,7 +896,7 @@ const EmploymentContract = () => {
                                 </td>
                                 <th className="field-header">대표자</th>
                                 <td className="input-cell">
-                                    최민선외 6명
+                                    최민선
                                 </td>
                             </tr>
                             <tr>
@@ -823,23 +938,17 @@ const EmploymentContract = () => {
                             </tr>
                             <tr>
                                 <th className="field-header">주소</th>
-                                <td className="input-cell" style={{verticalAlign: 'top'}}>
+                                <td className="input-cell">
                                     <textarea
-                                        ref={(el) => {
-                                            addressTextareaRef.current = el;
-                                            if (el) {
-                                                el.style.height = 'auto';
-                                                el.style.height = el.scrollHeight + 'px';
-                                            }
-                                        }}
+                                        ref={addressTextareaRef}
                                         name="employeeAddress"
                                         value={formData.employeeAddress}
                                         onChange={handleInputChange}
                                         placeholder=""
                                         disabled={!isDraft}
+                                        rows={1}  // ← 이거 추가
                                         style={{
                                             width: '100%',
-                                            minHeight: '38px',
                                             wordBreak: 'break-word',
                                             whiteSpace: 'pre-wrap',
                                             overflow: 'hidden',
@@ -851,7 +960,8 @@ const EmploymentContract = () => {
                                             border: 'none',
                                             backgroundColor: 'transparent',
                                             boxSizing: 'border-box',
-                                            outline: 'none'
+                                            outline: 'none',
+                                            textAlign: 'center'
                                         }}
                                     />
                                 </td>
@@ -1047,7 +1157,6 @@ const EmploymentContract = () => {
                                                      src={sig.imageUrl}
                                                      alt="서명"
                                                      className="signature-image"
-                                                     style={{width: '100px', height: '50px'}}
                                                  />
                                              ) : (
                                                  <span className="signature-text">(서명/인)</span>
@@ -1398,7 +1507,6 @@ const EmploymentContract = () => {
                                             src={sig.imageUrl}
                                             alt="서명"
                                             className="signature-image"
-                                            style={{width: '100px', height: '50px'}}
                                         />
                                     ) : (
                                         <span className="signature-text">(서명/인)</span>
@@ -1521,7 +1629,6 @@ const EmploymentContract = () => {
                                             src={sig.imageUrl}
                                             alt="서명"
                                             className="signature-image"
-                                            style={{width: '100px', height: '50px'}}
                                         />
                                     ) : (
                                         <span className="signature-text">(서명/인)</span>
@@ -1633,7 +1740,6 @@ const EmploymentContract = () => {
                                                                     src={sig.imageUrl}
                                                                     alt="서명"
                                                                     className="signature-image"
-                                                                    style={{width: '100px', height: '50px'}}
                                                                 />
                                                             ) : (
                                                                 <span className="signature-text">(서명/인)</span>
@@ -1716,7 +1822,6 @@ const EmploymentContract = () => {
                                             src={sig.imageUrl}
                                             alt="서명"
                                             className="signature-image"
-                                            style={{width: '100px', height: '50px'}}
                                         />
                                     ) : (
                                         <span className="signature-text">(서명/인)</span>
@@ -1762,7 +1867,7 @@ const EmploymentContract = () => {
                                     선한병원 <br/> 대표원장
                                 </span>
                                 <span style={{fontWeight: "bolder"}} className="signature-label">
-                                    최민선외 6명
+                                    최민선
                                 </span>
                                 <span className="signature-suffix-container">
                                 <span className="signature-suffix-container">
@@ -1770,7 +1875,6 @@ const EmploymentContract = () => {
                                         src={CeoDirectorSignImage}
                                         alt="대표원장 서명"
                                         className="signature-image"
-                                        style={{width: '70px', height: '70px', marginLeft: '15px'}}
                                     />
                                 </span>
                             </span>
@@ -1802,7 +1906,6 @@ const EmploymentContract = () => {
                                             src={sig.imageUrl}
                                             alt="서명"
                                             className="signature-image"
-                                            style={{width: '100px', height: '50px'}}
                                         />
                                     ) : (
                                         <span className="signature-text">(서명/인)</span>
@@ -1824,23 +1927,138 @@ const EmploymentContract = () => {
     return (
         <Layout>
             <div className="contract-container">
-                <div className="viewer">
-                    <div className="page">
-                        {pages[currentPage].content}
-                    </div>
-                </div>
-                <div className="pagination-controls">
-                    <button onClick={prevPage} disabled={currentPage === 0}>이전</button>
-                    <span>
-                        {currentPage + 1} / {pages.length}
+                {status === 'COMPLETED' && contract?.pdfUrl ? (
+                    <div className="pdf-viewer">
+                        {pdfLoading && (
+                            <div style={{
+                                textAlign: 'center',
+                                padding: '50px',
+                                fontSize: '16px',
+                                color: '#666'
+                            }}>
+                                <div style={{ fontSize: '32px', marginBottom: '15px' }}>📄</div>
+                                <div>PDF 로딩 중...</div>
+                            </div>
+                        )}
+
+                        {pdfError && (
+                            <div style={{
+                                textAlign: 'center',
+                                padding: '50px',
+                                color: '#dc3545'
+                            }}>
+                                <div style={{ fontSize: '32px', marginBottom: '15px' }}>⚠️</div>
+                                <div style={{ marginBottom: '20px', fontSize: '16px' }}>{pdfError}</div>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    style={{
+                                        padding: '10px 20px',
+                                        backgroundColor: '#007bff',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '5px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px'
+                                    }}
+                                >
+                                    새로고침
+                                </button>
+                            </div>
+                        )}
+
+                        {pdfBlobUrl && !pdfLoading && !pdfError && (
+                            <div className="pdf-document-container">
+                                <Document
+                                    file={pdfBlobUrl}
+                                    onLoadSuccess={({ numPages }) => {
+                                        console.log('PDF 로드 성공, 총 페이지:', numPages);
+                                        setNumPages(numPages);
+                                    }}
+                                    onLoadError={(error) => {
+                                        console.error('PDF 로드 실패:', error);
+                                        setPdfError('PDF를 불러올 수 없습니다.');
+                                    }}
+                                    loading={
+                                        <div style={{
+                                            textAlign: 'center',
+                                            padding: '50px',
+                                            color: '#666'
+                                        }}>
+                                            <div style={{ fontSize: '32px', marginBottom: '15px' }}>📄</div>
+                                            <div>문서 로딩 중...</div>
+                                        </div>
+                                    }
+                                >
+                                    <Page
+                                        pageNumber={pageNumber}
+                                        width={isMobile ? Math.min(window.innerWidth - 40, 600) : 800}
+                                        renderTextLayer={false}  // ✅ true → false 변경
+                                        renderAnnotationLayer={false}  // ✅ true → false 변경
+                                        loading={
+                                            <div style={{
+                                                textAlign: 'center',
+                                                padding: '100px',
+                                                color: '#999'
+                                            }}>
+                                                페이지 로딩 중...
+                                            </div>
+                                        }
+                                    />
+                                </Document>
+
+                                {/* ✅ 페이지 네비게이션 */}
+                                <div className="pdf-navigation">
+                                    <button
+                                        onClick={() => setPageNumber(prev => Math.max(prev - 1, 1))}
+                                        disabled={pageNumber <= 1}
+                                        className="pdf-nav-button"
+                                        style={{
+                                            backgroundColor: pageNumber <= 1 ? '#cccccc' : '#007bff'
+                                        }}
+                                    >
+                                        ◀ 이전
+                                    </button>
+
+                                    <span className="pdf-page-info">
+                        <strong>{pageNumber}</strong> / {numPages}
                     </span>
-                    <button
-                        onClick={nextPage}
-                        disabled={currentPage === pages.length - 1}
-                    >
-                        다음
-                    </button>
-                </div>
+
+                                    <button
+                                        onClick={() => setPageNumber(prev => Math.min(prev + 1, numPages))}
+                                        disabled={pageNumber >= numPages}
+                                        className="pdf-nav-button"
+                                        style={{
+                                            backgroundColor: pageNumber >= numPages ? '#cccccc' : '#007bff'
+                                        }}
+                                    >
+                                        다음 ▶
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    // ✅ DRAFT/SENT_TO_EMPLOYEE: HTML 템플릿 + 페이지네이션
+                    <>
+                        <div className="viewer">
+                            <div className="page">
+                                {pages[currentPage].content}
+                            </div>
+                        </div>
+                        <div className="pagination-controls">
+                            <button onClick={prevPage} disabled={currentPage === 0}>이전</button>
+                            <span>
+                            {currentPage + 1} / {pages.length}
+                        </span>
+                            <button
+                                onClick={nextPage}
+                                disabled={currentPage === pages.length - 1}
+                            >
+                                다음
+                            </button>
+                        </div>
+                    </>
+                )}
                 <div className="editor-footer" style={{textAlign: 'center', margin: '20px 0'}}>
                     {/* 1) Draft: 관리자만 */}
                     {(status === 'DRAFT') && isAdmin && (
@@ -1858,7 +2076,7 @@ const EmploymentContract = () => {
                     {/* 2) Sent: 직원만 */}
                     {status === 'SENT_TO_EMPLOYEE' && (
                         <>
-                        <button onClick={goToList} className="btn-list">목록으로</button>
+                            <button onClick={goToList} className="btn-list">목록으로</button>
                             {(currentUser?.permissions?.includes('HR_CONTRACT')) && (
                                 <button
                                     onClick={handleDelete}
@@ -1868,7 +2086,13 @@ const EmploymentContract = () => {
                                     삭제하기
                                 </button>
                             )}
-                            <button onClick={handleApprove} className="btn-approve">승인하기</button>
+                            <button
+                                onClick={handleApprove}
+                                className="btn-approve"
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? '완료 처리 중...' : '승인하기'}
+                            </button>
                         </>
                     )}
 

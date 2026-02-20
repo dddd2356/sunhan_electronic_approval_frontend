@@ -365,11 +365,89 @@
 
     .consent-filter-bar {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
         gap: 1rem;
+    }
+
+    .filter-group {
+        width: 100%;
+    }
+
+    .filter-group select {
+        flex: 1;
+    }
+
+    .result-count {
+        text-align: right;
     }
 
     .stat-value {
         font-size: 1.5rem;
+    }
+
+    /* 테이블 스크롤 개선 */
+    .consent-issued-table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .consent-issued-table {
+        min-width: 100%;
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .consent-issued-table th,
+    .consent-issued-table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.813rem;
+    }
+
+    .consent-issued-table th {
+        font-size: 0.75rem;
+    }
+
+    /* 컬럼 너비 조정 */
+    .consent-issued-table th:nth-child(1),
+    .consent-issued-table td:nth-child(1) { width: 8%; }
+
+    .consent-issued-table th:nth-child(2),
+    .consent-issued-table td:nth-child(2) { width: 18%; }
+
+    .consent-issued-table th:nth-child(3),
+    .consent-issued-table td:nth-child(3) { width: 20%; }
+
+    .consent-issued-table th:nth-child(4),
+    .consent-issued-table td:nth-child(4) { width: 15%; }
+
+    .consent-issued-table th:nth-child(5),
+    .consent-issued-table td:nth-child(5) { width: 13%; }
+
+    .consent-issued-table th:nth-child(6),
+    .consent-issued-table td:nth-child(6) { width: 13%; }
+
+    .consent-issued-table th:nth-child(7),
+    .consent-issued-table td:nth-child(7) { width: 13%; }
+
+    .user-cell {
+        gap: 0.125rem;
+    }
+
+    .user-name {
+        font-size: 0.813rem;
+    }
+
+    .user-id {
+        font-size: 0.75rem;
+    }
+
+    .consent-status-badge {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
     }
 }

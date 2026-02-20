@@ -291,3 +291,151 @@
     border-radius: 6px;
     text-align: center;
 }
+
+/* ========== 모바일 반응형 (교체용) ========== */
+@media (max-width: 768px) {
+    .position-management {
+        padding: 12px;
+        margin: 16px auto; /* 추가 */
+    }
+    .pm-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .pm-header-title h1 {
+        font-size: 20px;
+    }
+
+    .pm-header-info {
+        font-size: 13px;
+    }
+
+    /* ✅ 생성 버튼 추가 */
+    .pm-btn-create {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+        padding: 12px 16px;
+        font-size: 15px;
+    }
+
+    .pm-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* --- 테이블 레이아웃 강제 --- */
+    .position-management .pm-table {
+        display: table;               /* 테이블 레이아웃 보장 */
+        table-layout: fixed;          /* 컬럼 균등 분배 허용 */
+        width: 100% !important;
+        border-collapse: collapse;
+    }
+
+    /* 테이블 섹션/행/셀을 명확히 지정 (다른 글로벌 규칙에 덮어씌워지는 경우 대비) */
+    .position-management .pm-table thead  { display: table-header-group; }
+    .position-management .pm-table tbody  { display: table-row-group; }
+    .position-management .pm-table tr     { display: table-row; }
+    .position-management .pm-table th,
+    .position-management .pm-table td     {
+        display: table-cell;
+        box-sizing: border-box;
+        vertical-align: middle;
+        padding: 10px 8px;
+        min-width: 0;                 /* shrink 허용: 긴 단어에 의한 확장 방지 */
+        white-space: normal;          /* 줄바꿈 허용 */
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    /* --- 컬럼 너비 강제 (th + td 모두) --- */
+    .position-management .pm-table th.col-order,
+    .position-management .pm-table td.col-order {
+        width: 10%;
+    }
+    .position-management .pm-table th.col-name,
+    .position-management .pm-table td.col-name {
+        width: 50%;
+    }
+    .position-management .pm-table th.col-actions,
+    .position-management .pm-table td.col-actions {
+        width: 30%;
+    }
+
+    /* 셀 안의 내용이 여전히 한 줄로 밀리는 경우 (특히 버튼이 고정폭이면) 대비 */
+    .position-management .pm-table td .pm-action-group,
+    .position-management .pm-table th .pm-action-group {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;   /* 버튼이 좁을 때 다음 줄로 내려가도록 */
+        justify-content: flex-end;
+    }
+
+    .position-management .pm-action-group { gap: 6px; }
+    .pm-btn-icon {
+        padding: 6px 8px;
+        font-size: 12px;
+        min-height: 32px; /* 추가 */
+    }
+
+    /* 빈 상태 메시지 여백 조정 */
+    .position-management .pm-empty-state { padding: 40px 12px; text-align: center; }
+
+    /* 모달, 폼 스타일(기존대로 유지) */
+    .pm-modal-content {
+        width: 95%;
+        max-width: none;
+        padding: 20px;
+        max-height: 90dvh; /* 85vh → 90dvh */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* 추가 */
+    }
+    .pm-modal-header { font-size: 18px; }
+    .pm-form-group { margin-bottom: 16px; }
+    .pm-form-label { font-size: 13px; }
+    .pm-form-input {
+        font-size: 16px !important; /* 15px → 16px (iOS 줌 방지) */
+        padding: 12px; /* 10px 12px → 12px */
+        min-height: 44px; /* 추가 */
+        height: 44px; /* 42px → 44px */
+    }
+
+    .pm-form-input::placeholder {
+        font-size: 11px; /* 11px → 16px */
+    }
+
+    .pm-modal-footer {
+        padding: 16px 20px; /* 추가 */
+        padding-bottom: calc(16px + env(safe-area-inset-bottom)); /* 추가 */
+    }
+
+    .pm-btn-cancel,
+    .pm-btn-confirm { /* .pm-modal-btn → 구체적으로 */
+        width: 100%;
+        min-height: 44px;
+        font-size: 15px; /* 추가 */
+    }
+
+    .pm-modal-btn { width: 100%; min-height: 44px; }
+    .pm-form-input[type="number"]::-webkit-inner-spin-button,
+    .pm-form-input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .pm-form-input[type="number"] {
+        -moz-appearance: textfield; /* Firefox */
+    }
+
+    .pm-form-input::placeholder {
+        font-size: 11px;
+        color: #9ca3af;
+    }
+
+    .pm-form-input:focus {
+        border-color: var(--pm-primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+}

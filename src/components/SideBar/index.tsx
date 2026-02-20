@@ -21,9 +21,10 @@ import {
 
 interface SidebarProps {
     isOpen: boolean;
+    onClose?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
     const location = useLocation(); // 현재 URL 경로 파악용
     const [cookies, , removeCookie] = useCookies(["accessToken"]);
@@ -39,6 +40,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     const [canManageConsent, setCanManageConsent] = useState<boolean>(false);
 
     const API_BASE_URL = process.env.REACT_APP_API_URL;
+    // 모바일 여부 체크 함수
+    const isMobile = () => window.innerWidth <= 768;
+
+    // 메뉴 클릭 핸들러 - 모바일에서만 닫기
+    const handleMenuClick = (path: string) => {
+        navigate(path);
+
+        // 모바일 환경에서만 사이드바 닫기
+        if (isMobile() && onClose) {
+            onClose();
+        }
+    };
 
     // 현재 페이지 활성화 체크 함수
     const isActive = (path: string) => location.pathname === path;
@@ -197,7 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
             localStorage.removeItem('tokenExpires');
             localStorage.removeItem('userCache');
             localStorage.removeItem('cachedTokenHash');
-            navigate("/");
+            window.location.href = '/';
         }
     };
 
@@ -205,7 +218,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     const canViewContractMemoAdmin = (permissions.includes('HR_CONTRACT')) || jobLevel === 6;
     const canViewVacationAdmin = (permissions.includes('HR_LEAVE_APPLICATION')) || jobLevel === 6;
     const canCreatePositionAdmin = jobLevel === 6 || permissions.includes("WORK_SCHEDULE_CREATE");
-// ✅ 동의서 권한 체크 추가
+    const canViewUserManageAdmin = permissions.includes('MANAGE_USERS') || jobLevel === 6;
+
+    // ✅ 동의서 권한 체크 추가
     const checkConsentPermissions = async () => {
         try {
             const response = await axios.get(`${API_BASE_URL}/consents/permissions`, {
@@ -248,114 +263,108 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
                     </div>
                 </div>
                 <div className="profile-buttons">
-                    <button className="info-button" onClick={() => navigate("/detail/my-page")}>
-                        <UserCircle size={14} style={{marginRight: '4px'}} /> 정보
+                    <button className="info-button" onClick={() => handleMenuClick("/detail/my-page")}>
+                        <UserCircle size={14} style={{marginRight: '4px'}}/> 정보
                     </button>
                     <button className="logout-button" onClick={handleLogout}>
-                        <LogOut size={14} style={{marginRight: '4px'}} /> 로그아웃
+                        <LogOut size={14} style={{marginRight: '4px'}}/> 로그아웃
                     </button>
                 </div>
             </div>
 
-            {/* 2. 메인 메뉴 섹션 */}
             <ul className="main-menu">
                 <div className="menu-section-label">General</div>
 
-                <li onClick={() => navigate('/detail/main-page')}
+                <li onClick={() => handleMenuClick('/detail/main-page')}
                     className={`menu-item ${isActive('/detail/main-page') ? 'active' : ''}`}>
                     <Home size={18}/> <span>메인 화면</span>
                 </li>
 
-                {/* ✅ 동의서 메뉴 추가 */}
-                <li onClick={() => navigate('/detail/consent/my-list')}
+                <li onClick={() => handleMenuClick('/detail/consent/my-list')}
                     className={`menu-item ${isActive('/detail/consent/my-list') ? 'active' : ''}`}>
                     <FileSignature size={18}/> <span>동의서</span>
                 </li>
 
-                <li onClick={() => navigate('/detail/employment-contract')}
+                <li onClick={() => handleMenuClick('/detail/employment-contract')}
                     className={`menu-item ${isActive('/detail/employment-contract') ? 'active' : ''}`}>
                     <FileText size={18}/> <span>근로계약서</span>
                 </li>
 
-                <li onClick={() => navigate('/detail/leave-application')}
+                <li onClick={() => handleMenuClick('/detail/leave-application')}
                     className={`menu-item ${isActive('/detail/leave-application') ? 'active' : ''}`}>
                     <Calendar size={18}/> <span>휴가원</span>
                 </li>
 
-                <li onClick={() => navigate('/detail/work-schedule')}
+                <li onClick={() => handleMenuClick('/detail/work-schedule')}
                     className={`menu-item ${isActive('/detail/work-schedule') ? 'active' : ''}`}>
                     <ClipboardList size={18}/> <span>근무현황표</span>
                 </li>
 
-                <li onClick={() => navigate('/detail/approval-lines')}
+                <li onClick={() => handleMenuClick('/detail/approval-lines')}
                     className={`menu-item ${isActive('/detail/approval-lines') ? 'active' : ''}`}>
                     <ShieldCheck size={18}/> <span>결재라인 관리</span>
                 </li>
 
-                {/* 3. 관리자 메뉴 섹션 (조건부 렌더링) */}
+                {/* 관리자 메뉴들도 동일하게 수정 */}
                 {(isAdmin) && (
                     <>
                         <div className="menu-section-label">Administration</div>
 
-                        {isAdmin && jobLevel >= 1 && (
-                            <li onClick={() => navigate('/admin/dashboard')}
+                        {canViewUserManageAdmin && (
+                            <li onClick={() => handleMenuClick('/admin/dashboard')}
                                 className={`menu-item admin ${isActive('/admin/dashboard') ? 'active' : ''}`}>
                                 <ShieldCheck size={18}/> <span>권한 관리자</span>
                             </li>
                         )}
 
-                        {/* ✅ 회원 등록 메뉴 (MANAGE_USERS 권한) */}
                         {permissions.includes('MANAGE_USERS') && (
-                            <li onClick={() => navigate('/admin/users/register')}
+                            <li onClick={() => handleMenuClick('/admin/users/register')}
                                 className={`menu-item admin ${isActive('/admin/users/register') ? 'active' : ''}`}>
                                 <UserPlus size={18}/> <span>회원 등록</span>
                             </li>
                         )}
 
-                        {/* ✅ 부서 관리 메뉴 (MANAGE_USERS 권한) */}
                         {permissions.includes('MANAGE_USERS') && (
-                            <li onClick={() => navigate('/admin/departments/manage')}
+                            <li onClick={() => handleMenuClick('/admin/departments/manage')}
                                 className={`menu-item admin ${isActive('/admin/departments/manage') ? 'active' : ''}`}>
                                 <Building size={18}/> <span>부서 관리</span>
                             </li>
                         )}
 
-                        {/* ✅ 동의서 발송 메뉴 (생성 권한) */}
                         {canCreateConsent && (
                             <>
-                                <li onClick={() => navigate('/admin/consent/issue')}
+                                <li onClick={() => handleMenuClick('/admin/consent/issue')}
                                     className={`menu-item admin ${isActive('/admin/consent/issue') ? 'active' : ''}`}>
                                     <FileSignature size={18}/> <span>동의서 발송</span>
                                 </li>
-                                <li onClick={() => navigate('/admin/consent/my-issued')}
+                                <li onClick={() => handleMenuClick('/admin/consent/my-issued')}
                                     className={`menu-item admin ${isActive('/admin/consent/my-issued') ? 'active' : ''}`}>
                                     <FileText size={18}/> <span>발송 현황</span>
                                 </li>
                             </>
                         )}
 
-                        {/* ✅ 동의서 관리 메뉴 (관리 권한) */}
                         {canManageConsent && (
-                        <li onClick={() => navigate('/admin/consent/management')}
-                            className={`menu-item admin ${isActive('/admin/consent/management') ? 'active' : ''}`}>
-                                    <BarChart3 size={18}/> <span>동의서 관리</span>
-                                </li>
+                            <li onClick={() => handleMenuClick('/admin/consent/management')}
+                                className={`menu-item admin ${isActive('/admin/consent/management') ? 'active' : ''}`}>
+                                <BarChart3 size={18}/> <span>동의서 관리</span>
+                            </li>
                         )}
 
                         {canViewContractMemoAdmin && (
-                            <li onClick={() => navigate('/admin/memo-management')}
+                            <li onClick={() => handleMenuClick('/admin/memo-management')}
                                 className={`menu-item admin ${isActive('/admin/memo-management') ? 'active' : ''}`}>
-                            <BarChart3 size={18}/> <span>근로계약서 메모 관리</span>
+                                <BarChart3 size={18}/> <span>근로계약서 메모 관리</span>
                             </li>
                         )}
 
                         {canViewVacationAdmin && (
                             <>
-                                <li onClick={() => navigate('/admin/vacation')}
+                                <li onClick={() => handleMenuClick('/admin/vacation')}
                                     className={`menu-item admin ${isActive('/admin/vacation') ? 'active' : ''}`}>
                                     <BarChart3 size={18}/> <span>휴가원 관리</span>
                                 </li>
-                                <li onClick={() => navigate('/admin/vacation-statistics')}
+                                <li onClick={() => handleMenuClick('/admin/vacation-statistics')}
                                     className={`menu-item admin ${isActive('/admin/vacation-statistics') ? 'active' : ''}`}>
                                     <BarChart3 size={18}/> <span>휴가 통계</span>
                                 </li>
@@ -363,7 +372,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
                         )}
 
                         {canCreatePositionAdmin && (
-                            <li onClick={() => navigate('/detail/positions')}
+                            <li onClick={() => handleMenuClick('/detail/positions')}
                                 className={`menu-item admin ${isActive('/detail/positions') ? 'active' : ''}`}>
                                 <Users size={18}/> <span>직책 관리</span>
                             </li>

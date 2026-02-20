@@ -46,18 +46,10 @@
     margin: 0;
 }
 
-.close-btn {
-    width: 40px;
-    height: 40px;
-    border: none;
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    color: #6c757d;
+.close-btn svg {
+    width: 60%;
+    height: 60%;
+    stroke: currentColor;
 }
 
 .close-btn:hover {
@@ -288,33 +280,130 @@
     background: #555;
 }
 
-/* 반응형 */
+/* =================================================================
+   2. 모바일 반응형 최적화 (Compact Mode)
+   768px 이하에서 요소 크기와 여백을 줄여 한눈에 들어오게 수정
+   ================================================================= */
 @media (max-width: 768px) {
+    .approval-line-selector-overlay {
+        padding: 12px;
+        align-items: flex-start;
+    }
+
     .approval-line-selector-modal {
-        max-width: 95%;
+        width: 100%;
+        max-width: 92vw;
+        max-height: 75vh;  /* 82vh → 75vh로 축소 */
+        height: auto;
+        margin-top: 0;
+        margin-bottom: 0;
+        border-radius: 12px;
     }
 
-    .selector-header,
-    .selector-body,
-    .selector-footer {
-        padding: 1.5rem;
+    .selector-header {
+        padding: 12px 12px 8px;  /* 이미 작지만 유지 */
+    }
+    .selector-header h3 { font-size: 1rem;  }
+    .selector-header p { font-size: 0.75rem; }
+    .close-btn { width: 32px; height: 32px; }
+
+    .selector-body {
+        overflow-y: auto;
+        max-height: calc(75vh - 130px); /* 160px → 130px (헤더가 줄었으므로) */
+    }
+    .approval-lines-list { gap: 12px; }
+    .approval-line-item { padding: 10px; }
+
+    .line-steps { padding: 8px; background: #f8f9fa; }
+
+    /* 단계 세로 배치 */
+    .steps-flow { flex-direction: column; align-items: stretch; gap: 4px; }
+
+    .step-badge {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 8px;
+        gap: 8px;
+        min-height: 42px;
+        background: white;
     }
 
-    .steps-flow {
-        flex-direction: column;
-        align-items: stretch;
+    /* ✅ [핵심수정] 체크박스가 커지는 현상 방지 */
+    .optional-checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;      /* 너비 고정 */
+        height: 20px;     /* 높이 고정 */
+        flex-shrink: 0;    /* 찌그러짐 방지 */
+        background: transparent !important; /* 배경색 제거 */
+        padding: 0 !important;
     }
 
+    .optional-checkbox-wrapper input[type="checkbox"] {
+        transform: scale(0.3);   /* 0.7 ~ 0.85 사이로 조절 */
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .step-number { width: 22px; height: 22px; font-size: 0.75rem; }
+
+    /* 단계 정보 가로 정렬 */
+    .step-info {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        flex: 1;
+    }
+
+    .step-name { font-size: 0.875rem; }
+    .step-type {
+        font-size: 0.7rem;
+        background: #eee;
+        padding: 1px 5px;
+        border-radius: 4px;
+    }
+    .step-approver { font-size: 0.75rem; margin-left: auto; }
+
+    /* 화살표 최적화 */
     .arrow-icon {
         transform: rotate(90deg);
+        width: 12px;
+        height: 12px;
+        margin: 0 auto;
+        color: #dee2e6;
     }
 
+    /* 푸터 버튼 가로 배치 */
     .selector-footer {
-        flex-direction: column;
+        flex-direction: row;
+        gap: 8px;
     }
 
-    .btn-cancel,
-    .btn-confirm {
-        width: 100%;
+    .btn-cancel, .btn-confirm {
+        flex: 1;
+        min-height: 48px;
+        padding: 0;
+        font-size: 0.95rem;
+    }
+}
+
+/* 초소형 화면 */
+@media (max-width: 480px) {
+    .step-info { gap: 4px; }
+    .step-name { font-size: 0.8rem; }
+    .approval-line-selector-modal {
+        max-width: 96vw;
+        max-height: 70vh;  /* 78vh → 70vh로 축소 */
+        border-radius: 10px;
+    }
+
+    .selector-body {
+        max-height: calc(70vh - 130px); /* 160px → 130px */
+    }
+
+    .selector-header h3 {
+        font-size: 0.95rem;
     }
 }

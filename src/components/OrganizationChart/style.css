@@ -213,3 +213,75 @@
     color: #999;
     font-size: 14px;
 }
+
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    .org-chart-container {
+        max-height: 400px;
+        padding: 8px;
+    }
+
+    .org-dept-item {
+        padding: 8px 12px;
+        font-size: 13px;
+        min-height: 40px;
+    }
+
+    .org-dept-name {
+        font-size: 14px;
+    }
+
+    .org-dept-count {
+        font-size: 12px;
+    }
+
+    .org-employee-item {
+        padding: 8px 12px;
+        font-size: 13px;
+        min-height: 40px;
+    }
+
+    .org-employee-name {
+        font-size: 14px;
+    }
+
+    .org-employee-position {
+        font-size: 11px;
+    }
+
+    .org-dept-item.level-1 {
+        margin-left: 12px;
+    }
+
+    .org-dept-item.level-2 {
+        margin-left: 24px;
+    }
+
+    .org-dept-item.level-3 {
+        margin-left: 36px;
+    }
+
+    .org-employee-item.level-1 {
+        margin-left: 24px;
+    }
+
+    .org-employee-item.level-2 {
+        margin-left: 36px;
+    }
+
+    .org-employee-item.level-3 {
+        margin-left: 48px;
+    }
+}
+
+@media (max-width: 480px) {
+    .org-chart-container {
+        max-height: 350px;
+    }
+
+    .org-dept-item,
+    .org-employee-item {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+}

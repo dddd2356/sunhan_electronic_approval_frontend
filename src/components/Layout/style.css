@@ -1,8 +1,8 @@
-/* Layout Styles - 깔끔한 버전 */
+/* Layout Styles */
 :root {
-    --header-height: 80px;
+    --header-height: 64px;
     --sidebar-width: 270px;
-    --clean-bg: #f0f4f8; /* 깔끔한 배경색 */
+    --clean-bg: #f0f4f8;
 }
 
 .layout {
@@ -39,6 +39,10 @@
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
+    :root {
+        --header-height: 60px;
+    }
+
     .content-container {
         margin-top: var(--header-height);
     }
@@ -47,5 +51,16 @@
     .main-content.full-width {
         margin-left: 0;
         padding: 16px;
+        height: calc(100dvh - var(--header-height));
+        padding-bottom: env(safe-area-inset-bottom);  /* 변경: 안전 영역만 확보 */
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Safe Area 대응 */
+@supports (padding: max(0px)) {
+    .layout {
+        padding-left: max(0px, env(safe-area-inset-left));
+        padding-right: max(0px, env(safe-area-inset-right));
     }
 }

@@ -95,3 +95,40 @@
     font-size: 12px;
     font-weight: 600;
 }
+
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    .header {
+        height: 60px;
+    }
+
+    .contents {
+        padding: 0 12px;
+    }
+
+    .header-left {
+        gap: 8px;
+    }
+
+    .image-text {
+        font-size: 16px;
+    }
+
+    .hospital-image {
+        width: 28px;
+        height: 28px;
+    }
+
+    .menu-toggle-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 480px) {
+    .image-text {
+        font-size: 14px;
+    }
+}

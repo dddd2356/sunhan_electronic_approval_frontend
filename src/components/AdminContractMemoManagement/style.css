@@ -728,27 +728,6 @@
     }
 }
 
-@media (max-width: 768px) {
-    .cm-container {
-        padding: 16px;
-    }
-
-    .cm-main-layout {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-
-    .cm-sidebar-card {
-        max-height: 300px;
-    }
-
-    .cm-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-}
-
 /* 스크롤바 스타일 */
 .cm-memo-list::-webkit-scrollbar,
 .cm-org-wrapper::-webkit-scrollbar {
@@ -780,5 +759,287 @@
     to {
         transform: translateY(0);
         opacity: 1;
+    }
+}
+
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    .cm-container {
+        padding: 12px;
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .cm-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .cm-title-text {
+        font-size: 18px;
+    }
+
+    .cm-stats-badge {
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .cm-stat-item {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+
+    /* 메인 레이아웃 - 세로 배치 */
+    .cm-main-layout {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        height: auto;
+    }
+
+    /* 사이드바 */
+    .cm-sidebar-card {
+        order: -1;
+        max-height: 400px;
+    }
+
+    .cm-sidebar-header h3 {
+        font-size: 14px;
+    }
+
+    .cm-search-box {
+        padding: 10px;
+    }
+
+    .cm-search-input {
+        font-size: 16px; /* iOS 줌 방지 */
+        padding: 8px 12px 8px 32px;
+    }
+
+    .cm-search-icon {
+        left: 18px;
+    }
+
+    .cm-org-wrapper {
+        padding: 8px;
+    }
+
+    /* 우측 디테일 카드 */
+    .cm-detail-card {
+        min-height: 500px;
+    }
+
+    .cm-detail-header {
+        padding: 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    /* 컨트롤 바 */
+    .cm-controls {
+        padding: 12px 16px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .cm-sort-buttons {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .cm-sort-btn {
+        flex: 1;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .cm-memo-count {
+        text-align: center;
+        font-size: 12px;
+    }
+
+    /* 메모 리스트 */
+    .cm-memo-list {
+        padding: 16px;
+    }
+
+    .cm-memo-bubble {
+        padding: 14px 16px;
+        margin-bottom: 12px;
+    }
+
+    /* 메모 헤더 */
+    .cm-memo-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .cm-memo-author-avatar {
+        width: 24px;
+        height: 24px;
+        font-size: 11px;
+    }
+
+    .cm-memo-author-name {
+        font-size: 12px;
+    }
+
+    .cm-memo-author-id {
+        font-size: 10px;
+    }
+
+    .cm-memo-priority {
+        padding: 2px 8px;
+        font-size: 10px;
+    }
+
+    /* 메모 본문 */
+    .cm-memo-content {
+        font-size: 13px;
+        margin-bottom: 10px;
+    }
+
+    /* 메모 푸터 */
+    .cm-memo-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+
+    .cm-memo-info {
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 11px;
+    }
+
+    .cm-memo-date {
+        font-size: 11px;
+    }
+
+    .cm-memo-edited {
+        font-size: 10px;
+    }
+
+    .cm-memo-actions {
+        width: 100%;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .cm-memo-action-btn {
+        font-size: 12px;
+        padding: 4px 10px;
+    }
+
+    /* 수정 모드 */
+    .cm-edit-mode {
+        padding: 12px;
+    }
+
+    .cm-edit-actions {
+        flex-direction: column-reverse;
+        gap: 6px;
+    }
+
+    .cm-edit-save-btn,
+    .cm-edit-cancel-btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 40px;
+        font-size: 14px;
+    }
+
+    /* 입력 풋터 */
+    .cm-input-footer {
+        padding: 16px;
+    }
+
+    .cm-input-header {
+        margin-bottom: 8px;
+    }
+
+    .cm-input-title {
+        font-size: 13px;
+    }
+
+    .cm-char-count {
+        font-size: 11px;
+    }
+
+    .cm-memo-textarea {
+        height: 100px;
+        padding: 12px;
+        font-size: 16px; /* iOS 줌 방지 */
+        margin-bottom: 10px;
+    }
+
+    .cm-input-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .cm-input-actions > div {
+        font-size: 11px;
+        text-align: center;
+    }
+
+    .cm-save-btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+        padding: 12px 20px;
+    }
+
+    /* 빈 상태 */
+    .cm-empty-placeholder {
+        padding: 30px 20px;
+    }
+
+    .cm-empty-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+    }
+
+    .cm-empty-title {
+        font-size: 16px;
+    }
+
+    .cm-empty-desc {
+        font-size: 13px;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .cm-container {
+        padding: 8px;
+    }
+
+    .cm-title-text {
+        font-size: 16px;
+    }
+
+    .cm-sidebar-card {
+        max-height: 350px;
+    }
+
+    .cm-memo-bubble {
+        padding: 12px;
+    }
+
+    .cm-input-footer {
+        padding: 12px;
+    }
+
+    .cm-memo-textarea {
+        height: 80px;
     }
 }

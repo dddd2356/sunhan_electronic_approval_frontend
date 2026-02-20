@@ -688,22 +688,27 @@ const LeaveApplicationBoard: React.FC = () => {
                             className="inline-search-input"
                         />
 
-                                            {searchTerm && (
-                                                <button
-                                                    onClick={handleSearchReset}
-                                                    className="inline-search-reset"
-                                                    title="검색 초기화"
-                                                >
-                                                    ×
-                                                </button>
-                                            )}
+                        {searchTerm && (
+                            <button
+                                onClick={handleSearchReset}
+                                className="inline-search-reset"
+                                title="검색 초기화"
+                            >
+                                ×
+                            </button>
+                        )}
 
-                                            <div className="search-filters">
+                        <div className="search-filters">
                             <input
                                 type="date"
                                 value={searchStartDate}
                                 onChange={(e) => setSearchStartDate(e.target.value)}
                                 className="date-input"
+                                placeholder="시작일"
+                                onFocus={(e) => e.target.type = 'date'}
+                                onBlur={(e) => {
+                                    if (!e.target.value) e.target.type = 'text';
+                                }}
                             />
                             <span className="date-separator">~</span>
                             <input
@@ -711,18 +716,22 @@ const LeaveApplicationBoard: React.FC = () => {
                                 value={searchEndDate}
                                 onChange={(e) => setSearchEndDate(e.target.value)}
                                 className="date-input"
+                                placeholder="종료일"
+                                onFocus={(e) => e.target.type = 'date'}
+                                onBlur={(e) => {
+                                    if (!e.target.value) e.target.type = 'text';
+                                }}
                             />
                             <button onClick={handleSearch} className="search-button">검색</button>
-                                                {(searchStartDate || searchEndDate || isSearchMode) && (
-                                                    <button onClick={handleSearchReset} className="reset-button">초기화</button>
-                                                )}
+                                                    {(searchStartDate || searchEndDate || isSearchMode) && (
+                                                        <button onClick={handleSearchReset} className="reset-button">초기화</button>
+                                                    )}
                         </div>
-
-                                            {searchTerm && (
-                                                <span className="inline-search-count">
+                        {searchTerm && (
+                            <span className="inline-search-count">
                                 {filteredApplications.length}건
                             </span>
-                                            )}
+                        )}
                     </span>
                 </div>
                 <div className="leave-application-list">

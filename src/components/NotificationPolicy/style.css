@@ -188,3 +188,73 @@
         font-size: 1.1em;
     }
 }
+
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    .marketing-container {
+        padding: 12px;
+        max-width: 100%;
+    }
+
+    .marketing-header {
+        padding: 16px;
+    }
+
+    .marketing-header h1 {
+        font-size: 20px;
+    }
+
+    .marketing-section {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .marketing-section h2 {
+        font-size: 16px;
+    }
+
+    .marketing-section h3 {
+        font-size: 14px;
+    }
+
+    .marketing-section p,
+    .marketing-section li {
+        font-size: 13px;
+    }
+
+    .marketing-table {
+        font-size: 11px;
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .marketing-table th,
+    .marketing-table td {
+        padding: 6px;
+        font-size: 11px;
+    }
+
+    .marketing-benefit-box {
+        padding: 12px;
+        margin: 12px 0;
+    }
+
+    .marketing-benefit-title {
+        font-size: 13px;
+    }
+
+    .marketing-benefit-list {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .marketing-header h1 {
+        font-size: 18px;
+    }
+
+    .marketing-section {
+        padding: 10px;
+    }
+}

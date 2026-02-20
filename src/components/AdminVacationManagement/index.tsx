@@ -395,7 +395,6 @@ const AdminVacationManagement: React.FC = () => {
                             }}
                             className="vacation-search-btn"
                             style={{
-                                marginLeft: '10px',
                                 padding: '8px 16px',
                                 backgroundColor: '#3b82f6',
                                 color: 'white',

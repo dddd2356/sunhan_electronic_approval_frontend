@@ -103,8 +103,38 @@ const ConsentManagementPage: React.FC = () => {
         }
     };
 
-    const downloadPdf = (pdfUrl: string) => {
-        window.open(API_BASE + pdfUrl, '_blank');
+    // ✅ PDF 다운로드 함수 수정
+    const downloadPdf = async (agreementId: number) => {
+        try {
+            const pdfResp = await fetch(`${API_BASE}/consents/${agreementId}/pdf`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!pdfResp.ok) {
+                if (pdfResp.status === 404) {
+                    alert('PDF 파일이 아직 생성되지 않았거나 찾을 수 없습니다.');
+                } else if (pdfResp.status === 403) {
+                    alert('조회 권한이 없습니다.');
+                } else {
+                    alert('PDF 조회에 실패했습니다.');
+                }
+                return;
+            }
+
+            const blob = await pdfResp.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error('PDF 조회 실패:', error);
+            alert('PDF 조회 중 오류가 발생했습니다.');
+        }
     };
 
     const viewDetail = (agreement: ConsentAgreement) => {
@@ -287,45 +317,45 @@ const ConsentManagementPage: React.FC = () => {
                             </tr>
                         ) : (
                             agreements.map((agreement) => (
-                                <tr key={agreement.id} className="consent-table-row">
-                                    <td>{agreement.id}</td>
-                                    <td>{typeNames[agreement.type]}</td>
-                                    <td>
-                                        <div className="user-cell">
-                                            <span className="user-name">{agreement.targetUserName}</span>
-                                            <span className="user-id">{agreement.targetUserId}</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <StatusBadge status={agreement.status} />
-                                    </td>
-                                    <td>{new Date(agreement.createdAt).toLocaleDateString('ko-KR')}</td>
-                                    <td>
-                                        {agreement.completedAt
-                                            ? new Date(agreement.completedAt).toLocaleDateString('ko-KR')
-                                            : '-'}
-                                    </td>
-                                    <td>
-                                        <div className="action-buttons">
-                                            <button
-                                                onClick={() => viewDetail(agreement)}
-                                                className="consent-btn-icon"
-                                                title="상세보기"
-                                            >
-                                                <Eye size={16} />
-                                            </button>
-                                            {agreement.pdfUrl && (
+                                    <tr key={agreement.id} className="consent-table-row">
+                                        <td data-label="ID">{agreement.id}</td>
+                                        <td data-label="타입">{typeNames[agreement.type]}</td>
+                                        <td data-label="대상자">
+                                            <div className="user-cell">
+                                                <span className="user-name">{agreement.targetUserName}</span>
+                                                <span className="user-id">{agreement.targetUserId}</span>
+                                            </div>
+                                        </td>
+                                        <td data-label="상태">
+                                            <StatusBadge status={agreement.status} />
+                                        </td>
+                                        <td data-label="발송일">{new Date(agreement.createdAt).toLocaleDateString('ko-KR')}</td>
+                                        <td data-label="완료일">
+                                            {agreement.completedAt
+                                                ? new Date(agreement.completedAt).toLocaleDateString('ko-KR')
+                                                : '-'}
+                                        </td>
+                                        <td data-label="액션">
+                                            <div className="action-buttons">
                                                 <button
-                                                    onClick={() => downloadPdf(agreement.pdfUrl!)}
+                                                    onClick={() => viewDetail(agreement)}
                                                     className="consent-btn-icon"
-                                                    title="PDF 다운로드"
+                                                    title="상세보기"
                                                 >
-                                                    <Download size={16} />
+                                                    <Eye size={16} />
                                                 </button>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
+                                                {agreement.status === 'COMPLETED' && (
+                                                    <button
+                                                        onClick={() => downloadPdf(agreement.id)}
+                                                        className="consent-btn-icon"
+                                                        title="PDF 다운로드"
+                                                    >
+                                                        <Download size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
                             ))
                         )}
                         </tbody>
@@ -418,9 +448,9 @@ const ConsentManagementPage: React.FC = () => {
                             </div>
 
                             <div className="modal-footer">
-                                {selectedAgreement.pdfUrl && (
+                                {selectedAgreement.status === 'COMPLETED' && (
                                     <button
-                                        onClick={() => downloadPdf(selectedAgreement.pdfUrl!)}
+                                        onClick={() => downloadPdf(selectedAgreement.id)}
                                         className="consent-btn-primary"
                                     >
                                         <Download size={16} />

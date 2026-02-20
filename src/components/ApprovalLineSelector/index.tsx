@@ -136,7 +136,14 @@ const ApprovalLineSelector: React.FC<ApprovalLineSelectorProps> = ({
                                     className={`approval-line-item ${
                                         selectedLineId === line.id ? 'selected' : ''
                                     }`}
-                                    onClick={() => onSelect(line.id)}
+                                    onClick={() => {
+                                        // 이미 선택된 것을 다시 누르면 0(또는 null) 전달하여 해제
+                                        if (selectedLineId === line.id) {
+                                            onSelect(0); // 부모의 state가 number 타입이면 0, 아니면 null 등 사용
+                                        } else {
+                                            onSelect(line.id);
+                                        }
+                                    }}
                                 >
                                     <div className="line-main">
                                         <div className="line-info">
@@ -148,7 +155,7 @@ const ApprovalLineSelector: React.FC<ApprovalLineSelectorProps> = ({
                                             )}
                                         </div>
                                         {selectedLineId === line.id && (
-                                            <CheckCircle className="selected-icon" />
+                                            <CheckCircle className="selected-icon"/>
                                         )}
                                     </div>
 
@@ -192,7 +199,7 @@ const ApprovalLineSelector: React.FC<ApprovalLineSelectorProps> = ({
                                                         </div>
                                                     </div>
                                                     {index < (line.steps || []).length - 1 && (
-                                                        <ChevronRight className="arrow-icon" />
+                                                        <ChevronRight className="arrow-icon"/>
                                                     )}
                                                 </React.Fragment>
                                             ))}

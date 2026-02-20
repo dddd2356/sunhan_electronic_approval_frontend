@@ -109,23 +109,65 @@
 /* 반응형 디자인 */
 @media (max-width: 768px) {
     .policy-container {
-        padding: 10px;
+        padding: 12px;
+        max-width: 100%;
+    }
+
+    .policy-header {
+        padding: 16px;
     }
 
     .policy-header h1 {
-        font-size: 1.5em;
+        font-size: 20px;
     }
 
     .policy-section {
-        padding: 10px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .policy-section h2 {
+        font-size: 16px;
+    }
+
+    .policy-section h3 {
+        font-size: 14px;
+    }
+
+    .policy-section p,
+    .policy-section li {
+        font-size: 13px;
     }
 
     .policy-table {
-        font-size: 0.9em;
+        font-size: 11px;
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .policy-table th,
     .policy-table td {
-        padding: 8px;
+        padding: 6px;
+        font-size: 11px;
+    }
+
+    .policy-highlight-box {
+        padding: 12px;
+        margin: 12px 0;
+    }
+
+    .policy-contact-info {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .policy-header h1 {
+        font-size: 18px;
+    }
+
+    .policy-section {
+        padding: 10px;
     }
 }

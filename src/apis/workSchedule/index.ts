@@ -52,8 +52,10 @@ export interface WorkSchedule {
     approverSignatureUrl?: string;
     approverSignedAt?: string;
     approvalSteps?: ApprovalStepInfo[];
-    isCustom?: boolean;
-    customDeptName?: string;
+    isFinalApproved?: boolean;       // 최종승인 여부
+    finalApprovedBy?: string;        // 최종승인자
+    finalApprovedAt?: string;        // 최종승인 시각
+    currentApprovalStep?: number;
 }
 
 export interface WorkScheduleEntry {
@@ -171,50 +173,16 @@ export const updateNightRequired = async (
     );
 };
 
-/**
- * 근무표 제출
- */
-export const submitWorkSchedule = async (
+export const toggleFinalApproval = async (
     scheduleId: number,
-    reviewerId: string,
-    approverId: string,
     token: string
-): Promise<void> => {
-    await axios.post(
-        `${API_BASE}/${scheduleId}/submit`,
-        { reviewerId, approverId },
+): Promise<{ message: string; isFinalApproved: boolean }> => {
+    const response = await axios.post(
+        `${API_BASE}/${scheduleId}/toggle-final-approval`,
+        {},
         { headers: { Authorization: `Bearer ${token}` } }
     );
-};
-
-/**
- * 검토
- */
-export const reviewWorkSchedule = async (
-    scheduleId: number,
-    approve: boolean,
-    token: string
-): Promise<void> => {
-    await axios.post(
-        `${API_BASE}/${scheduleId}/review`,
-        { approve },
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
-};
-
-/**
- * 최종 승인
- */
-export const approveWorkSchedule = async (
-    scheduleId: number,
-    approve: boolean,
-    token: string
-): Promise<void> => {
-    await axios.post(
-        `${API_BASE}/${scheduleId}/approve`,
-        { approve },
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
+    return response.data;
 };
 
 /**

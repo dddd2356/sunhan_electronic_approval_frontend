@@ -30,17 +30,24 @@
     flex:1;
     /*나머지 빈 공간만큼 전부다 input box가 들어감*/
 
-    border: 1px solid rgba(240, 240, 240, 1);
-    border-radius: 6px;
-    padding: 8px 16px;
-    height: 28px;
+    border: 1px solid rgba(226, 232, 240, 1);
+    border-radius: 8px;
+    padding: 12px 16px;
+    height: auto;
+    min-height: 48px;
     outline:none;
     background-color: rgba(255, 255, 255, 1);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
     font-family: Inter;
     font-size: 16px;
     font-weight: 400;
-    line-height: 175%;
+    line-height: 1.5;
+}
+
+.input-box-input:focus {
+    border-color: rgba(58, 87, 232, 1);
+    box-shadow: 0 0 0 3px rgba(58, 87, 232, 0.1);
 }
 
 .input-box-input::placeholder{
@@ -49,9 +56,8 @@
     font-family: Inter;
     font-size: 16px;
     font-weight: 400;
-    line-height: 175%;
+    line-height: 1.5;
 }
-
 .input-box-button{
     display: flex;
     justify-content: center;
@@ -115,4 +121,63 @@
     font-size: 13px;
     font-weight: 400;
     line-height: normal;
+}
+
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    .input-box-body {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .input-box-button,
+    .input-box-button-disable {
+        width: 100%;
+        min-height: 44px;
+        font-size: 14px;
+    }
+
+    .input-box-input {
+        font-size: 16px !important; /* iOS 자동 줌 방지 */
+        padding: 12px 16px !important;
+        height: auto !important; /* 28px 고정 해제 */
+        min-height: 44px !important; /* 최소 높이 44px */
+    }
+
+    .input-box {
+        padding: 12px;
+    }
+
+    .input-box-title {
+        font-size: 14px;
+    }
+
+    .input-box-message,
+    .input-box-message-error {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .input-box-input {
+        font-size: 16px !important; /* iOS 줌 방지 위해 16px 유지 */
+        min-height: 48px !important; /* 초소형 화면에서 더 크게 */
+    }
+
+    .input-box-button,
+    .input-box-button-disable {
+        min-height: 48px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    /* ✅ 더 구체적인 선택자로 우선순위 높임 */
+    .input-box-body > .input-box-input[type="text"],
+    .input-box-body > .input-box-input[type="password"] {
+        font-size: 16px !important;
+        padding: 12px 16px !important;
+        height: auto !important;
+        min-height: 48px !important;
+        box-sizing: border-box !important;
+    }
 }

@@ -19,6 +19,28 @@ import {
 } from "lucide-react";
 
 // --- Interfaces ---
+interface TestDataDeleteResult {
+    success: boolean;
+    message: string;
+    userCount: number;
+    employmentContractCount: number;
+    leaveApplicationCount: number;
+    leaveApplicationDayCount: number;
+    leaveApplicationAttachmentCount: number;
+    workScheduleCount: number;
+    workScheduleEntryCount: number;
+    vacationHistoryCount: number;
+    consentAgreementCount: number;
+    contractMemoCount: number;
+    approvalProcessCount: number;
+    approvalHistoryCount: number;
+    deptDutyConfigCount: number;
+    approvalLineCount: number;
+    approvalStepCount: number;
+    positionCount: number;
+    userPermissionCount: number;
+}
+
 interface User {
     userId: string;
     userName: string;
@@ -93,6 +115,7 @@ const PERMISSION_DISPLAY_MAP: Record<string, string> = {
     'HR_LEAVE_APPLICATION': '휴가원 관리',
     'HR_CONTRACT': '근로계약서 관리',
     'WORK_SCHEDULE_CREATE': '근무현황표 생성/작성',
+    'WORK_SCHEDULE_DEPT_MANAGE': '부서 근무현황표 관리',
     'WORK_SCHEDULE_MANAGE': '근무현황표 완료 문서 관리',
     'FINAL_APPROVAL_LEAVE_APPLICATION': '휴가원 전결 승인',
     'FINAL_APPROVAL_WORK_SCHEDULE': '근무현황표 전결 승인',
@@ -106,6 +129,7 @@ const HR_PERMISSION_TYPES_LIST = [
     'HR_CONTRACT',
     'HR_LEAVE_APPLICATION',
     'WORK_SCHEDULE_CREATE',
+    'WORK_SCHEDULE_DEPT_MANAGE',
     'WORK_SCHEDULE_MANAGE',
     'FINAL_APPROVAL_LEAVE_APPLICATION',
     'FINAL_APPROVAL_WORK_SCHEDULE',
@@ -121,6 +145,76 @@ export const AdminDashboard: React.FC = () => {
 
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>('');
+
+    // Test Data
+    const [testAccounts, setTestAccounts] = useState<string[]>([]);
+    const [showTestDataModal, setShowTestDataModal] = useState<boolean>(false);
+    const [testDataLoading, setTestDataLoading] = useState<boolean>(false);
+    const [testDataResult, setTestDataResult] = useState<TestDataDeleteResult | null>(null);
+
+    // 테스트 계정 조회
+    const fetchTestAccounts = async () => {
+        try {
+            const res = await fetch('/api/admin/test-data/accounts', {
+                headers: getAuthHeaders(),
+            });
+            if (!res.ok) throw new Error('Failed to fetch test accounts');
+            const accounts = await res.json();
+            setTestAccounts(accounts);
+        } catch (e: any) {
+            console.error('Test accounts fetch error:', e.message);
+        }
+    };
+
+    // 테스트 데이터 삭제
+    const handleDeleteTestData = async () => {
+        if (!window.confirm(
+            `⚠️ 경고: 테스트 계정(99990~99999) ${testAccounts.length}개와 관련된 모든 데이터가 삭제됩니다.\n` +
+            '이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?'
+        )) {
+            return;
+        }
+
+        setTestDataLoading(true);
+        setTestDataResult(null);
+
+        try {
+            const res = await fetch('/api/admin/test-data', {
+                method: 'DELETE',
+                headers: getAuthHeaders(),
+            });
+
+            if (!res.ok) throw new Error('Failed to delete test data');
+
+            const result: TestDataDeleteResult = await res.json();
+            setTestDataResult(result);
+
+            if (result.success) {
+                alert('테스트 데이터가 성공적으로 삭제되었습니다.');
+                await fetchTestAccounts(); // 목록 갱신
+                await fetchStats(); // 통계 갱신
+                await fetchUsers(currentPage, usersPerPage, showAllUsers, searchTerm); // 사용자 목록 갱신
+            } else {
+                alert(`삭제 실패: ${result.message}`);
+            }
+        } catch (e: any) {
+            alert('테스트 데이터 삭제 중 오류가 발생했습니다.');
+            console.error('Test data deletion error:', e);
+        } finally {
+            setTestDataLoading(false);
+        }
+    };
+
+    // 모달 열기
+    const handleOpenTestDataModal = async () => {
+        setShowTestDataModal(true);
+        setTestDataResult(null);
+        await fetchTestAccounts();
+    };
+
+    const [pageGroup, setPageGroup] = useState<number>(0); // 현재 페이지 그룹 (0부터 시작)
+    const pagesPerGroup = 5; // 한 그룹에 표시할 페이지 수
+    const [isPageChanging, setIsPageChanging] = useState<boolean>(false);
 
     // Current Admin User
     const [currentUser, setCurrentUser] = useState<CurrentUserPermissions | null>(null);
@@ -201,7 +295,9 @@ export const AdminDashboard: React.FC = () => {
             return data.userDtos;
         } catch (e: any) {
             setError(e.message);
-        }
+        } finally {
+        setIsPageChanging(false); // 로딩 완료
+    }
     }, [getAuthHeaders]);
 
     const fetchPermissionTypes = useCallback(async () => {
@@ -288,17 +384,17 @@ export const AdminDashboard: React.FC = () => {
 
     const fetchDepartments = useCallback(async () => {
         try {
-            const uniqueDeptsSet = new Set(users.map(user => user.deptCode.replace(/\d+$/, '')));
-            const uniqueDepts = Array.from(uniqueDeptsSet);
-            const depts: Department[] = uniqueDepts.map(base => ({
-                deptCode: base,
-                deptName: base
-            }));
-            setDepartments(depts);
+            // ✅ 변경: 전체 활성 부서 목록 API 호출
+            const res = await fetch('/api/v1/departments', {
+                headers: getAuthHeaders(),
+            });
+            if (!res.ok) throw new Error('Failed to load departments');
+            const data: Department[] = await res.json();
+            setDepartments(data);
         } catch (e: any) {
             console.error('Departments fetch error:', e.message);
         }
-    }, [users]);
+    }, [getAuthHeaders]); // ✅ users 의존성 제거
 
     // 5. 퇴사/복직 처리 (기존 toggleUserStatus API 사용)
     const handleToggleUserStatus = async () => {
@@ -404,7 +500,8 @@ export const AdminDashboard: React.FC = () => {
                     fetchUsers(0, usersPerPage, showAllUsers, searchTerm),
                     fetchPermissionTypes(),
                     fetchUserPermissions(),
-                    fetchDeptPermissions()
+                    fetchDeptPermissions(),
+                    fetchDepartments()
                 ]);
 
             } catch (e: any) {
@@ -429,14 +526,6 @@ export const AdminDashboard: React.FC = () => {
         }
     }, [currentPage, showAllUsers, searchTerm, fetchUsers, loading]);
 
-    // Load departments once users are loaded
-    useEffect(() => {
-        if (users.length > 0) {
-            fetchDepartments();
-        }
-    }, [users, fetchDepartments]);
-
-
     // ## Filter & Pagination ##
     const filteredUsers = useMemo(() => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
@@ -460,8 +549,10 @@ export const AdminDashboard: React.FC = () => {
     const paginatedUsers = users;
 
     const handlePageChange = (page: number) => {
-        if (page >= 0 && page < totalPages) {
+        if (page >= 0 && page < totalPages && !isPageChanging) {
+            setIsPageChanging(true);
             setCurrentPage(page);
+            setPageGroup(Math.floor(page / pagesPerGroup));
         }
     };
 
@@ -627,43 +718,67 @@ export const AdminDashboard: React.FC = () => {
         <Layout>
             <div className="admin-dashboard-container">
                 {/* Header Section */}
-                <div className="admin-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem' }}>
+                <div className="admin-header-row" style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-end',
+                    marginBottom: '2rem'
+                }}>
                     <div>
                         <h1 className="admin-dashboard-title">Admin Dashboard</h1>
                         <p className="admin-welcome-message">
                             관리자: {currentUser.userName} (Level: {currentUser.jobLevel})
                         </p>
                     </div>
-                    <button
-                        className="admin-secondary-button"
-                        onClick={() => setIsDeptModalOpen(true)}
-                    >
-                        <Building2 size={16} /> 부서 권한 관리
-                    </button>
+                    <div style={{display: 'flex', gap: '0.75rem'}}>
+                        <button
+                            className="admin-secondary-button"
+                            onClick={handleOpenTestDataModal}
+                            style={{background: '#FEF2F2', borderColor: '#FCA5A5', color: '#DC2626'}}
+                        >
+                            <AlertTriangle size={16}/> 테스트 데이터 관리
+                        </button>
+                        <button
+                            className="admin-secondary-button"
+                            onClick={() => setIsDeptModalOpen(true)}
+                        >
+                            <Building2 size={16}/> 부서 권한 관리
+                        </button>
+                    </div>
                 </div>
 
                 {/* Stats Section */}
                 <div className="admin-stats-container">
-                    <StatCard title="총 사용자 수" value={stats.totalUsers} icon={<Users className="w-6 h-6"/>} color="var(--primary-600)"/>
-                    <StatCard title="활성 사용자 수" value={stats.activeUsers} icon={<UserCheck className="w-6 h-6"/>} color="var(--success-500)"/>
-                    <StatCard title="비활성 사용자 수" value={stats.inactiveUsers} icon={<TrendingDown className="w-6 h-6"/>} color="var(--warning-500)"/>
-                    <StatCard title="총 부서 수" value={stats.totalDepartments} icon={<Building2 className="w-6 h-6"/>} color="var(--secondary-600)"/>
+                    <StatCard title="총 사용자 수" value={stats.totalUsers} icon={<Users className="w-6 h-6"/>}
+                              color="var(--primary-600)"/>
+                    <StatCard title="활성 사용자 수" value={stats.activeUsers} icon={<UserCheck className="w-6 h-6"/>}
+                              color="var(--success-500)"/>
+                    <StatCard title="비활성 사용자 수" value={stats.inactiveUsers} icon={<TrendingDown className="w-6 h-6"/>}
+                              color="var(--warning-500)"/>
+                    <StatCard title="총 부서 수" value={stats.totalDepartments} icon={<Building2 className="w-6 h-6"/>}
+                              color="var(--secondary-600)"/>
                 </div>
 
                 {/* Main Content (Table & Controls) */}
                 <div className="admin-content-wrapper">
                     {/* Controls */}
                     <div className="admin-controls-section">
-                        <div className="admin-search-section" style={{ flex: 1, marginBottom: 0 }}>
-                            <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
-                                <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
+                        <div className="admin-search-section" style={{flex: 1, marginBottom: 0}}>
+                            <div style={{position: 'relative', width: '100%', maxWidth: '400px'}}>
+                                <Search size={18} style={{
+                                    position: 'absolute',
+                                    left: '12px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    color: '#9CA3AF'
+                                }}/>
                                 <input
                                     type="text"
                                     placeholder="Search user, ID, or department..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="admin-search-input"
-                                    style={{ paddingLeft: '40px' }}
+                                    style={{paddingLeft: '40px'}}
                                 />
                             </div>
                         </div>
@@ -696,7 +811,7 @@ export const AdminDashboard: React.FC = () => {
                                         className="admin-table-row clickable-row"
                                         onClick={() => handleOpenDrawer(user)}
                                     >
-                                        <td className="admin-table-cell" style={{ textAlign: 'left' }}>
+                                        <td className="admin-table-cell" style={{textAlign: 'left'}}>
                                             <div className="user-info-cell">
                                                 <span className="user-name">{user.userName}</span>
                                                 <span className="user-id">{user.userId}</span>
@@ -707,7 +822,8 @@ export const AdminDashboard: React.FC = () => {
                                             <span className="badge-level">Lv.{user.jobLevel}</span>
                                         </td>
                                         <td className="admin-table-cell">
-                                            <span className={`status-dot ${user.useFlag === '1' ? 'active' : 'inactive'}`}></span>
+                                            <span
+                                                className={`status-dot ${user.useFlag === '1' ? 'active' : 'inactive'}`}></span>
                                             {user.useFlag === '1' ? 'Active' : 'Left'}
                                         </td>
                                         <td className="admin-table-cell">
@@ -730,28 +846,40 @@ export const AdminDashboard: React.FC = () => {
                         </table>
                     </div>
 
-                    {/* Pagination */}
                     {totalPages > 1 && (
                         <div className="admin-pagination-controls">
                             <button
                                 onClick={() => handlePageChange(currentPage - 1)}
-                                disabled={currentPage === 0}
+                                disabled={currentPage === 0 || isPageChanging}
                                 className="admin-pagination-button"
                             >
                                 Prev
                             </button>
-                            {[...Array(totalPages)].map((_, i) => (
-                                <button
-                                    key={i} // 💡 key를 0부터 시작하는 인덱스로 사용
-                                    onClick={() => handlePageChange(i)}
-                                    className={`admin-pagination-button ${currentPage === i ? 'active' : ''}`}
-                                >
-                                    {i + 1}
-                                </button>
-                            ))}
+
+                            {(() => {
+                                const startPage = pageGroup * pagesPerGroup;
+                                const endPage = Math.min(startPage + pagesPerGroup, totalPages);
+                                const pages = [];
+
+                                for (let i = startPage; i < endPage; i++) {
+                                    pages.push(
+                                        <button
+                                            key={i}
+                                            onClick={() => handlePageChange(i)}
+                                            disabled={isPageChanging}
+                                            className={`admin-pagination-button ${currentPage === i ? 'active' : ''}`}
+                                        >
+                                            {i + 1}
+                                        </button>
+                                    );
+                                }
+
+                                return pages;
+                            })()}
+
                             <button
                                 onClick={() => handlePageChange(currentPage + 1)}
-                                disabled={currentPage === totalPages - 1}
+                                disabled={currentPage === totalPages - 1 || isPageChanging}
                                 className="admin-pagination-button"
                             >
                                 Next
@@ -862,11 +990,12 @@ export const AdminDashboard: React.FC = () => {
                                             </div>
 
                                             {currentUser?.jobLevel === '6' && (
-                                                <div className={`password-reset-zone ${showPasswordSection ? 'active' : ''}`}>
+                                                <div
+                                                    className={`password-reset-zone ${showPasswordSection ? 'active' : ''}`}>
                                                     {/* 헤더 영역 */}
                                                     <div className="password-header">
                                                         <div className="password-label">
-                                                            <Lock size={16} />
+                                                            <Lock size={16}/>
                                                             <span>비밀번호 재설정 (최고관리자)</span>
                                                         </div>
                                                         <button
@@ -900,7 +1029,10 @@ export const AdminDashboard: React.FC = () => {
                                                             </button>
 
                                                             <div className="password-warning">
-                                                                <AlertTriangle size={14} style={{ minWidth: '14px', marginTop: '2px' }} />
+                                                                <AlertTriangle size={14} style={{
+                                                                    minWidth: '14px',
+                                                                    marginTop: '2px'
+                                                                }}/>
                                                                 <span>
                                                                 비밀번호 변경 시 해당 사용자는 다음 로그인 직후<br/>
                                                                 반드시 비밀번호를 다시 변경해야 합니다.
@@ -1052,6 +1184,160 @@ export const AdminDashboard: React.FC = () => {
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ==========================================
+                   TEST DATA MANAGEMENT MODAL
+                   ========================================== */}
+                {showTestDataModal && (
+                    <div className="admin-modal-overlay">
+                        <div className="admin-modal-content" style={{maxWidth: '700px', width: '95%'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem'}}>
+                                <h2 className="admin-modal-title" style={{margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                    <AlertTriangle size={24} color="#DC2626" />
+                                    테스트 데이터 관리
+                                </h2>
+                                <button onClick={() => setShowTestDataModal(false)}
+                                        style={{background: 'none', border: 'none', cursor: 'pointer'}}>
+                                    <X size={24}/>
+                                </button>
+                            </div>
+
+                            {/* 테스트 계정 정보 */}
+                            <div style={{
+                                padding: '1rem',
+                                background: '#FFF7ED',
+                                borderRadius: '8px',
+                                marginBottom: '1.5rem',
+                                border: '1px solid #FED7AA'
+                            }}>
+                                <p style={{margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#9A3412', fontWeight: 600}}>
+                                    현재 테스트 계정: {testAccounts.length}개
+                                </p>
+                                {testAccounts.length > 0 && (
+                                    <div style={{
+                                        fontSize: '0.75rem',
+                                        color: '#78350F',
+                                        fontFamily: 'monospace',
+                                        padding: '0.5rem',
+                                        background: '#FFFBEB',
+                                        borderRadius: '4px',
+                                        maxHeight: '100px',
+                                        overflowY: 'auto'
+                                    }}>
+                                        {testAccounts.join(', ')}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 경고 메시지 */}
+                            <div style={{
+                                padding: '1rem',
+                                background: '#FEF2F2',
+                                borderRadius: '8px',
+                                marginBottom: '1.5rem',
+                                border: '1px solid #FECACA'
+                            }}>
+                                <h4 style={{margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#991B1B', fontWeight: 700}}>
+                                    ⚠️ 다음 데이터가 삭제됩니다:
+                                </h4>
+                                <ul style={{margin: 0, paddingLeft: '1.25rem', fontSize: '0.8rem', color: '#7F1D1D', lineHeight: '1.6'}}>
+                                    <li>사용자 정보 및 권한</li>
+                                    <li>근로계약서</li>
+                                    <li>휴가신청서 및 첨부파일</li>
+                                    <li>근무현황표 및 상세 데이터</li>
+                                    <li>연차 이력</li>
+                                    <li>동의서</li>
+                                    <li>결재라인, 결재 프로세스 및 이력</li>
+                                    <li>직책 및 기타 관련 데이터</li>
+                                </ul>
+                            </div>
+
+                            {/* 삭제 버튼 */}
+                            <button
+                                onClick={handleDeleteTestData}
+                                disabled={testDataLoading || testAccounts.length === 0}
+                                style={{
+                                    width: '100%',
+                                    padding: '1rem',
+                                    background: testDataLoading || testAccounts.length === 0 ? '#D1D5DB' : 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '0.9375rem',
+                                    fontWeight: 700,
+                                    cursor: testDataLoading || testAccounts.length === 0 ? 'not-allowed' : 'pointer',
+                                    marginBottom: '1rem'
+                                }}
+                            >
+                                {testDataLoading ? '삭제 중...' : `🗑️ 테스트 데이터 삭제 (${testAccounts.length}개)`}
+                            </button>
+
+                            {/* 삭제 결과 */}
+                            {testDataResult && (
+                                <div style={{
+                                    padding: '1rem',
+                                    background: testDataResult.success ? '#F0FDF4' : '#FEF2F2',
+                                    border: `1px solid ${testDataResult.success ? '#BBF7D0' : '#FECACA'}`,
+                                    borderRadius: '8px',
+                                    marginTop: '1rem'
+                                }}>
+                                    <h4 style={{
+                                        margin: '0 0 0.75rem 0',
+                                        fontSize: '0.9rem',
+                                        color: testDataResult.success ? '#15803D' : '#991B1B',
+                                        fontWeight: 700
+                                    }}>
+                                        {testDataResult.success ? '✅ ' : '❌ '}{testDataResult.message}
+                                    </h4>
+                                    {testDataResult.success && (
+                                        <div style={{fontSize: '0.75rem', color: '#166534', lineHeight: '1.5'}}>
+                                            <p style={{margin: '0 0 0.5rem 0', fontWeight: 600}}>
+                                                총 삭제: {
+                                                testDataResult.userCount +
+                                                testDataResult.employmentContractCount +
+                                                testDataResult.leaveApplicationCount +
+                                                testDataResult.leaveApplicationDayCount +
+                                                testDataResult.leaveApplicationAttachmentCount +
+                                                testDataResult.workScheduleCount +
+                                                testDataResult.workScheduleEntryCount +
+                                                testDataResult.vacationHistoryCount +
+                                                testDataResult.consentAgreementCount +
+                                                testDataResult.contractMemoCount +
+                                                testDataResult.approvalProcessCount +
+                                                testDataResult.approvalHistoryCount +
+                                                testDataResult.deptDutyConfigCount +
+                                                testDataResult.approvalLineCount +
+                                                testDataResult.approvalStepCount +
+                                                testDataResult.positionCount +
+                                                testDataResult.userPermissionCount
+                                            }건
+                                            </p>
+                                            <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.25rem'}}>
+                                                <span>• 사용자: {testDataResult.userCount}개</span>
+                                                <span>• 권한: {testDataResult.userPermissionCount}개</span>
+                                                <span>• 근로계약서: {testDataResult.employmentContractCount}개</span>
+                                                <span>• 휴가신청서: {testDataResult.leaveApplicationCount}개</span>
+                                                <span>• 휴가 상세: {testDataResult.leaveApplicationDayCount}개</span>
+                                                <span>• 첨부파일: {testDataResult.leaveApplicationAttachmentCount}개</span>
+                                                <span>• 근무현황표: {testDataResult.workScheduleCount}개</span>
+                                                <span>• 근무 상세: {testDataResult.workScheduleEntryCount}개</span>
+                                                <span>• 연차 이력: {testDataResult.vacationHistoryCount}개</span>
+                                                <span>• 동의서: {testDataResult.consentAgreementCount}개</span>
+                                                <span>• 메모: {testDataResult.contractMemoCount}개</span>
+                                                <span>• 결재라인: {testDataResult.approvalLineCount}개</span>
+                                                <span>• 결재 단계: {testDataResult.approvalStepCount}개</span>
+                                                <span>• 결재 프로세스: {testDataResult.approvalProcessCount}개</span>
+                                                <span>• 결재 이력: {testDataResult.approvalHistoryCount}개</span>
+                                                <span>• 당직 설정: {testDataResult.deptDutyConfigCount}개</span>
+                                                <span>• 직책: {testDataResult.positionCount}개</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

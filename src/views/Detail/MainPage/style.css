@@ -385,6 +385,85 @@
     color: #3b82f6 !important;
 }
 
+.text-range-cell {
+    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%) !important;
+    border: 2px solid #fb923c !important;
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 60px;
+    box-shadow: 0 2px 4px rgba(251, 146, 60, 0.1);
+}
+
+.text-range-dates {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.text-range-dates .day-number {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.range-separator {
+    color: #cbd5e1;
+    font-weight: 400;
+    margin: 0 2px;
+}
+
+.work-type.type-text {
+    background: #fed7aa;
+    color: #c2410c;
+    border: 1px solid #fb923c;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 97%;
+}
+
+/* 이월 연차 행 스타일 (시각적 구분) */
+.mp-carryover-row {
+    background: linear-gradient(to right, #fef3c7 0%, #fde68a 100%);
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.mp-carryover-row .mp-stat-box {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: #fbbf24;
+}
+
+/* 전체 요약 행 강조 */
+.mp-total-row {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 2px solid var(--mp-border);
+}
+
+.mp-total-row .mp-stat-box {
+    background: #f0f9ff;
+    border-color: #bae6fd;
+}
+
+.mp-total-row .mp-stat-value {
+    font-size: 24px;
+    color: var(--mp-primary);
+}
+
 /* 반응형 조정 (작은 화면에서 폰트 축소) */
 @media (max-width: 480px) {
     .work-type {
@@ -396,7 +475,6 @@
     }
 }
 
-/* 모바일 대응 보강 */
 @media (max-width: 768px) {
     #mp-page-wrapper {
         padding: 20px 12px;
@@ -409,11 +487,22 @@
     }
     .mp-stats-row {
         flex-wrap: wrap;
+        gap: 8px; /* 간격 조정 */
     }
     .mp-stat-box {
-        min-width: calc(50% - 6px); /* 모바일에서 연차박스 2개씩 */
+        flex: 1 1 calc(33.333% - 6px); /* 모바일에서 연차박스 3개씩 */
+        min-width: 90px; /* 최소 너비 보장 */
+        padding: 12px 8px; /* 패딩 축소 */
+    }
+    .mp-stat-label {
+        font-size: 11px; /* 라벨 폰트 축소 */
+    }
+    .mp-stat-value {
+        font-size: 18px; /* 값 폰트 축소 */
     }
 }
+
+
 
 /* Utilities */
 .spinning { animation: spin 1s linear infinite; }
@@ -426,3 +515,106 @@
 .empty-msg { padding: 20px; text-align: center; color: var(--mp-text-sub); font-size: 13px; }
 
 @media (max-width: 1024px) { .mp-content-grid { grid-template-columns: 1fr; } }
+
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    .main-page-container {
+        padding: 12px;
+    }
+
+    .main-page-header {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .welcome-text {
+        font-size: 20px;
+    }
+
+    .sub-text {
+        font-size: 13px;
+    }
+
+    .main-content-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .info-card {
+        padding: 16px;
+    }
+
+    .card-title {
+        font-size: 16px;
+    }
+
+    .user-info-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .info-item {
+        padding: 12px;
+    }
+
+    .info-label {
+        font-size: 12px;
+    }
+
+    .info-value {
+        font-size: 14px;
+    }
+
+    .quick-actions-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .action-button {
+        padding: 16px;
+        min-height: 80px;
+    }
+
+    .action-icon {
+        font-size: 24px;
+    }
+
+    .action-text {
+        font-size: 14px;
+    }
+
+    .calendar-section {
+        padding: 16px;
+    }
+
+    .calendar-grid {
+        gap: 2px;
+    }
+
+    .calendar-day {
+        height: 45px;
+        font-size: 12px;
+    }
+
+    .day-number {
+        font-size: 14px;
+    }
+
+    .day-schedule {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .welcome-text {
+        font-size: 18px;
+    }
+
+    .quick-actions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .calendar-day {
+        height: 40px;
+    }
+}

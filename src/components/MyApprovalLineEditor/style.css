@@ -493,3 +493,312 @@
 .approval-line-btn-save:disabled {
     background: #93c5fd;
 }
+
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    .approval-line-creator {
+        padding: 16px 12px;
+    }
+
+    .approval-line-creator-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .approval-line-creator-header h1 {
+        font-size: 20px;
+    }
+
+    .approval-line-creator-actions {
+        width: 100%;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .approval-line-btn-cancel,
+    .approval-line-btn-save,
+    .approval-line-creator-actions .approval-line-btn-delete {
+        width: 100%;
+        min-height: 48px;
+        font-size: 15px;
+        justify-content: center;
+    }
+
+    .approval-line-creator-section {
+        padding: 16px;
+        border-radius: 10px;
+    }
+
+    .approval-line-creator-section h2 {
+        font-size: 18px;
+        margin-bottom: 16px;
+    }
+
+    .approval-line-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .approval-line-section-header h2 {
+        margin: 0;
+    }
+
+    .approval-line-btn-add-step {
+        width: 100%;
+        min-height: 48px;
+        font-size: 15px;
+        justify-content: center;
+    }
+
+    .approval-line-form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .approval-line-form-group {
+        margin-bottom: 16px;
+    }
+
+    .approval-line-form-group label {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .approval-line-form-group input,
+    .approval-line-form-group select,
+    .approval-line-form-group textarea {
+        font-size: 16px !important;
+        padding: 13px 12px;
+        min-height: 46px;
+        -webkit-appearance: none;
+    }
+
+    .approval-line-form-group textarea {
+        min-height: 100px;
+    }
+
+    /* 스텝 아이템 */
+    .approval-line-step-item {
+        border-radius: 10px;
+        margin-bottom: 12px;
+    }
+
+    .approval-line-step-header {
+        padding: 14px;
+        flex-wrap: wrap;
+    }
+
+    .approval-line-step-number {
+        font-size: 15px;
+        flex: 1;
+    }
+
+    .approval-line-step-actions {
+        gap: 6px;
+    }
+
+    .approval-line-step-actions button {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    .approval-line-step-actions .approval-line-icon {
+        width: 18px;
+        height: 18px;
+    }
+
+    .approval-line-step-content {
+        padding: 14px;
+    }
+
+    /* 사용자 선택 버튼 */
+    .approval-line-user-select-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .approval-line-user-select-row input {
+        width: 100%;
+    }
+
+    .approval-line-btn-select-user {
+        width: 100%;
+        min-height: 48px;
+        font-size: 15px;
+        justify-content: center;
+    }
+
+    /* 체크박스 */
+    .approval-line-step-options {
+        padding: 14px;
+        margin-top: 12px;
+    }
+
+    .approval-line-checkbox-label {
+        font-size: 15px;
+        gap: 10px;
+        min-height: 44px;
+        align-items: center;
+    }
+
+    .approval-line-checkbox-label input[type="checkbox"] {
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        min-height: 22px;
+        margin: 0;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .approval-line-checkbox-label span {
+        flex: 1;
+        line-height: 1.4;
+    }
+
+    /* 안내 메시지 */
+    .approval-line-info-message {
+        padding: 14px;
+        font-size: 14px;
+        line-height: 1.5;
+        border-radius: 8px;
+    }
+
+    .approval-line-error-message {
+        font-size: 14px;
+        margin-top: 8px;
+    }
+
+    .approval-line-error-message-box {
+        padding: 14px;
+        font-size: 14px;
+        margin-bottom: 12px;
+    }
+
+    /* 모달 */
+    .approval-line-modal-overlay {
+        padding: 0;
+        align-items: center;
+    }
+
+    .approval-line-modal-content {
+        width: 92%;
+        max-width: 520px;   /* 🔥 핵심 */
+        max-height: 85dvh;
+        border-radius: 12px;
+        margin: 0;
+    }
+
+    .approval-line-modal-header {
+        padding: 16px;
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 10;
+    }
+
+    .approval-line-modal-header h3 {
+        font-size: 18px;
+    }
+
+    .approval-line-modal-close {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    .approval-line-modal-close .approval-line-icon {
+        width: 22px;
+        height: 22px;
+    }
+
+    .approval-line-modal-body {
+        padding: 16px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 후보 목록 */
+    .candidates-list {
+        max-height: none;
+    }
+
+    .candidate-item {
+        padding: 14px;
+        margin-bottom: 10px;
+        min-height: 60px;
+    }
+
+    .candidate-name {
+        font-size: 15px;
+    }
+
+    .candidate-details {
+        font-size: 13px;
+        margin-top: 4px;
+    }
+
+    .selected-icon {
+        width: 22px;
+        height: 22px;
+    }
+}
+
+/* ===== 초소형 모바일 (480px 이하) ===== */
+@media (max-width: 480px) {
+    .approval-line-creator {
+        padding: 12px 8px;
+    }
+
+    .approval-line-creator-header h1 {
+        font-size: 18px;
+    }
+
+    .approval-line-creator-section {
+        padding: 14px;
+    }
+
+    .approval-line-creator-section h2 {
+        font-size: 17px;
+    }
+
+    .approval-line-modal-content {
+        width: 94%;
+        max-width: 520px;
+        max-height: 85dvh;   /* 전체화면 방지 */
+        height: auto;
+        border-radius: 12px;
+    }
+
+    .approval-line-step-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+/* ===== 터치 피드백 강화 ===== */
+@media (max-width: 768px) {
+    button:active,
+    .approval-line-btn-cancel:active,
+    .approval-line-btn-save:active,
+    .approval-line-btn-add-step:active,
+    .approval-line-btn-select-user:active {
+        transform: scale(0.98);
+        opacity: 0.9;
+    }
+
+    .approval-line-checkbox-label input[type="checkbox"] {
+        transform: scale(1.1);
+    }
+
+    .approval-line-checkbox-label input[type="checkbox"]:active {
+        transform: scale(1.05);
+    }
+}

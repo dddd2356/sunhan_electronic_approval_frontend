@@ -47,7 +47,7 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
     const getBaseDeptCode = (code: string) => code.replace(/\d+$/, '');
 
     useEffect(() => {
-        fetchDepartments();
+        // fetchDepartments();
         fetchDepartmentNames();
     }, []);
 
@@ -80,19 +80,19 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
         }
     };
 
-    const fetchDepartments = async () => {
-        try {
-            const response = await fetch('/api/v1/user/departments', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await response.json();
-            setDepartments(buildDepartmentTree(data));
-        } catch (error) {
-            console.error('부서 목록 조회 실패:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // const fetchDepartments = async () => {
+    //     try {
+    //         const response = await fetch('/api/v1/user/departments', {
+    //             headers: { Authorization: `Bearer ${token}` }
+    //         });
+    //         const data = await response.json();
+    //         setDepartments(buildDepartmentTree(data));
+    //     } catch (error) {
+    //         console.error('부서 목록 조회 실패:', error);
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
 
     // ✅ 부서명 조회 추가
     const fetchDepartmentNames = async () => {
@@ -103,92 +103,51 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
             const data = await response.json();
 
             const normalized: Record<string, string> = {};
+            const deptList: Department[] = []; // ← 추가
+
             Object.entries(data).forEach(([code, name]) => {
                 const baseCode = getBaseDeptCode(code);
                 if (!normalized[baseCode]) {
                     normalized[baseCode] = name as string;
+                    // ✅ 부서 객체 생성 (직원 데이터 없이)
+                    deptList.push({
+                        deptCode: baseCode,
+                        deptName: name as string,
+                        children: []
+                    });
                 }
             });
 
             setDeptNames(normalized);
+            setDepartments(buildDepartmentTree(deptList)); // ← 추가
+            setLoading(false); // ← 추가
         } catch (error) {
             console.error('부서 이름 조회 실패:', error);
+            setLoading(false); // ← 추가
         }
     };
 
     const fetchEmployees = async (deptCode: string) => {
         const baseCode = getBaseDeptCode(deptCode);
-        if (employees[baseCode]) return;
+        if (employees[baseCode]) return; // 이미 로드했으면 스킵
 
         try {
-            const isBaseDept = !/\d+$/.test(deptCode);
-
-            // ✅ allDepartments prop에 따라 엔드포인트 선택
-            const endpoint = allDepartments
-                ? `/api/v1/user/department/${baseCode}/all?includeSubDepts=true`
-                : `/api/v1/user/department/${baseCode}?includeSubDepts=true`;
-
-            const response = await fetch(endpoint, {
+            // ✅ 새로운 API 엔드포인트 사용
+            const response = await fetch(`/api/v1/departments/${baseCode}/users`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
             const data = await response.json();
-            setEmployees(prev => ({ ...prev, [deptCode]: data }));
+            setEmployees(prev => ({ ...prev, [baseCode]: data }));
         } catch (error) {
             console.error('직원 목록 조회 실패:', error);
+            setEmployees(prev => ({ ...prev, [baseCode]: [] })); // 실패 시 빈 배열
         }
     };
 
     const buildDepartmentTree = (depts: Department[]): Department[] => {
-        const map = new Map<string, Department>();
-        const roots: Department[] = [];
-
-        // 숫자 제외 base 코드로 그룹화 (기존 로직 유지 + 강화)
-        const getBaseDeptCode = (code: string) => code.replace(/\d+$/, '');
-
-        const groupedDepts = new Map<string, Department[]>();
-        depts.forEach(dept => {
-            const baseCode = getBaseDeptCode(dept.deptCode);
-            if (!groupedDepts.has(baseCode)) {
-                groupedDepts.set(baseCode, []);
-            }
-            groupedDepts.get(baseCode)!.push(dept); // 묶어서 포함
-        });
-
-        // ✅ 2단계: 그룹화된 부서를 대표 노드로 변환
-        groupedDepts.forEach((subDepts, baseCode) => {
-            if (subDepts.length === 1) {
-                // 단일 부서는 그대로 사용
-                const dept = subDepts[0];
-                map.set(dept.deptCode, { ...dept, children: [] });
-            } else {
-                // 여러 하위 부서가 있는 경우 대표 노드 생성
-                const representativeDept: Department = {
-                    deptCode: baseCode,
-                    deptName: subDepts[0].deptName.replace(/\d+$/, ''), // 숫자 제거
-                    parentDeptCode: subDepts[0].parentDeptCode,
-                    children: subDepts.map(d => ({ ...d, parentDeptCode: baseCode, children: [] }))
-                };
-                map.set(baseCode, representativeDept);
-            }
-        });
-
-        // ✅ 3단계: 부모-자식 관계 설정 (기존 로직 유지)
-        map.forEach((node) => {
-            if (node.parentDeptCode) {
-                const parentBase = getBaseDeptCode(node.parentDeptCode);
-                const parent = map.get(parentBase) || map.get(node.parentDeptCode);
-                if (parent) {
-                    parent.children!.push(node);
-                } else {
-                    roots.push(node);
-                }
-            } else {
-                roots.push(node);
-            }
-        });
-
-        return roots;
+        // 이미 간단한 배열로 받았으므로 그대로 반환
+        return depts.sort((a, b) => a.deptName.localeCompare(b.deptName));
     };
 
     const toggleDepartment = (deptCode: string) => {

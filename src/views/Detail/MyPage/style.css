@@ -588,6 +588,11 @@
 @media (max-width: 768px) {
     .dashboard-grid { grid-template-columns: 1fr; }
     .form-grid { grid-template-columns: 1fr; }
+
+    .form-group.full-width {
+        grid-column: span 1;
+    }
+
     .page-header { flex-direction: column; align-items: flex-start; gap: 16px; }
     .btn { width: 100%; }
     .header-btn-group { width: 100%; }
@@ -599,5 +604,89 @@
 
     .up-signature-action {
         justify-content: flex-end;
+    }
+}
+
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    .mypage-container {
+        padding: 12px;
+    }
+
+    .mypage-header {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .mypage-title {
+        font-size: 20px;
+    }
+
+    .mypage-content-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .mypage-section {
+        padding: 16px;
+    }
+
+    .section-title {
+        font-size: 16px;
+    }
+
+    .profile-info-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .profile-item {
+        padding: 12px;
+    }
+
+    .profile-label {
+        font-size: 12px;
+    }
+
+    .profile-value {
+        font-size: 14px;
+    }
+
+    .mypage-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .mypage-button {
+        width: 100%;
+        min-height: 44px;
+        font-size: 14px;
+    }
+
+    .statistics-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .stat-card {
+        padding: 16px;
+    }
+
+    .stat-label {
+        font-size: 12px;
+    }
+
+    .stat-value {
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .mypage-section {
+        padding: 12px;
+    }
+
+    .stat-value {
+        font-size: 18px;
     }
 }

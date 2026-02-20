@@ -112,6 +112,7 @@ export const saveLeaveApplication = async (id: number, updateData: any, token: s
     const payload = {
         applicantInfo: updateData.applicantInfo || {},
         substituteInfo: updateData.substituteInfo,
+        departmentHeadInfo: updateData.departmentHeadInfo,
         leaveTypes: updateData.leaveTypes,
         leaveContent: updateData.leaveContent || {},
         flexiblePeriods: updateData.flexiblePeriods || [],

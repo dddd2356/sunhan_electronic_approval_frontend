@@ -44,6 +44,7 @@ interface EmployeeVacation {
     annualUsageRate?: number;
     usedCarryoverDays?: number;
     usedRegularDays?: number;
+    remainingCarryoverDays?: number;
     // 하위 호환
     totalDays: number;
     usedDays: number;
@@ -95,7 +96,29 @@ const AdminVacationStatistics: React.FC = () => {
     const [ledgerYear, setLedgerYear] = useState(currentYear);
 
     const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    // useState 임포트 아래에 추가
+    const useIsMobile = () => {
+        const [isMobile, setIsMobile] = useState(() => {
+            // ✅ 초기값을 즉시 계산
+            return window.matchMedia('(max-width: 768px)').matches;
+        });
 
+        useEffect(() => {
+            const mediaQuery = window.matchMedia('(max-width: 768px)');
+
+            const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+                setIsMobile(e.matches);
+            };
+
+            // 이벤트 리스너 등록
+            mediaQuery.addEventListener('change', handleChange);
+
+            return () => mediaQuery.removeEventListener('change', handleChange);
+        }, []);
+
+        return isMobile;
+    };
+    const isMobile = useIsMobile();
     const handleRecalculateFromStats = async () => {
         if (!window.confirm('모든 휴가원의 일수를 재계산하시겠습니까?')) {
             return;
@@ -361,56 +384,8 @@ const AdminVacationStatistics: React.FC = () => {
 
     // ✅ 전체 데이터 불러오기
     const fetchAllDepartments = async () => {
-        try {
-            setDeptLoading(true);
-            setError('');
-
-            const response = await fetch(
-                `/api/v1/vacation/statistics?sortBy=${sortBy}&sortOrder=${sortOrder}`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                }
-            );
-
-            if (response.ok) {
-                const data = await response.json();
-
-                // ✅ 전체 통합 데이터 생성
-                const allEmployees = data.flatMap((dept: DepartmentStatistics) => dept.employees);
-                const totalVacationDays = data.reduce((sum: number, dept: DepartmentStatistics) =>
-                    sum + dept.totalVacationDays, 0);
-                const totalUsedDays = data.reduce((sum: number, dept: DepartmentStatistics) =>
-                    sum + dept.totalUsedDays, 0);
-                const totalRemainingDays = data.reduce((sum: number, dept: DepartmentStatistics) =>
-                    sum + dept.totalRemainingDays, 0);
-                const avgUsageRate = data.reduce((sum: number, dept: DepartmentStatistics) =>
-                    sum + dept.avgUsageRate, 0) / data.length;
-
-                const allDeptData: DepartmentStatistics = {
-                    deptCode: 'ALL',
-                    deptName: '전체',
-                    totalEmployees: allEmployees.length,
-                    avgUsageRate: Math.round(avgUsageRate * 100) / 100,
-                    totalVacationDays,
-                    totalUsedDays,
-                    totalRemainingDays,
-                    employees: allEmployees
-                };
-
-                setSelectedDept(allDeptData);
-            } else {
-                const errorData = await response.json();
-                throw new Error(errorData.error || '전체 통계를 가져오는데 실패했습니다.');
-            }
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setDeptLoading(false);
-        }
+        // ✅ 이미 구현된 백엔드 "ALL" 엔드포인트 사용
+        await handleDeptClick('ALL');
     };
 
     // ✅ 조직도에서 직원 선택 핸들러
@@ -495,7 +470,6 @@ const AdminVacationStatistics: React.FC = () => {
         }
     }, [sortBy, sortOrder]);
 
-    // ✅ 엑셀 다운로드
     // ✅ 엑셀 다운로드 수정 (선택된 직원 포함)
     const handleExcelDownload = async () => {
         if (!selectedDept) {
@@ -658,16 +632,28 @@ const AdminVacationStatistics: React.FC = () => {
                         {/* 기존 차트 */}
                         <div className="vs-chart-card">
                             <h2 className="vs-chart-title">부서별 평균 휴가 사용률</h2>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={getDeptChartData()}>
-                                    <CartesianGrid strokeDasharray="3 3"/>
-                                    <XAxis dataKey="name"/>
-                                    <YAxis label={{value: '사용률 (%)', angle: -90, position: 'insideLeft'}}/>
-                                    <Tooltip/>
-                                    <Legend/>
-                                    <Bar dataKey="사용률" fill="#3b82f6"/>
-                                </BarChart>
-                            </ResponsiveContainer>
+
+                            <BarChart
+                                width={isMobile ? 350 : 1000}
+                                height={isMobile ? 300 : 320}  // ✅ 높이 증가
+                                data={getDeptChartData()}
+                                style={{margin: '0 auto'}}
+                                margin={{top: 5, right: 30, left: 20, bottom: 20}}  // ✅ 여백 추가
+                            >
+                                <CartesianGrid strokeDasharray="3 3"/>
+                                <XAxis
+                                    dataKey="name"
+                                    angle={isMobile ? -45 : 0}  // ✅ 모바일에서 45도 회전
+                                    textAnchor={isMobile ? "end" : "middle"}  // ✅ 정렬 조정
+                                    height={isMobile ? 80 : 60}  // ✅ X축 높이 증가
+                                    interval={0}  // ✅ 모든 라벨 표시
+                                    tick={{fontSize: isMobile ? 10 : 12}}  // ✅ 폰트 크기 조정
+                                />
+                                <YAxis label={{value: '사용률 (%)', angle: -90, position: 'insideLeft'}}/>
+                                <Tooltip/>
+                                <Legend/>
+                                <Bar dataKey="사용률" fill="#3b82f6"/>
+                            </BarChart>
                         </div>
 
                         {/* 특정 직원 선택 버튼 */}
@@ -797,41 +783,57 @@ const AdminVacationStatistics: React.FC = () => {
                                     <div className="vs-charts-grid">
                                         <div className="vs-pie-chart-card">
                                             <h4 className="vs-chart-subtitle">휴가 사용 비율</h4>
-                                            <ResponsiveContainer width="100%" height={200}>
-                                                <PieChart>
-                                                    <Pie
-                                                        data={getUsagePieData()}
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        labelLine={false}
-                                                        label={({name, value}) => `${name}: ${value}일`}
-                                                        outerRadius={80}
-                                                        fill="#8884d8"
-                                                        dataKey="value"
-                                                    >
-                                                        {getUsagePieData().map((entry, index) => (
-                                                            <Cell key={`cell-${index}`}
-                                                                  fill={COLORS[index % COLORS.length]}/>
-                                                        ))}
-                                                    </Pie>
-                                                    <Tooltip/>
-                                                </PieChart>
-                                            </ResponsiveContainer>
+
+                                            <PieChart
+                                                width={isMobile ? 350 : 500}
+                                                height={isMobile ? 240 : 280}
+                                                style={{margin: '0 auto'}}
+                                            >
+                                                <Pie
+                                                    data={getUsagePieData()}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    labelLine={false}
+                                                    label={({name, value}) => `${name}: ${value}일`}
+                                                    outerRadius={isMobile ? 60 : 80}
+                                                    fill="#8884d8"
+                                                    dataKey="value"
+                                                >
+                                                    {getUsagePieData().map((entry, index) => (
+                                                        <Cell key={`cell-${index}`}
+                                                              fill={COLORS[index % COLORS.length]}/>
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip/>
+                                            </PieChart>
                                         </div>
+
 
                                         <div className="vs-bar-chart-card">
                                             <h4 className="vs-chart-subtitle">직원별 휴가 현황</h4>
-                                            <ResponsiveContainer width="100%" height={200}>
-                                                <BarChart data={getEmployeeChartData()}>
-                                                    <CartesianGrid strokeDasharray="3 3"/>
-                                                    <XAxis dataKey="name"/>
-                                                    <YAxis/>
-                                                    <Tooltip/>
-                                                    <Legend/>
-                                                    <Bar dataKey="사용" fill="#10b981"/>
-                                                    <Bar dataKey="남은휴가" fill="#f59e0b"/>
-                                                </BarChart>
-                                            </ResponsiveContainer>
+
+                                            <BarChart
+                                                width={isMobile ? 350 : 800}
+                                                height={isMobile ? 260 : 280}  // ✅ 높이 증가
+                                                data={getEmployeeChartData()}
+                                                style={{margin: '0 auto'}}
+                                                margin={{top: 5, right: 30, left: 20, bottom: 20}}  // ✅ 여백 추가
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3"/>
+                                                <XAxis
+                                                    dataKey="name"
+                                                    angle={isMobile ? -45 : 0}  // ✅ 모바일에서 45도 회전
+                                                    textAnchor={isMobile ? "end" : "middle"}
+                                                    height={isMobile ? 80 : 60}
+                                                    interval={0}  // ✅ 모든 라벨 표시
+                                                    tick={{fontSize: isMobile ? 10 : 12}}
+                                                />
+                                                <YAxis/>
+                                                <Tooltip/>
+                                                <Legend/>
+                                                <Bar dataKey="사용" fill="#10b981"/>
+                                                <Bar dataKey="남은휴가" fill="#f59e0b"/>
+                                            </BarChart>
                                         </div>
                                     </div>
 
@@ -846,7 +848,7 @@ const AdminVacationStatistics: React.FC = () => {
                                             <table className="vs-table">
                                                 <thead>
                                                 <tr>
-                                                    <th onClick={() => handleSort('userName')}>
+                                                <th onClick={() => handleSort('userName')}>
                                                         이름 <span
                                                         className={`vs-sort-icon ${sortBy === 'userName' ? 'active' : ''}`}>
                                                             {sortBy === 'userName' && sortOrder === 'asc' ? '▲' : '▼'}
@@ -871,8 +873,19 @@ const AdminVacationStatistics: React.FC = () => {
                                                         </span>
                                                     </th>
                                                     {/* ✅ 이월/정상 컬럼 추가 */}
-                                                    <th>이월</th>
-                                                    <th>정상</th>
+                                                    <th onClick={() => handleSort('annualCarryover')}>
+                                                        이월 <span
+                                                        className={`vs-sort-icon ${sortBy === 'annualCarryover' ? 'active' : ''}`}>
+                                                            {sortBy === 'annualCarryover' && sortOrder === 'asc' ? '▲' : '▼'}
+                                                        </span>
+                                                    </th>
+                                                    <th>이월 미사용</th>
+                                                    <th onClick={() => handleSort('annualRegular')}>
+                                                        정상 <span
+                                                        className={`vs-sort-icon ${sortBy === 'annualRegular' ? 'active' : ''}`}>
+                                                            {sortBy === 'annualRegular' && sortOrder === 'asc' ? '▲' : '▼'}
+                                                        </span>
+                                                    </th>
                                                     <th onClick={() => handleSort('totalDays')}>
                                                         총 휴가 <span
                                                         className={`vs-sort-icon ${sortBy === 'totalDays' ? 'active' : ''}`}>
@@ -912,6 +925,9 @@ const AdminVacationStatistics: React.FC = () => {
                                                         <td className="vs-table-date">{emp.startDate || '-'}</td>
                                                         <td className="vs-table-carryover">
                                                             {emp.annualCarryover || 0}일
+                                                        </td>
+                                                        <td className="vs-table-carryover-remaining">
+                                                            {((emp.annualCarryover || 0) - (emp.usedCarryoverDays || 0)) || 0}일
                                                         </td>
                                                         <td className="vs-table-regular">
                                                             {emp.annualRegular || 15}일
@@ -966,7 +982,7 @@ const AdminVacationStatistics: React.FC = () => {
                                 className="vs-dept-select"
                                 disabled={ledgerUserIds.length > 0}
                             >
-                            <option value="ALL">전체 부서</option>
+                                <option value="ALL">전체 부서</option>
                                 {departmentSummaries
                                     .filter(dept => dept.deptCode !== 'ALL')
                                     .map(dept => (

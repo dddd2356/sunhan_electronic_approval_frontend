@@ -6,13 +6,10 @@ import {
     fetchWorkScheduleDetail,
     updateWorkData,
     updateNightRequired,
-    submitWorkSchedule,
-    reviewWorkSchedule,
-    approveWorkSchedule,
     WorkScheduleDetail,
     WorkScheduleEntry,
     ApprovalStepInfo,
-    DeptDutyConfig, copyFromSpecificMonth
+    DeptDutyConfig, copyFromSpecificMonth, toggleFinalApproval
 } from '../../apis/workSchedule';
 import { fetchPositionsByDept, Position } from '../../apis/Position';
 import './style.css';
@@ -20,6 +17,14 @@ import axios from "axios";
 import ApprovalLineSelector from "../ApprovalLineSelector";
 import RejectModal from "../RejectModal";
 import OrgChartModal from "../OrgChartModal";
+import OrganizationChart from "../OrganizationChart";
+
+interface TextRange {
+    entryId: number;
+    startDay: number;
+    endDay: number;
+    text: string;
+}
 
 const WorkScheduleEditor: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -31,11 +36,14 @@ const WorkScheduleEditor: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [currentUser, setCurrentUser] = useState<any>(null);
-
+    const [isFinalApproved, setIsFinalApproved] = useState(false);
     // 선택된 셀 관리
     const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
     const [isSelecting, setIsSelecting] = useState(false);
-
+    const [departmentHeadInfo, setDepartmentHeadInfo] = useState<{userId: string}>({
+        userId: ''
+    });
+    const [showDeptHeadSelector, setShowDeptHeadSelector] = useState(false);
     // 편집 모드
     const [isEditable, setIsEditable] = useState(false);
 
@@ -58,7 +66,7 @@ const WorkScheduleEditor: React.FC = () => {
     const [canFinalApprove, setCanFinalApprove] = useState(false);
     const [showCopyModal, setShowCopyModal] = useState(false);
     const [copySourceMonth, setCopySourceMonth] = useState('');
-
+    const [textRanges, setTextRanges] = useState<TextRange[]>([]);
     useEffect(() => {
         loadData();
     }, [id]);
@@ -73,7 +81,30 @@ const WorkScheduleEditor: React.FC = () => {
     const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const [canManageMembers, setCanManageMembers] = useState(false);
     const [weekdays, setWeekdays] = useState<Record<number, string>>({});
+    const handleDeptHeadSelect = (users: { id: string; name: string }[]) => {
+        if (users.length > 0) {
+            const selectedUser = users[0];  // 단일 선택이므로 첫 번째 요소
+            setDepartmentHeadInfo({ userId: selectedUser.id });
 
+            // ✅ approvalSteps의 부서장 칸 이름 업데이트
+            setScheduleData(prev => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    approvalSteps: prev.approvalSteps?.map((s: any) =>
+                        s.stepOrder === -1 ? { ...s, name: selectedUser.name } : s
+                    )
+                };
+            });
+        }
+        setShowDeptHeadSelector(false);
+    };
+
+    const handleDeptHeadClear = () => {
+        if (window.confirm('부서장 선택을 해제하시겠습니까?')) {
+            setDepartmentHeadInfo({ userId: '' });
+        }
+    };
     const loadHolidays = async (year: number) => {
         try {
             // ✅ 백엔드 프록시를 통해 호출
@@ -100,6 +131,76 @@ const WorkScheduleEditor: React.FC = () => {
             // 실패해도 계속 진행
         }
     };
+    const handleTextCellChange = (entryId: number, rangeKey: string, value: string) => {
+        setScheduleData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                entries: prev.entries.map(e => {
+                    if (e.id === entryId) {
+                        const newWorkData = { ...(e.workData || {}) };
+                        newWorkData[rangeKey] = `텍스트:${value}`;
+
+                        const stats = calculateEntryStatistics(newWorkData);
+
+                        return {
+                            ...e,
+                            workData: newWorkData,
+                            nightDutyActual: stats.nightCount,
+                            nightDutyAdditional: stats.nightCount - (e.nightDutyRequired || 0),
+                            offCount: stats.offCount,
+                            vacationUsedTotal: (e.vacationUsedTotal || 0) - (e.vacationUsedThisMonth || 0) + stats.vacationCount,
+                            vacationUsedThisMonth: stats.vacationCount,
+                            dutyDetailJson: stats.dutyDetail ? JSON.stringify(stats.dutyDetail) : e.dutyDetailJson
+                        };
+                    }
+                    return e;
+                })
+            };
+        });
+    };
+
+    // ✅ 텍스트 셀을 일반 셀로 전환
+    const handleConvertToNormalCell = (entryId: number, rangeKey: string) => {
+        setScheduleData(prev => {
+            if (!prev) return prev;
+
+            return {
+                ...prev,
+                entries: prev.entries.map(e => {
+                    if (e.id === entryId) {
+                        const newWorkData = { ...(e.workData || {}) };
+
+                        // ✅ 범위 키 삭제
+                        delete newWorkData[rangeKey];
+
+                        // ✅ 범위에 속한 날짜들을 개별 빈 셀로 생성 (선택사항)
+                        if (rangeKey.includes('-')) {
+                            const [start, end] = rangeKey.split('-').map(Number);
+                            for (let day = start; day <= end; day++) {
+                                newWorkData[day.toString()] = ''; // 빈 셀로 초기화
+                            }
+                        }
+
+                        // ✅ 통계 재계산
+                        const stats = calculateEntryStatistics(newWorkData);
+
+                        return {
+                            ...e,
+                            workData: newWorkData,
+                            nightDutyActual: stats.nightCount,
+                            nightDutyAdditional: stats.nightCount - (e.nightDutyRequired || 0),
+                            offCount: stats.offCount,
+                            vacationUsedTotal: (e.vacationUsedTotal || 0) - (e.vacationUsedThisMonth || 0) + stats.vacationCount,
+                            vacationUsedThisMonth: stats.vacationCount,
+                            dutyDetailJson: stats.dutyDetail ? JSON.stringify(stats.dutyDetail) : e.dutyDetailJson
+                        };
+                    }
+                    return e;
+                })
+            };
+        });
+    };
 
     // PDF 다운로드 핸들러
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -115,7 +216,7 @@ const WorkScheduleEditor: React.FC = () => {
 
             const timestamp = new Date().getTime();
             const response = await axios.get(
-                `/api/v1/work-schedules/${id}/pdf?t=${timestamp}`, // 캐시 무효화
+                `/api/v1/work-schedules/${id}/pdf?t=${timestamp}`,
                 {
                     headers: { Authorization: `Bearer ${token}` },
                     responseType: 'blob'
@@ -128,7 +229,6 @@ const WorkScheduleEditor: React.FC = () => {
                 const json = JSON.parse(text);
 
                 if (window.confirm(json.message + '\n\n5초 후 자동으로 다시 시도합니다. 계속하시겠습니까?')) {
-                    // ✅ 5초 후 자동 재시도 (최대 3번)
                     await pollForPdf(3);
                 } else {
                     setIsGeneratingPdf(false);
@@ -138,14 +238,12 @@ const WorkScheduleEditor: React.FC = () => {
 
             // 200: 다운로드
             if (response.status === 200 && response.data instanceof Blob && response.data.size > 0) {
-                const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
-                const url = window.URL.createObjectURL(pdfBlob);
+                // ✅ 동의서 방식으로 변경
+                const blob = new Blob([response.data], { type: 'application/pdf' });
+                const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-
-                const filename = `schedule_${scheduleData?.schedule.deptCode}_${scheduleData?.yearMonth.replace('-', '')}_${timestamp}.pdf`;
-                link.setAttribute('download', filename);
-
+                link.target = '_blank';  // ✅ 새 탭에서 열기
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -163,7 +261,7 @@ const WorkScheduleEditor: React.FC = () => {
 // ✅ 폴링 함수
     const pollForPdf = async (maxRetries: number) => {
         for (let i = 0; i < maxRetries; i++) {
-            await new Promise(resolve => setTimeout(resolve, 3000));  // 3초 대기
+            await new Promise(resolve => setTimeout(resolve, 3000));
 
             try {
                 const response = await axios.get(`/api/v1/work-schedules/${id}/pdf`, {
@@ -172,11 +270,12 @@ const WorkScheduleEditor: React.FC = () => {
                 });
 
                 if (response.status === 200 && response.data instanceof Blob && response.data.size > 0) {
-                    const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
-                    const url = window.URL.createObjectURL(pdfBlob);
+                    // ✅ 동의서 방식으로 변경
+                    const blob = new Blob([response.data], { type: 'application/pdf' });
+                    const url = window.URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = url;
-                    link.setAttribute('download', `schedule_${scheduleData?.schedule.deptCode}_${scheduleData?.yearMonth.replace('-', '')}.pdf`);
+                    link.target = '_blank';
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
@@ -588,40 +687,59 @@ const WorkScheduleEditor: React.FC = () => {
     };
 
     // 텍스트 모드로 전환 또는 해제
-    const toggleRowTextMode = async () => {
+    const toggleCellRangeTextMode = async () => {
         if (!scheduleData || selectedCells.size === 0) {
-            alert("변경할 행의 셀을 하나 이상 선택해주세요.");
+            alert("텍스트로 전환할 날짜 범위를 선택해주세요.");
             return;
         }
 
-        const firstCellId = Array.from(selectedCells)[0];
-        const entryId = parseInt(firstCellId.split('-')[0]);
+        // 선택된 셀들에서 entryId와 날짜 범위 추출
+        const cellsByEntry = new Map<number, Set<number>>();
 
-        const entry = scheduleData.entries.find(e => e.id === entryId);
-        if (!entry) return;
+        selectedCells.forEach(cellId => {
+            const [entryIdStr, dayStr] = cellId.split('-');
+            const entryId = parseInt(entryIdStr);
+            const day = parseInt(dayStr);
 
-        const currentData = entry.workData || {};
-        const isTextMode = currentData['rowType'] === 'longText';
+            if (!cellsByEntry.has(entryId)) {
+                cellsByEntry.set(entryId, new Set());
+            }
+            cellsByEntry.get(entryId)!.add(day);
+        });
 
-        const newWorkData = { ...currentData };
-        if (isTextMode) {
-            delete newWorkData['rowType'];
-            delete newWorkData['longTextValue'];
-        } else {
-            newWorkData['rowType'] = 'longText';
-            newWorkData['longTextValue'] = '';
-        }
+        // 각 행별로 처리
+        cellsByEntry.forEach((days, entryId) => {
+            const entry = scheduleData.entries.find(e => e.id === entryId);
+            if (!entry) return;
 
-        // ✅ 로컬 상태만 업데이트
-        setScheduleData({
-            ...scheduleData,
-            entries: scheduleData.entries.map(e =>
-                e.id === entryId ? { ...e, workData: newWorkData } : e
-            )
+            const sortedDays = Array.from(days).sort((a, b) => a - b);
+            const startDay = sortedDays[0];
+            const endDay = sortedDays[sortedDays.length - 1];
+
+            // ✅ 텍스트 입력
+            const text = prompt(`${startDay}일 ~ ${endDay}일 텍스트 입력:`);
+            if (text === null) return;
+
+            const newWorkData = { ...entry.workData };
+
+            // ✅ 범위 정보를 포함한 형식으로 저장
+            const rangeKey = `${startDay}-${endDay}`;
+            newWorkData[rangeKey] = `텍스트:${text}`;
+
+            // 개별 날짜 키는 삭제 (중복 방지)
+            sortedDays.forEach(day => {
+                delete newWorkData[day.toString()];
+            });
+
+            setScheduleData({
+                ...scheduleData,
+                entries: scheduleData.entries.map(e =>
+                    e.id === entryId ? { ...e, workData: newWorkData } : e
+                )
+            });
         });
 
         setSelectedCells(new Set());
-        // ✅ API 호출 제거
     };
 
 // 긴 텍스트 입력 핸들러
@@ -849,6 +967,7 @@ const WorkScheduleEditor: React.FC = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const permData = await permRes.json();
+
             // 근무표 상세 정보
             const detail = await fetchWorkScheduleDetail(parseInt(id!), token);
 
@@ -856,11 +975,9 @@ const WorkScheduleEditor: React.FC = () => {
                 setDutyConfig(detail.dutyConfig);
             }
 
-            //서버의 JSON 문자열을 객체로 변환 (새로고침 시 데이터 유지용)
             const parsedEntries = detail.entries.map((entry: any) => ({
                 ...entry,
                 userName: entry.userName,
-                // workDataJson이 있으면 파싱하고, 없으면 빈 객체 할당
                 workData: entry.workDataJson ? JSON.parse(entry.workDataJson) : {}
             }));
 
@@ -869,29 +986,55 @@ const WorkScheduleEditor: React.FC = () => {
                 entries: parsedEntries
             });
 
-            // 직책 목록
             const positionsData = await fetchPositionsByDept(detail.schedule.deptCode, token);
             setPositions(positionsData);
 
             // ✅ 권한 확인
             const hasCreatePermission = permData.permissions?.includes('WORK_SCHEDULE_CREATE');
             const hasManagePermission = permData.permissions?.includes('WORK_SCHEDULE_MANAGE');
+            const hasDeptManagePermission = permData.permissions?.includes('WORK_SCHEDULE_DEPT_MANAGE'); // ✅ 추가
             const isCreator = detail.schedule.createdBy === userData.userId;
             const isDraft = detail.schedule.approvalStatus === 'DRAFT';
             const isApproved = detail.schedule.approvalStatus === 'APPROVED';
 
-            // ✅ 편집 가능 조건
-            const canEdit = (isDraft && isCreator) || (isApproved && hasManagePermission);
+            setIsFinalApproved(detail.schedule.isFinalApproved || false);
+
+            // ✅ 편집 가능 조건 수정 (부서 관리자 포함)
+            const isSameDept = userData.deptCode === detail.schedule.deptCode;
+            const canEdit = (isDraft && isCreator) ||
+                (isApproved && !detail.schedule.isFinalApproved &&
+                    (hasManagePermission || (hasDeptManagePermission && isSameDept)));
             setIsEditable(canEdit);
 
-            // ✅ 인원 추가/삭제 가능 조건
-            const canManageMembers = (isDraft && isCreator) || (isApproved && hasManagePermission);
+            // ✅ 인원 관리 가능 조건 수정 (부서 관리자 포함)
+            const canManageMembers = (isDraft && isCreator) ||
+                (isApproved && !detail.schedule.isFinalApproved &&
+                    (hasManagePermission || (hasDeptManagePermission && isSameDept)));
             setCanManageMembers(canManageMembers);
 
         } catch (err: any) {
             setError(err.response?.data?.error || '데이터를 불러올 수 없습니다.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleToggleFinalApproval = async () => {
+        if (!window.confirm(
+            isFinalApproved
+                ? '최종승인을 해제하시겠습니까? 해제 시 부서 관리자가 수정할 수 있습니다.'
+                : '최종승인하시겠습니까? 승인 시 모든 수정이 차단됩니다.'
+        )) {
+            return;
+        }
+
+        try {
+            const result = await toggleFinalApproval(parseInt(id!), token);
+            setIsFinalApproved(result.isFinalApproved);
+            alert(result.message);
+            await loadData(); // 데이터 새로고침
+        } catch (err: any) {
+            alert(err.response?.data?.error || '최종승인 처리 실패');
         }
     };
 
@@ -950,7 +1093,7 @@ const WorkScheduleEditor: React.FC = () => {
                     rejectionReason: reason,
                     stepOrder: currentStep?.stepOrder
                 },
-                { headers: { Authorization: `Bearer ${cookies. accessToken}` } }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
             alert('근무표가 반려되었습니다.');
@@ -1266,45 +1409,32 @@ const WorkScheduleEditor: React.FC = () => {
 
         // 작성자 서명 확인
         if (!(scheduleData.schedule.creatorSignatureUrl || localCreatorSigned)) {
-            alert('제출 전에 작성자 서명이 필요합니다. 결재란의 "작성" 칸을 클릭하여 서명해주세요.');
+            alert('제출 전에 작성자 서명이 필요합니다.');
             return;
         }
 
         // 승인된 상태에서는 저장만 수행
         if (scheduleData.schedule.approvalStatus === 'APPROVED') {
-            await handleTempSave();  // 임시저장 로직 재사용
+            await handleTempSave();
             return;
         }
 
         setIsSaving(true);
 
         try {
-            // 1. workData 저장
+            // ✅ [수정] 모든 정보를 한 번에 저장
             const updates = scheduleData.entries.map(entry => ({
                 entryId: entry.id,
-                workData: entry.workData || {}
+                workData: entry.workData || {},
+                remarks: entry.remarks || "",
+                positionId: entry.positionId !== undefined ? entry.positionId : null,
+                nightDutyRequired: entry.nightDutyRequired !== undefined ? entry.nightDutyRequired : null
             }));
+
+            // ✅ 1. 모든 엔트리 데이터 한 번에 저장 (기존 43회 → 1회)
             await updateWorkData(parseInt(id!), updates, token);
 
-            // 2. 직책 저장
-            for (const entry of scheduleData.entries) {
-                if (entry.positionId !== undefined) {
-                    await axios.put(
-                        `/api/v1/work-schedules/entries/${entry.id}/position`,
-                        { positionId: entry.positionId },
-                        { headers: { Authorization: `Bearer ${token}` } }
-                    );
-                }
-            }
-
-            // 3. 나이트 개수 저장
-            for (const entry of scheduleData.entries) {
-                if (entry.nightDutyRequired !== undefined) {
-                    await updateNightRequired(entry.id, entry.nightDutyRequired, token);
-                }
-            }
-
-            // 4. 비고 저장
+            // ✅ 2. 비고 저장 (1회)
             if (scheduleData.schedule.remarks !== undefined) {
                 await axios.put(
                     `/api/v1/work-schedules/${id}/remarks`,
@@ -1313,18 +1443,16 @@ const WorkScheduleEditor: React.FC = () => {
                 );
             }
 
+            // ✅ 3. 작성자 서명 저장 (1회)
             await axios.put(
                 `/api/v1/work-schedules/${id}/creator-signature`,
                 { isSigned: localCreatorSigned },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            // 5. 결재라인 선택 모달 표시
+            // ✅ 4. 결재라인 선택 모달 표시
             await loadApprovalLines();
             setShowApprovalLineModal(true);
-
-            console.log('📊 제출할 entries 샘플:', scheduleData.entries[0]);
-            console.log('📊 workData 샘플:', scheduleData.entries[0]?.workData);
 
         } catch (err: any) {
             alert('제출 전 저장 실패: ' + (err.response?.data?.error || err.message));
@@ -1333,51 +1461,73 @@ const WorkScheduleEditor: React.FC = () => {
         }
     };
 
-    const handleApprovalLineConfirm = async () => {
-        if (!selectedLineId) {
-            alert('결재라인을 선택해주세요.');
+    const handleApprovalLineConfirm = async (data: any) => {
+        const { id: lineId, steps } = data;
+
+        // 부서장 확인
+        const hasDepartmentHead = steps.some((step: any) => step.approverType === 'DEPARTMENT_HEAD');
+
+        if (hasDepartmentHead && !departmentHeadInfo.userId) {
+            alert('부서장을 선택해주세요.');
             return;
         }
 
-        try {
-            await axios.post(
-                `/api/v1/work-schedules/${id}/submit`,
-                { approvalLineId: selectedLineId },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+        if (!hasDepartmentHead && departmentHeadInfo.userId) {
+            if (window.confirm('선택한 결재라인에 부서장 단계가 없습니다. 부서장 정보를 제거하시겠습니까?')) {
+                setDepartmentHeadInfo({ userId: '' });
+            } else {
+                return;
+            }
+        }
 
-            alert('제출되었습니다.');
+        try {
+            await axios.post(`/api/v1/work-schedules/${id}/submit`, {
+                approvalLineId: lineId,
+                departmentHeadInfo: departmentHeadInfo.userId ? departmentHeadInfo : null
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            alert('근무표가 제출되었습니다.');
+            setShowApprovalLineModal(false);
             navigate('/detail/work-schedule');
-        } catch (err: any) {
-            alert(err.response?.data?.error || '제출 실패');
+        } catch (error: any) {
+            console.error('제출 실패:', error);
+            alert(error.response?.data?.error || '제출에 실패했습니다.');
         }
     };
 
-    // 검토
-    const handleReview = async (approve: boolean) => {
-        try {
-            await reviewWorkSchedule(parseInt(id!), approve, token);
-            alert(approve ? '검토 승인되었습니다.' : '반려되었습니다.');
-            navigate('/detail/work-schedule');
-        } catch (err: any) {
-            alert(err.response?.data?.error || '처리 실패');
-        }
-    };
+// 로딩 화면 부분 수정
+    if (loading) {
+        return (
+            <Layout>
+                <div className="wse-loading">
+                    <div className="loading-spinner"></div>
+                    <p>데이터를 불러오는 중입니다...</p>
+                </div>
+            </Layout>
+        );
+    }
 
-    // 승인
-    const handleApprove = async (approve: boolean) => {
-        try {
-            await approveWorkSchedule(parseInt(id!), approve, token);
-            alert(approve ? '최종 승인되었습니다.' : '반려되었습니다.');
-            navigate('/detail/work-schedule');
-        } catch (err: any) {
-            alert(err.response?.data?.error || '처리 실패');
-        }
-    };
+    if (error) {
+        return (
+            <Layout>
+                <div className="wse-error">
+                    <p>{error}</p>
+                </div>
+            </Layout>
+        );
+    }
 
-    if (loading) return <Layout><div className="wse-loading">로딩 중...</div></Layout>;
-    if (error) return <Layout><div className="wse-error">{error}</div></Layout>;
-    if (!scheduleData) return <Layout><div className="wse-error">데이터를 찾을 수 없습니다.</div></Layout>;
+    if (!scheduleData) {
+        return (
+            <Layout>
+                <div className="wse-error">
+                    <p>데이터를 찾을 수 없습니다.</p>
+                </div>
+            </Layout>
+        );
+    }
 
     const { schedule, entries, users } = scheduleData;
 
@@ -1530,111 +1680,180 @@ const WorkScheduleEditor: React.FC = () => {
                         <tbody>
                         <tr>
                             <th></th>
-                            {scheduleData.approvalSteps?.map((step: any, index: number) => (
-                                <th key={index}>{step.stepName}</th>
-                            ))}
+                            {scheduleData.approvalSteps
+                                ?.filter((step: any) => !step.isOptional)  // ✅ optional 제외
+                                .map((step: any, index: number) => (
+                                    <th key={index}>{step.stepName}</th>
+                                ))}
                         </tr>
                         <tr>
                             <th>성명</th>
-                            {scheduleData.approvalSteps?.map((step: any, index: number) => (
-                                <td key={index}>{step.name}</td>
-                            ))}
+                            {scheduleData.approvalSteps
+                                ?.filter((step: any) => !step.isOptional)
+                                .map((step: any, index: number) => {
+                                    // ✅ DRAFT 상태 부서장 칸 (stepOrder === -1)
+                                    if (step.stepOrder === -1 && schedule.approvalStatus === 'DRAFT') {
+                                        return (
+                                            <td key={index}
+                                                style={{textAlign: 'center', verticalAlign: 'middle', height: '40px'}}>
+                                                {step.stepOrder === -1 && schedule.approvalStatus === 'DRAFT' ? (
+                                                    <div className="wse-dept-head-container">
+                                                        {departmentHeadInfo.userId ? (
+                                                            <>
+                                                                {/* 일반 칸과 동일한 클래스 적용 또는 생텍스트 출력 */}
+                                                                <span className="wse-name-badge">
+                        {scheduleData.approvalSteps?.find((s: any) => s.stepOrder === -1)?.name}
+                    </span>
+                                                                <button
+                                                                    onClick={handleDeptHeadClear}
+                                                                    className="wse-mini-btn wse-btn-danger"
+                                                                    title="해제"
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => setShowDeptHeadSelector(true)}
+                                                                className="wse-mini-btn wse-btn-primary"
+                                                                style={{fontSize: '11px', padding: '4px 8px'}}
+                                                            >
+                                                                부서장 선택
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    /* 일반 작성자나 결재자 칸 - 위와 동일한 폰트 스타일 적용 */
+                                                    <span className="wse-name-badge">{step.name || '-'}</span>
+                                                )}
+                                            </td>
+                                        );
+                                    }
+
+                                    // ✅ 제출 후 부서장 칸 (실제 결재라인에 포함된 경우)
+                                    if (step.stepName === '부서장' && step.stepOrder !== -1) {
+                                        return <td key={index}>{step.name}</td>;
+                                    }
+
+                                    // 일반 칸
+                                    return <td key={index}>{step.name}</td>;
+                                })}
                         </tr>
                         <tr>
                             <th>서명</th>
-                            {scheduleData.approvalSteps?.map((step: any, index: number) => {
-                                const isCreatorStep = step.stepOrder === 0;
+                            {scheduleData.approvalSteps
+                                ?.filter((step: any) => !step.isOptional)
+                                .map((step: any, index: number) => {
+                                    const isCreatorStep = step.stepOrder === 0;
+                                    const isFinalApproved = step.isFinalApproved;
 
-                                // ✅ 전결 처리 여부 확인
-                                const isFinalApproved = step.isFinalApproved;
+                                    // ✅ [추가] 전체 배열에서 현재 stepOrder보다 작은 단계 중 전결 여부 확인
+                                    const hasFinalApprovedBefore = scheduleData.approvalSteps
+                                        ?.filter((s: any) => s.stepOrder < step.stepOrder)  // ✅ stepOrder 기준 비교
+                                        .some((s: any) => s.isFinalApproved);
 
-                                const isSigned = isCreatorStep
-                                    ? localCreatorSigned
-                                    : (signedSteps.has(step.stepOrder) || !!step.signatureUrl || isFinalApproved);
+                                    const isSigned = isCreatorStep
+                                        ? localCreatorSigned
+                                        : (signedSteps.has(step.stepOrder) || !!step.signatureUrl || isFinalApproved);
 
-                                const displaySignature = isCreatorStep
-                                    ? localCreatorSignatureUrl
-                                    : step.signatureUrl;
+                                    const displaySignature = isCreatorStep
+                                        ? localCreatorSignatureUrl
+                                        : step.signatureUrl;
 
-                                return (
-                                    <td
-                                        key={index}
-                                        className="wse-signature-cell"
-                                        onClick={() => {
-                                            const isCurrentUserApprover = step.approverId === currentUser?.userId;
-                                            const canClickSign = isCreatorStep || isCurrentUserApprover;
-
-                                            if (canClickSign && !isFinalApproved) {
-                                                handleSignStep(step.stepOrder);
-                                            }
-                                        }}
-                                        style={{
-                                            cursor: (isCreatorStep || (step.approverId === currentUser?.userId)) && !isFinalApproved
-                                                ? 'pointer'
-                                                : 'default',
-                                            backgroundColor: isFinalApproved
-                                                ? '#FFF'
-                                                : ((isCreatorStep && isEditable) || (step.approverId === currentUser?.userId)
-                                                    ? '#FFF'
-                                                    : 'transparent')
-                                        }}
-                                    >
-                                        {isFinalApproved && !displaySignature ? (
-                                            // 서명 이미지가 없으면 "전결처리!" 텍스트 표시
-                                            <span style={{color: 'red', fontSize: '12px', fontWeight: 'bold'}}>
-                                                전결처리!
-                                            </span>
-                                        ) : isSigned ? (
-                                            displaySignature ? (
-                                                <img
-                                                    src={displaySignature}
-                                                    alt="서명"
-                                                    style={{maxWidth: '80px', maxHeight: '60px'}}
-                                                />
+                                    return (
+                                        <td
+                                            key={index}
+                                            className="wse-signature-cell"
+                                            onClick={() => {
+                                                const isCurrentUserApprover = step.approverId === currentUser?.userId;
+                                                const canClickSign = isCreatorStep || isCurrentUserApprover;
+                                                if (canClickSign && !isFinalApproved && !hasFinalApprovedBefore) {
+                                                    handleSignStep(step.stepOrder);
+                                                }
+                                            }}
+                                            style={{
+                                                cursor: (isCreatorStep || (step.approverId === currentUser?.userId)) && !isFinalApproved && !hasFinalApprovedBefore
+                                                    ? 'pointer' : 'default',
+                                                backgroundColor: (isCreatorStep && isEditable) || (step.approverId === currentUser?.userId && !hasFinalApprovedBefore)
+                                                    ? '#f8fafc' : '#fff'
+                                            }}
+                                        >
+                                            {hasFinalApprovedBefore && !displaySignature ? (
+                                                <span className="wse-final-status">전결처리</span>
+                                            ) : isSigned ? (
+                                                displaySignature ? (
+                                                    <img src={displaySignature} alt="서명" style={{
+                                                        maxWidth: '75px',
+                                                        maxHeight: '55px',
+                                                        objectFit: 'contain'
+                                                    }}/>
+                                                ) : (
+                                                    <span style={{
+                                                        color: '#2563eb',
+                                                        fontSize: '11px',
+                                                        fontWeight: 'bold'
+                                                    }}>저장대기</span>
+                                                )
                                             ) : (
-                                                <span style={{color: 'blue', fontWeight: 'bold'}}>서명(저장대기)</span>
-                                            )
-                                        ) : (
-                                            (isCreatorStep || (step.approverId === currentUser?.userId)) ? (
-                                                <span className="sign-placeholder">클릭하여 서명</span>
-                                            ) : (
-                                                <span style={{color: '#ccc'}}>-</span>
-                                            )
-                                        )}
-                                    </td>
-                                );
-                            })}
+                                                (isCreatorStep || (step.approverId === currentUser?.userId)) ? (
+                                                    <div className="wse-sign-prompt">
+                                                        <span>클릭하여</span>
+                                                        <span>서명</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="wse-wait-text">-</span>
+                                                )
+                                            )}
+                                        </td>
+                                    );
+                                })}
                         </tr>
                         <tr>
                             <th>일자</th>
-                            {scheduleData.approvalSteps?.map((step: any, index: number) => {
-                                const isCreatorStep = step.stepOrder === 0;
+                            {scheduleData.approvalSteps
+                                ?.filter((step: any) => !step.isOptional)
+                                .map((step: any, index: number) => {
+                                    const isCreatorStep = step.stepOrder === 0;
 
-                                // ✅ [수정 3] 날짜 표시 로직
-                                let displayDate = '-';
+                                    // ✅ 전체 배열에서 현재 stepOrder보다 작은 단계 중 전결 여부 확인
+                                    const hasFinalApprovedBefore = scheduleData.approvalSteps
+                                        ?.filter((s: any) => s.stepOrder < step.stepOrder)
+                                        .some((s: any) => s.isFinalApproved);
 
-                                if (isCreatorStep) {
-                                    // 작성자: 로컬 상태가 true일 때만 날짜 표시
-                                    if (localCreatorSigned) {
-                                        // 기존 날짜가 있으면 그 날짜, 방금 서명했다면 '오늘' 표시
+                                    // ✅ 전결 처리된 단계 찾기
+                                    const finalApprovedStep = scheduleData.approvalSteps
+                                        ?.filter((s: any) => s.stepOrder < step.stepOrder)
+                                        .find((s: any) => s.isFinalApproved);
+
+                                    let displayDate = '-';
+
+                                    if (isCreatorStep) {
+                                        // 작성자: 로컬 상태가 true일 때만 날짜 표시
+                                        if (localCreatorSigned) {
+                                            displayDate = step.signedAt
+                                                ? new Date(step.signedAt).toLocaleDateString('ko-KR')
+                                                : new Date().toLocaleDateString('ko-KR');
+                                        } else {
+                                            displayDate = '-';
+                                        }
+                                    } else if (hasFinalApprovedBefore && finalApprovedStep) {
+                                        // ✅ 전결 처리된 경우: 전결한 시점의 날짜 표시
+                                        displayDate = finalApprovedStep.signedAt
+                                            ? new Date(finalApprovedStep.signedAt).toLocaleDateString('ko-KR')
+                                            : '-';
+                                    } else {
+                                        // 일반 결재자: DB 데이터 그대로 표시
                                         displayDate = step.signedAt
                                             ? new Date(step.signedAt).toLocaleDateString('ko-KR')
-                                            : new Date().toLocaleDateString('ko-KR');
-                                    } else {
-                                        // 취소했거나 서명 안 했으면 빈 값
-                                        displayDate = '-';
+                                            : '-';
                                     }
-                                } else {
-                                    // 결재자: DB 데이터 그대로 표시
-                                    displayDate = step.signedAt ? new Date(step.signedAt).toLocaleDateString('ko-KR') : '-';
-                                }
 
-                                return (
-                                    <td key={index} className="wse-date-cell">
-                                        {displayDate}
-                                    </td>
-                                );
-                            })}
+                                    return (
+                                        <td key={index} className="wse-date-cell">
+                                            {displayDate}
+                                        </td>
+                                    );
+                                })}
                         </tr>
                         </tbody>
                     </table>
@@ -1663,7 +1882,7 @@ const WorkScheduleEditor: React.FC = () => {
                         <button onClick={() => applyWorkType('대')} className="wse-btn-work-type wse-btn-d1">대</button>
                         <button onClick={() => applyWorkType('')} className="wse-btn-work-type wse-btn-clear">지우기
                         </button>
-                        <button onClick={toggleRowTextMode} className="wse-btn-work-type"
+                        <button onClick={toggleCellRangeTextMode} className="wse-btn-work-type"
                                 style={{backgroundColor: '#6c757d', color: 'white'}}>
                             텍스트/셀 전환
                         </button>
@@ -1740,60 +1959,133 @@ const WorkScheduleEditor: React.FC = () => {
                                     <td>{user?.userName || entry.userName || entry.userId}</td>
 
                                     {/* 일별 근무 */}
-                                    {isLongTextMode ? (
-                                        <td colSpan={daysInMonth.length} className="wse-long-text-cell"
-                                            style={{padding: 0}}>
-                                            <input
-                                                type="text"
-                                                value={entry.workData?.['longTextValue'] || ''}
-                                                onChange={(e) => handleLongTextChange(entry.id, e.target.value)}
-                                                placeholder="내용을 입력하세요 (예: 장기 휴가, 병가 등)"
-                                                style={{
-                                                    width: '95%',
-                                                    height: '90px',
-                                                    border: 'none',
-                                                    textAlign: 'center',
-                                                    backgroundColor: '#f9f9f9',
-                                                    fontSize: '14px'
-                                                }}
-                                                // 클릭 시 행 선택을 위해 이벤트 전파
-                                                onClick={(e) => handleMouseDown(entry.id, 1, e)}
-                                            />
-                                        </td>
-                                    ) : (
-                                        daysInMonth.map(d => {
+                                    {(() => {
+                                        const renderedDays = new Set<number>();
+
+                                        return daysInMonth.map(d => {
+                                            // ✅ 이미 렌더링된 날짜는 스킵
+                                            if (renderedDays.has(d.day)) {
+                                                return null;
+                                            }
+
                                             const cellId = getCellId(entry.id, d.day);
-                                            const workType = entry.workData?.[d.day.toString()] || '';
+
+                                            // ✅ [추가] 범위 키 확인 (예: "5-10": "텍스트:병가")
+                                            let workType = entry.workData?.[d.day.toString()] || '';
+                                            let colSpan = 1;
+                                            let isTextCell = false;
+                                            let displayValue = workType;
+                                            let rangeKey = d.day.toString();
+
+                                            // 범위 키 검색
+                                            if (!workType) {
+                                                for (const key in entry.workData) {
+                                                    if (key.includes('-')) {
+                                                        const [start, end] = key.split('-').map(Number);
+                                                        if (d.day >= start && d.day <= end) {
+                                                            workType = entry.workData[key];
+                                                            isTextCell = workType.startsWith('텍스트:');
+                                                            displayValue = isTextCell ? workType.substring(4) : workType;
+                                                            colSpan = end - start + 1;
+                                                            rangeKey = key;
+
+                                                            // 범위 내 날짜들을 렌더링 완료로 표시
+                                                            for (let i = start; i <= end; i++) {
+                                                                renderedDays.add(i);
+                                                            }
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                isTextCell = workType.startsWith('텍스트:');
+                                                displayValue = isTextCell ? workType.substring(4) : workType;
+                                                renderedDays.add(d.day);
+                                            }
+
                                             const isSelected = selectedCells.has(cellId);
 
-                                            return editingCell === cellId ? (
-                                                <td key={d.day}>
-                                                    <input
-                                                        type="text"
-                                                        value={cellTextValue}
-                                                        onChange={(e) => setCellTextValue(e.target.value)}
-                                                        onBlur={() => handleCellTextSave(entry.id, d.day)}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') handleCellTextSave(entry.id, d.day);
-                                                            else if (e.key === 'Escape') setEditingCell(null);
+                                            if (isTextCell) {
+                                                return (
+                                                    <td
+                                                        key={d.day}
+                                                        className="wse-text-cell"
+                                                        colSpan={colSpan}
+                                                        onContextMenu={(e) => {
+                                                            if (isEditable) {
+                                                                e.preventDefault();
+                                                                if (window.confirm('일반 셀로 전환하시겠습니까?')) {
+                                                                    handleConvertToNormalCell(entry.id, rangeKey);
+                                                                }
+                                                            }
                                                         }}
-                                                        autoFocus
-                                                        className="cell-input"
-                                                    />
-                                                </td>
-                                            ) : (
+                                                        style={{ padding: 0, height: '100%' }} // td 패딩 제거
+                                                    >
+                                                        {isEditable ? (
+                                                            <div className="wse-text-cell-wrapper">
+                                                                <input
+                                                                    type="text"
+                                                                    value={displayValue}
+                                                                    onChange={(e) => handleTextCellChange(entry.id, rangeKey, e.target.value)}
+                                                                    className="wse-text-cell-input"
+                                                                    title="우클릭하여 일반 셀로 전환"
+                                                                />
+                                                                {/* X 버튼: 아이콘이나 텍스트 사용 */}
+                                                                <button
+                                                                    className="wse-text-cell-close"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (window.confirm('일반 셀로 전환하시겠습니까? 데이터가 초기화됩니다.')) {
+                                                                            handleConvertToNormalCell(entry.id, rangeKey);
+                                                                        }
+                                                                    }}
+                                                                    title="일반 셀로 전환 (초기화)"
+                                                                >
+                                                                    {/* SVG 아이콘으로 교체하여 더 깔끔하게 표현 */}
+                                                                    <svg
+                                                                        width="14"
+                                                                        height="14"
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        strokeWidth="2.5"
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                    >
+                                                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            // 읽기 전용 모드일 때 텍스트 표시
+                                                            <div style={{
+                                                                padding: '0 5px',
+                                                                textAlign: 'center',
+                                                                width: '100%',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>
+                                                                {displayValue}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                );
+                                            }
+
+                                            return (
                                                 <td
                                                     key={d.day}
-                                                    className={`${cellClass(d.day)} ${isSelected ? 'selected' : ''} ${workType.toLowerCase()}`}
-                                                    onDoubleClick={() => handleCellDoubleClick(entry.id, d.day)}
+                                                    className={`${cellClass(d.day)} ${isSelected ? 'selected' : ''}`}
                                                     onMouseDown={(e) => handleMouseDown(entry.id, d.day, e)}
                                                     onMouseEnter={() => handleMouseEnter(entry.id, d.day)}
                                                 >
                                                     {workType}
                                                 </td>
                                             );
-                                        })
-                                    )}
+                                        });
+                                    })()}
 
                                     {/* 통계 및 기타 컬럼 */}
                                     {renderDutyCells(entry)}
@@ -1824,6 +2116,11 @@ const WorkScheduleEditor: React.FC = () => {
 
                 {canManageMembers && (
                     <div className="member-management-buttons">
+                        {schedule.approvalStatus === 'APPROVED' && (
+                            <p style={{fontSize: '13px', color: '#666', marginBottom: '8px'}}>
+                                💡 신규 입사자나 퇴사자가 있다면 수동으로 조정하세요.
+                            </p>
+                        )}
                         <button onClick={() => setShowAddMemberModal(true)}>
                             + 인원 추가
                         </button>
@@ -1953,25 +2250,53 @@ const WorkScheduleEditor: React.FC = () => {
                             </button>
                         )}
 
-                    {schedule.approvalStatus === 'SUBMITTED' &&
-                        (() => {
-                            const currentStep = scheduleData?.approvalSteps?.find((step: any) => step.isCurrent);
-                            return currentStep && signedSteps.has(currentStep.stepOrder);
-                        })() && (
-                            <>
-                                <button onClick={() => handleApprovalAction(false)} className="wse-btn wse-btn-reject">
-                                    취소(반려)
-                                </button>
-                                <button onClick={() => handleApprovalAction(true)} className="wse-btn wse-btn-approve">
-                                    승인하기
-                                </button>
-                                {canFinalApprove && (
-                                    <button onClick={handleFinalApprove} className="wse-btn wse-btn-final-approve">
-                                        전결하기
-                                    </button>
-                                )}
-                            </>
+                    {/* ✅ 최종승인/해제 버튼 추가 (APPROVED 상태이고 WORK_SCHEDULE_MANAGE 권한 있을 때) */}
+                    {schedule.approvalStatus === 'APPROVED' &&
+                        currentUser?.permissions?.includes('WORK_SCHEDULE_MANAGE') && (
+                            <button
+                                onClick={handleToggleFinalApproval}
+                                className={isFinalApproved ? "wse-btn wse-btn-unlock" : "wse-btn wse-btn-final-lock"}
+                            >
+                                {isFinalApproved ? '🔓 최종승인 해제' : '🔒 최종승인'}
+                            </button>
                         )}
+
+
+                    {schedule.approvalStatus === 'SUBMITTED' && (() => {
+                        const currentStepOrder = schedule.currentApprovalStep;
+
+                        // ✅ [수정] approvalSteps 전체에서 currentStepOrder 매칭
+                        const currentStep = scheduleData?.approvalSteps?.find((step: any) =>
+                            step.stepOrder === currentStepOrder
+                        );
+
+                        const isCurrentApprover = currentStep &&
+                            currentStep.approverId === currentUser?.userId;
+
+                        console.log('🔍 승인 버튼 조건 확인:', {
+                            currentStepOrder,
+                            currentUserId: currentUser?.userId,
+                            currentStep,
+                            isCurrentApprover,
+                            allSteps: scheduleData?.approvalSteps
+                        });
+
+                        return isCurrentApprover;
+                    })() && (
+                        <>
+                            <button onClick={() => handleApprovalAction(false)} className="wse-btn wse-btn-reject">
+                                취소(반려)
+                            </button>
+                            <button onClick={() => handleApprovalAction(true)} className="wse-btn wse-btn-approve">
+                                승인하기
+                            </button>
+                            {canFinalApprove && (
+                                <button onClick={handleFinalApprove} className="wse-btn wse-btn-final-approve">
+                                    전결하기
+                                </button>
+                            )}
+                        </>
+                    )}
 
                     {schedule.approvalStatus === 'APPROVED' && (
                         <button
@@ -2110,6 +2435,16 @@ const WorkScheduleEditor: React.FC = () => {
                     </div>
                 )}
 
+                {showDeptHeadSelector && (
+                    <OrgChartModal
+                        isOpen={showDeptHeadSelector}
+                        onClose={() => setShowDeptHeadSelector(false)}
+                        onSelect={handleDeptHeadSelect}
+                        multiSelect={false}
+                        allDepartments={true}
+                    />
+                )}
+
                 {/* 반려 모달 */}
                 {showRejectModal && (
                     <RejectModal
@@ -2126,14 +2461,8 @@ const WorkScheduleEditor: React.FC = () => {
                         approvalLines={approvalLines}
                         selectedLineId={selectedLineId}
                         onSelect={(lineId) => setSelectedLineId(lineId)}
-                        onConfirm={(data) => {
-                            // ✅ 확인 버튼 클릭 시 제출 진행
-                            setSelectedLineId(data.id);
-                            setShowApprovalLineModal(false);
-                            handleApprovalLineConfirm();
-                        }}
+                        onConfirm={handleApprovalLineConfirm}
                         onCancel={() => {
-                            // ✅ 취소 버튼 클릭 시 모달만 닫기
                             setShowApprovalLineModal(false);
                             setSelectedLineId(null);
                         }}

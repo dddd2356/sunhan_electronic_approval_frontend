@@ -11,7 +11,8 @@ const root = ReactDOM.createRoot(
 root.render(
     <CookiesProvider>
         <React.StrictMode>
-            <BrowserRouter basename="/sunhan-eap">
+            {/*<BrowserRouter>*/}
+            <BrowserRouter>
                 <App />
             </BrowserRouter>
         </React.StrictMode>

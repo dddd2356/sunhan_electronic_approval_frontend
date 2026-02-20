@@ -861,6 +861,14 @@
     background-size: 1000px 100%;
 }
 
+/* 로딩 중 버튼 스타일 */
+.admin-pagination-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--gray-100);
+    pointer-events: none; /* 클릭 차단 */
+}
+
 /* ==========================================
    반응형 디자인
    ========================================== */
@@ -871,51 +879,6 @@
 
     .admin-stats-container {
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    }
-}
-
-@media (max-width: 768px) {
-    .admin-dashboard-container {
-        padding: var(--spacing-md);
-    }
-
-    .form-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .form-group {
-        min-width: unset;
-    }
-
-    .admin-action-buttons {
-        flex-direction: column;
-    }
-
-    .admin-action-button {
-        width: 100%;
-    }
-
-    .admin-stats-container {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 640px) {
-    .admin-search-section {
-        flex-direction: column;
-    }
-
-    .admin-pagination-controls {
-        flex-wrap: wrap;
-    }
-
-    .admin-pagination-button {
-        flex-grow: 1;
-    }
-
-    .tab-navigation {
-        overflow-x: auto;
     }
 }
 
@@ -1421,4 +1384,412 @@ input:checked + .slider:before { transform: translateX(20px); }
 /* Responsive Drawer */
 @media (max-width: 480px) {
     .admin-drawer { width: 100%; }
+}
+
+/* ========== 모바일 최적화 (768px 이하) ========== */
+@media (max-width: 768px) {
+    .admin-dashboard-container {
+        width: 100%;           /* 100%로 설정 */
+        max-width: 100%;       /* 혹시 1200px 같은 숫자가 적혀있다면 100%로 변경 */
+        margin: 0 auto;
+        padding: 24px;         /* 좌우 여백이 너무 크면 줄여보세요 */
+        box-sizing: border-box; /* 패딩이 너비에 포함되도록 함 */
+    }
+
+    /* 2. 헤더 */
+    .admin-header-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .admin-dashboard-title {
+        font-size: 24px;
+    }
+
+    .admin-welcome-message {
+        font-size: 13px;
+    }
+
+    .admin-secondary-button {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+    }
+
+    /* 3. 통계 카드 */
+    .admin-stats-container {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .admin-stat-card {
+        padding: 16px;
+    }
+
+    .admin-stat-value {
+        font-size: 24px;
+    }
+
+    /* 4. 검색 & 컨트롤 */
+    .admin-controls-section {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .admin-search-section {
+        width: 100%;
+        margin-bottom: 0;
+    }
+
+    .admin-search-section > div {
+        max-width: 100%;
+    }
+
+    .admin-search-input {
+        width: 100%;
+        min-height: 44px;
+    }
+
+    .admin-toggle-button {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+    }
+
+    /* 5. 테이블 */
+    .admin-table-container {
+        width: 100%;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--gray-200);
+        overflow: hidden;
+        /* 기존의 margin: 0 -12px; 이 있다면 반드시 삭제하세요 */
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    /* 6. 테이블 본체 */
+    .admin-user-table {
+        width: 100% !important;   /* 무조건 부모 너비에 맞춤 */
+        border-collapse: collapse;
+        /* auto 대신 fixed를 쓰면 테이블이 남는 공간을 강제로 쪼개서 끝까지 채웁니다 */
+        table-layout: fixed;
+        margin: 0;
+        overflow-x: hidden !important;
+    }
+
+    /* 7. 테이블 셀 설정 */
+    .admin-table-header th,
+    .admin-table-cell {
+        padding: 12px 16px;       /* 좁았던 패딩을 늘려 시원하게 표시 */
+        text-align: center;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--gray-100);
+        word-break: break-all;    /* 내용이 길어도 테이블 유지 */
+    }
+
+    /* 첫 번째 컬럼(User Info)만 왼쪽 정렬 */
+    .admin-table-cell:first-child {
+        text-align: left;
+        width: 15%;               /* 특정 열 너비 지정 가능 */
+    }
+
+    /* 나머지 열들 너비 예시 (필요시 조정) */
+    .admin-user-table th:nth-child(2) { width: 15%; } /* Dept */
+    .admin-user-table th:nth-child(3) { width: 20%; } /* Level */
+    .admin-user-table th:nth-child(4) { width: 15%; } /* Status */
+    .admin-user-table th:nth-child(5) { width: 15%; } /* Role */
+    .admin-user-table th:nth-child(6) { width: 15%; } /* Action */
+
+    .user-info-cell {
+        align-items: flex-start;
+        min-width: 80px;   /* ← 추가: 최소 너비 지정 */
+    }
+
+    .btn-manage {
+        font-size: 10px;   /* ← 11px에서 10px로 축소 */
+        padding: 4px 6px;  /* ← 4px 8px에서 4px 6px로 축소 */
+        min-height: 32px;
+        white-space: nowrap; /* ← 추가 */
+    }
+
+    /* 6. 페이지네이션 */
+    .admin-pagination-controls {
+        gap: 4px;
+        padding-bottom: 12px;
+    }
+
+    .admin-pagination-button {
+        min-width: 36px;
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    /* 7. Drawer - 전체 화면 */
+    .admin-drawer {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .drawer-header {
+        padding: 16px;
+    }
+
+    .drawer-header h2 {
+        font-size: 16px;
+    }
+
+    .drawer-body {
+        padding: 16px;
+    }
+
+    .ad-profile-section {
+        flex-direction: row;
+        padding: 12px;
+    }
+
+    .profile-avatar-placeholder {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+
+    .profile-details h3 {
+        font-size: 14px;
+    }
+
+    .profile-details p {
+        font-size: 12px;
+    }
+
+    .section-title {
+        font-size: 12px;
+    }
+
+    .section-desc {
+        font-size: 11px;
+    }
+
+    .permission-item {
+        padding: 12px;
+    }
+
+    .perm-name {
+        font-size: 13px;
+    }
+
+    .perm-code {
+        font-size: 10px;
+    }
+
+    .btn-save-mini {
+        min-height: 36px;
+        font-size: 12px;
+    }
+
+    /* 비밀번호 재설정 */
+    .password-reset-zone {
+        padding: 12px;
+    }
+
+    .password-label {
+        font-size: 12px;
+    }
+
+    .btn-toggle-danger {
+        font-size: 11px;
+        padding: 6px 12px;
+        min-height: 32px;
+    }
+
+    .password-input,
+    .btn-submit-danger {
+        height: 44px;
+        font-size: 13px;
+    }
+
+    .password-warning {
+        font-size: 11px;
+    }
+
+    /* 퇴사/복직 */
+    .btn-retire {
+        min-height: 44px;
+        font-size: 13px;
+    }
+
+    /* 8. 모달 */
+    .admin-modal-overlay {
+        padding: 12px;
+    }
+
+    .admin-modal-content {
+        width: 100%;
+        max-width: none;
+        padding: 20px;
+    }
+
+    .admin-modal-title {
+        font-size: 18px;
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-group {
+        min-width: 100%;
+    }
+
+    .form-select,
+    .admin-form-input {
+        min-height: 44px;
+    }
+
+    .submit-button,
+    .admin-modal-button {
+        min-height: 44px;
+        width: 100%;
+    }
+
+    .admin-modal-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* 모달 오버레이 내부 여백(이미지에서 보이던 빈영역 방지) */
+    .admin-modal-overlay {
+        padding: 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 테이블 컨테이너: 가로스크롤 허용(필요시), 스크롤 스무스 처리 */
+    .permissions-table-container {
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* 테이블: 부모 폭에 맞추기, 넓이 강제, min-width 해제 */
+    .permissions-table {
+        display: table !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;   /* 열 너비를 부모에 맞춰 고정(모바일에서 안정적) */
+        border-collapse: collapse !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 셀: 줄바꿈 허용, overflow 해제, 패딩/폰트 조정 */
+    .permissions-table th,
+    .permissions-table td {
+        word-break: break-word !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+        padding: 10px !important;
+        font-size: 13px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 열 비율(필요시 고정) — 부서/권한/관리 */
+    .permissions-table th:nth-child(1),
+    .permissions-table td:nth-child(1) { width: 20% !important; }
+    .permissions-table th:nth-child(2),
+    .permissions-table td:nth-child(2) { width: 60% !important; }
+    .permissions-table th:nth-child(3),
+    .permissions-table td:nth-child(3) { width: 20% !important; }
+
+    /* 테이블 때문에 모달이 늘어나는 걸 방지 */
+    .admin-modal-content .permissions-table,
+    .admin-modal-content .permissions-table * {
+        min-width: 0 !important;
+    }
+
+    /* 매우 작은 화면(480px 이하)에서 기존에 강제로 min-width를 주는 규칙 무력화 */
+    .admin-user-table,
+    .admin-user-table * {
+        min-width: 0 !important;
+    }
+
+    /* 전체삭제 버튼이 칸을 넘기지 않도록 폭 채움 */
+    .remove-permission-button {
+        width: 100% !important;
+        padding: 6px 0 !important;
+        font-size: 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Toggle Switch 크기 조정 */
+    .toggle-switch {
+        width: 40px;
+        height: 22px;
+    }
+
+    .slider:before {
+        height: 16px;
+        width: 16px;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(18px);
+    }
+}
+
+@media (max-width: 480px) {
+    /* 1) 테이블 자체가 부모를 넘지 않도록 강제 */
+    .admin-user-table {
+        min-width: 0 !important;         /* 기존 강제 min-width 무력화 */
+        width: 100% !important;          /* 부모 너비에 맞춤 */
+        table-layout: fixed !important;  /* 열 너비를 부모에 맞춰 고정(모바일에서 안정적) */
+        border-collapse: collapse !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 2) 셀 내부 줄바꿈 허용 — 긴 문자열 때문에 overflow 발생하면 이걸로 깸 */
+    .admin-user-table th,
+    .admin-user-table td {
+        white-space: normal !important;
+        word-break: break-word !important; /* 긴 텍스트 강제 줄바꿈 */
+        overflow-wrap: anywhere !important;
+        box-sizing: border-box !important;
+        padding: 8px !important;
+        font-size: 12px !important;
+    }
+
+    /* 3) 테이블 컨테이너는 필요하면 가로 스크롤 허용(사용자에게 스크롤 제공) */
+    .admin-table-container {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 4) 버튼/액션이 한 줄로 고정되어 넘치면 줄바꿈 허용 */
+    .btn-manage,
+    .admin-action-button {
+        white-space: normal !important;
+    }
+
+    /* 5) 만약 특정 열 너비를 제한하고 싶다면 예시 (옵션) */
+    .admin-user-table th:first-child,
+    .admin-user-table td:first-child {
+        width: 25% !important;
+        min-width: 0 !important;
+    }
+}
+
+/* ========== 터치 최적화 ========== */
+@media (hover: none) {
+    .admin-action-button,
+    .submit-button,
+    .btn-manage,
+    .admin-toggle-button,
+    .admin-secondary-button {
+        min-height: 44px;
+    }
+
+    .admin-pagination-button {
+        min-width: 44px;
+        min-height: 44px;
+    }
 }

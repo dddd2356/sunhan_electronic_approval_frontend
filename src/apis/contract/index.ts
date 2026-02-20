@@ -167,3 +167,14 @@ export const deleteContract = async (contractId: number, token: string): Promise
 export const rejectCompletedContract = async (id: number, reason: string, token?: string): Promise<AxiosResponse<any>> => {
     return axios.put(`${API_BASE}/employment-contract/${id}/reject-completed`, {reason}, authHeader(token));
 };
+
+// 특정 직원의 이전 계약서 목록 조회
+export const fetchPreviousContracts = async (employeeId: string, token: string) => {
+    const response = await axios.get(
+        `${API_BASE}/employment-contract/previous/${employeeId}`,
+        {
+            headers: { Authorization: `Bearer ${token}` }
+        }
+    );
+    return response.data;
+};

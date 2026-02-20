@@ -299,6 +299,11 @@
     color: #ea580c;
 }
 
+.reports-document-badge-schedule {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
 .reports-document-badge-status {
     background-color: #f3f4f6;
     color: #6b7280;
@@ -400,62 +405,209 @@
     background-color: #ccc;
     cursor: not-allowed;
 }
-@media (max-width: 1200px) {
-    .reports-category-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-}
-/* 반응형 디자인 */
+/* ========== 모바일 반응형 ========== */
 @media (max-width: 768px) {
     .reports-modal-overlay {
-        padding: 0.5rem;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .reports-modal-container {
-        max-height: 95vh;
+        width: 100%;
+        max-width: 92vw;     /* ⬅️ 600px → 화면 기준 */
+        max-height: 80vh;    /* ⬅️ 85vh → 더 줄이기 */
+        border-radius: 12px;
+        margin: 0 auto;
     }
 
     .reports-modal-header {
-        padding: 1rem;
+        padding: 10px 12px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .reports-modal-title {
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    /* ✅ X 버튼 크기 조정 */
+    .reports-modal-close-btn {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .reports-modal-close-btn svg {
+        width: 20px !important;
+        height: 20px !important;
     }
 
     .reports-modal-content {
-        padding: 1rem;
+        max-height: calc(80vh - 56px);
+        padding: 12px;
+        overflow-y: auto;
     }
 
+    /* ✅ 카테고리 그리드 - 2x3 배치 */
     .reports-category-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 16px;
     }
 
     .reports-category-card {
-        padding: 1rem;
+        min-height: 90px;   /* ⬅️ 110px → 90px */
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    .reports-category-icon {
+        margin-bottom: 6px;
+    }
+
+    .reports-category-icon svg {
+        width: 28px !important;
+        height: 28px !important;
     }
 
     .reports-category-title {
-        font-size: 1rem;
+        font-size: 12px;
+        margin-bottom: 4px;
     }
 
     .reports-category-count {
-        font-size: 1.25rem;
+        font-size: 16px;
+        margin-bottom: 4px;
     }
 
+    .reports-category-description {
+        font-size: 10px;
+        line-height: 1.3;
+    }
+
+    /* ✅ 문서 목록 */
     .reports-document-item {
-        padding: 0.75rem;
+        padding: 12px;
+        font-size: 13px;
+    }
+
+    .reports-document-badges {
+        gap: 6px;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+    }
+
+    .reports-document-badge {
+        font-size: 10px;
+        padding: 2px 8px;
+    }
+
+    .reports-document-title {
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+
+    .reports-document-applicant {
+        font-size: 11px;
+        margin-bottom: 4px;
+    }
+
+    .reports-document-dates {
+        font-size: 10px;
+    }
+
+    .reports-document-action svg {
+        width: 16px !important;
+        height: 16px !important;
+    }
+
+    /* ✅ 뒤로가기 버튼 */
+    .reports-back-btn {
+        font-size: 12px;
+        padding: 8px 0;
+        margin-bottom: 12px;
+    }
+
+    /* ✅ 페이지네이션 */
+    .reports-pagination {
+        gap: 8px;
+        margin-top: 16px;
+        font-size: 12px;
+    }
+
+    .reports-page-button {
+        padding: 8px 14px;
+        font-size: 12px;
+        min-height: 36px;
+    }
+
+    /* ✅ 안내 섹션 */
+    .reports-guide {
+        padding: 12px;
+        margin-top: 16px;
+    }
+
+    .reports-guide-title {
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+
+    .reports-guide-item {
+        font-size: 11px;
+        margin-bottom: 6px;
+        line-height: 1.4;
+    }
+
+    /* ✅ 빈 상태 */
+    .reports-empty-state {
+        padding: 40px 20px;
+    }
+
+    .reports-empty-icon svg {
+        width: 48px !important;
+        height: 48px !important;
+    }
+
+    .reports-empty-text {
+        font-size: 13px;
     }
 }
 
 @media (max-width: 480px) {
+    .reports-modal-overlay {
+        padding: 12px;
+    }
+
+    .reports-modal-container {
+        max-width: 96vw;
+        max-height: 78vh;
+        border-radius: 10px;
+    }
+
+    /* ✅ 카테고리 1열 배치 */
     .reports-category-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr); /* 2열 유지 */
+        gap: 10px;
     }
 
-    .reports-document-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
+    .reports-category-card {
+        padding: 10px;
+        min-height: 88px;
     }
 
-    .reports-document-action {
-        align-self: flex-end;
+    .reports-modal-close-btn {
+        width: 38px !important;
+        height: 38px !important;
+    }
+
+    .reports-modal-title {
+        font-size: 12px;
     }
 }

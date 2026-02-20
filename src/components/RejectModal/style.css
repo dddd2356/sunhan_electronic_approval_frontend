@@ -250,29 +250,114 @@
     }
 }
 
-/* 반응형 디자인 */
-@media (max-width: 640px) {
+/* ========== 모바일 반응형 ========== */
+@media (max-width: 768px) {
+    .modal-overlay {
+        padding: 20px;
+    }
+
     .modal-content {
-        width: 95%;
-        margin: 20px;
+        width: 90%;
+        max-width: 500px;
+        padding: 0;
+        max-height: 70vh;
+        overflow-y: auto;
+        border-radius: 12px;
     }
 
-    .modal-header, .modal-body, .modal-footer {
-        padding-left: 16px;
-        padding-right: 16px;
+    .modal-header {
+        padding: 20px;
+        font-size: 16px;
+        margin-bottom: 0;
+        border-bottom: 1px solid #e5e7eb;
     }
 
-    .modal-footer {
-        flex-direction: column;
+    .modal-header h3 {
+        font-size: 16px;
+        margin: 0;
     }
 
-    .btn-cancel, .btn-submit {
+    /* ✅ X 버튼 */
+    /* ✅ X 버튼 크기 축소 */
+    .close-button {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .close-button svg {
+        width: 20px !important;
+        height: 20px !important;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .reason-textarea {
         width: 100%;
+        font-size: 14px;
+        padding: 12px;
+        min-height: 140px;
+        box-sizing: border-box;
     }
 
-    .rejection-alert {
-        flex-direction: column;
-        gap: 12px;
-        text-align: center;
+    /* ✅ 푸터 - 강제 가로 배치 */
+    .modal-footer {
+        padding: 16px 20px 20px 20px !important;
+        display: flex !important;
+        flex-direction: row !important;  /* 중요! */
+        gap: 10px !important;
+        border-top: 1px solid #e5e7eb !important;
+    }
+
+    /* ✅ 버튼 - 동일한 크기로 가로 배치 */
+    .modal-footer button {
+        flex: 1 !important;
+        width: auto !important;  /* 100% 제거 */
+        min-height: 48px !important;
+        font-size: 15px !important;
+        padding: 12px 16px !important;
+        border-radius: 8px !important;
+        margin: 0 !important;  /* 마진 제거 */
+    }
+
+    .modal-footer .btn-cancel,
+    .modal-footer .btn-submit {
+        flex: 1 !important;
+        width: auto !important;
+        min-height: 48px !important;
+        font-size: 15px !important;
+        padding: 12px 16px !important;
+        border-radius: 8px !important;
+        margin: 0 !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-content {
+        width: 92%;
+    }
+
+    .close-button {
+        width: 34px !important;
+        height: 34px !important;
+    }
+
+    .close-button svg {
+        width: 22px !important;
+        height: 22px !important;
+    }
+
+    .modal-footer button,
+    .modal-footer .btn-cancel,
+    .modal-footer .btn-submit {
+        min-height: 50px !important;
+        font-size: 15px !important;
     }
 }

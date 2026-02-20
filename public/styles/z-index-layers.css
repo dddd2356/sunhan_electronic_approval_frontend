@@ -1,0 +1,91 @@
+/* ========================================
+   Z-Index 레이어 관리
+   ======================================== */
+
+:root {
+    --z-base: 1;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-sidebar: 900;
+    --z-modal-backdrop: 999;
+    --z-modal: 1000;
+    --z-drawer: 999;
+    --z-tooltip: 1100;
+    --z-notification: 1200;
+    --z-loading: 1300;
+}
+
+/* 헤더 */
+#header,
+.header {
+    z-index: var(--z-sticky);
+}
+
+/* 사이드바 */
+#sidebar,
+.sidebar {
+    z-index: var(--z-sidebar);
+}
+
+/* 사이드바 오버레이 */
+.sidebar-overlay {
+    z-index: calc(var(--z-sidebar) - 1);
+}
+
+/* 모달 백드롭 */
+.modal-overlay,
+.modal-backdrop {
+    z-index: var(--z-modal-backdrop);
+}
+
+/* 모달 */
+.modal-container,
+.modal-content {
+    z-index: var(--z-modal);
+}
+
+/* Drawer */
+.drawer {
+    z-index: var(--z-drawer);
+}
+
+/* 툴팁 */
+.tooltip {
+    z-index: var(--z-tooltip);
+}
+
+/* 알림/토스트 */
+.notification,
+.toast {
+    z-index: var(--z-notification);
+}
+
+/* 로딩 인디케이터 */
+.loading-overlay,
+.spinner-overlay {
+    z-index: var(--z-loading);
+}
+
+/* 드롭다운 */
+.dropdown-menu {
+    z-index: var(--z-dropdown);
+}
+
+/* 고정 요소 */
+.fixed-element {
+    z-index: var(--z-fixed);
+}
+
+/* 모바일 특별 처리 */
+@media (max-width: 768px) {
+    /* 모바일에서 사이드바가 모달보다 낮아야 함 */
+    .sidebar.mobile {
+        z-index: var(--z-sidebar);
+    }
+
+    /* 모바일 모달은 최상위 */
+    .modal-content.mobile {
+        z-index: calc(var(--z-modal) + 100);
+    }
+}
