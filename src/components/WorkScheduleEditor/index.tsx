@@ -2341,7 +2341,7 @@ const WorkScheduleEditor: React.FC = () => {
                                             cellSymbol: 'N'
                                         })}
                                     />
-                                    당직 모드
+                                    당직 모드(야간근로포함)
                                 </label>
                             </div>
 

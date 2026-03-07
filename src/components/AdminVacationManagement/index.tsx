@@ -93,49 +93,6 @@ const AdminVacationManagement: React.FC = () => {
         }
     };
 
-
-    // 휴가일수 재계산 함수
-    const handleRecalculateTotalDays = async () => {
-        if (!window.confirm('모든 휴가원의 일수를 재계산하시겠습니까?\n이 작업은 시간이 걸릴 수 있습니다.')) {
-            return;
-        }
-
-        try {
-            setRecalculating(true);
-            setError('');
-
-            const response = await fetch('/api/v1/leave-application/admin/recalculate-total-days', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setSuccessMessage(`✅ ${data.updatedCount}건의 휴가원 일수가 재계산되었습니다.`);
-
-                // ✅ 사용자 목록 새로고침
-                await fetchUsers(selectedYear);
-
-                // ✅ 현재 선택된 사용자가 있다면 정보 새로고침
-                if (selectedUser) {
-                    await fetchVacationStatus(selectedUser.userId);
-                }
-
-                setTimeout(() => setSuccessMessage(''), 5000);
-            } else {
-                const errorData = await response.json();
-                throw new Error(errorData.error || '재계산에 실패했습니다.');
-            }
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setRecalculating(false);
-        }
-    };
-
     const handleRecalculateHistory = async () => {
         if (!window.confirm(`${selectedYear}년도 모든 사용자의 연차 히스토리를 재계산하시겠습니까?\n\n이 작업은 user_annual_vacation_history 테이블의 used_carryover_days와 used_regular_days를 실제 승인된 휴가원 기준으로 재계산합니다.`)) {
             return;
@@ -258,22 +215,8 @@ const AdminVacationManagement: React.FC = () => {
             );
 
             if (response.ok) {
-                const totalAnnual = annualCarryover + annualRegular;
-
-                if (vacationStatus) {
-                    const updatedStatus = {
-                        ...vacationStatus,
-                        annualCarryoverDays: annualCarryover,
-                        annualRegularDays: annualRegular,
-                        annualTotalDays: totalAnnual,
-                        annualRemainingDays: totalAnnual - (vacationStatus.annualUsedDays || 0),
-                        // 하위 호환 필드도 업데이트
-                        totalVacationDays: totalAnnual,
-                        usedVacationDays: vacationStatus.annualUsedDays || 0,
-                        remainingVacationDays: totalAnnual - (vacationStatus.annualUsedDays || 0)
-                    };
-                    setVacationStatus(updatedStatus);
-                }
+                // ✅ 직접 계산하지 않고, 서버에서 최신 데이터 다시 조회
+                await fetchVacationStatus(selectedUser.userId);
 
                 setSuccessMessage(`${selectedYear}년 연차일수가 성공적으로 업데이트되었습니다.`);
                 setTimeout(() => setSuccessMessage(''), 3000);

@@ -4,7 +4,7 @@ import axios from 'axios';
 import Layout from '../Layout';
 import './style.css';
 // ✅ 필요한 아이콘 추가 Import
-import { X, Plus, Trash2, Users, AlertCircle, CheckCircle, Briefcase } from 'lucide-react';
+import {X, Plus, Trash2, Users, AlertCircle, CheckCircle, Briefcase, Edit2} from 'lucide-react';
 
 interface Department {
     deptCode: string;
@@ -37,6 +37,40 @@ export const DepartmentManagementPage: React.FC = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
+
+    const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+    const [editingDept, setEditingDept] = useState<Department | null>(null);
+    const [newDeptNameForEdit, setNewDeptNameForEdit] = useState('');
+
+    // ✅ 부서명 수정 모달 열기
+    const handleOpenEditModal = (dept: Department) => {
+        setEditingDept(dept);
+        setNewDeptNameForEdit(dept.deptName);
+        setIsEditModalOpen(true);
+    };
+
+// ✅ 부서명 수정 저장
+    const handleSaveEdit = async () => {
+        if (!editingDept || !newDeptNameForEdit.trim()) {
+            setError('부서명을 입력해주세요.');
+            return;
+        }
+
+        try {
+            await axios.put(
+                `${API_BASE_URL}/departments/${editingDept.deptCode}`,
+                { deptName: newDeptNameForEdit.trim() },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            setSuccess('부서명이 성공적으로 수정되었습니다.');
+            fetchDepartments();           // 목록 새로고침
+            setIsEditModalOpen(false);
+            setEditingDept(null);
+        } catch (err: any) {
+            setError(err.response?.data?.error || '부서명 수정에 실패했습니다.');
+        }
+    };
 
     useEffect(() => {
         fetchDepartments();
@@ -263,12 +297,20 @@ export const DepartmentManagementPage: React.FC = () => {
                                         </td>
                                         <td data-label="부서 이름" style={{fontWeight: 500}}>{dept.deptName}</td>
                                         <td data-label="상태">
-            <span className={`dm-status-badge ${dept.useFlag === '1' ? 'active' : 'inactive'}`}>
-                {dept.useFlag === '1' ? '활성' : '비활성'}
-            </span>
+                                            <span className={`dm-status-badge ${dept.useFlag === '1' ? 'active' : 'inactive'}`}>
+                                                {dept.useFlag === '1' ? '활성' : '비활성'}
+                                            </span>
                                         </td>
                                         <td>
                                             <div className="dm-action-group" style={{justifyContent: 'flex-end'}}>
+                                                <button
+                                                    onClick={() => handleOpenEditModal(dept)}
+                                                    className="dm-btn-icon"
+                                                    title="부서명 수정"
+                                                    disabled={dept.useFlag === '0'}
+                                                >
+                                                    <span style={{fontSize: '15px'}}><Edit2 size={18}/></span>
+                                                </button>
                                                 <button
                                                     onClick={() => handleOpenMembersModal(dept)}
                                                     className="dm-btn-icon"
@@ -276,20 +318,20 @@ export const DepartmentManagementPage: React.FC = () => {
                                                     disabled={dept.useFlag === '0'}
                                                 >
                                                     <Users size={18}/>
-                                                    <span style={{marginLeft: 6, fontSize: 13}}>구성원</span>
                                                 </button>
                                                 <button
                                                     onClick={() => handleToggleDeptStatus(dept)}
                                                     className={`dm-btn-icon ${dept.useFlag === '1' ? 'danger' : 'success'}`}
                                                     title={dept.useFlag === '1' ? '비활성화' : '활성화'}
                                                 >
-                                                    {dept.useFlag === '1' ? <Trash2 size={18}/> : <CheckCircle size={18}/>}
+                                                    {dept.useFlag === '1' ? <Trash2 size={18}/> :
+                                                        <CheckCircle size={18}/>}
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))
-                                )}
+                            )}
                             </tbody>
                         </table>
                     </div>
@@ -360,6 +402,60 @@ export const DepartmentManagementPage: React.FC = () => {
                                     )}
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ✅ 부서명 수정 모달 */}
+                {isEditModalOpen && editingDept && (
+                    <div className="dm-modal-overlay" onClick={() => setIsEditModalOpen(false)}>
+                        <div className="dm-modal" onClick={(e) => e.stopPropagation()} style={{maxWidth: '420px'}}>
+                            <div className="dm-modal-header">
+                                <h2 className="dm-modal-title">
+                                    부서명 수정
+                                </h2>
+                                <button onClick={() => setIsEditModalOpen(false)} className="dm-modal-close">
+                                    <X size={24}/>
+                                </button>
+                            </div>
+
+                            <div className="dm-modal-body" style={{padding: '24px'}}>
+                                <div style={{marginBottom: '16px'}}>
+                                    <div style={{fontSize: '13px', color: '#64748b', marginBottom: '6px'}}>부서 코드</div>
+                                    <div style={{fontSize: '16px', fontWeight: 600, padding: '10px 14px', background: '#f8fafc', borderRadius: '6px'}}>
+                                        {editingDept.deptCode}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div style={{fontSize: '13px', color: '#64748b', marginBottom: '6px'}}>부서명</div>
+                                    <input
+                                        type="text"
+                                        className="dm-input"
+                                        value={newDeptNameForEdit}
+                                        onChange={(e) => setNewDeptNameForEdit(e.target.value)}
+                                        placeholder="새 부서명을 입력하세요"
+                                        style={{width: '100%'}}
+                                    />
+                                </div>
+
+                                <div style={{marginTop: '28px', display: 'flex', gap: '10px'}}>
+                                    <button
+                                        onClick={() => setIsEditModalOpen(false)}
+                                        className="dm-btn"
+                                        style={{flex: 1, background: '#e2e8f0', color: '#334155'}}
+                                    >
+                                        취소
+                                    </button>
+                                    <button
+                                        onClick={handleSaveEdit}
+                                        className="dm-btn dm-btn-primary"
+                                        style={{flex: 1}}
+                                    >
+                                        저장하기
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

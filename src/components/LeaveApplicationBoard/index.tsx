@@ -51,7 +51,7 @@ const LeaveApplicationBoard: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>('');
-    const [tab, setTab] = useState<'my' | 'pending' | 'completed'>('my');
+    const [tab, setTab] = useState<'my' | 'pending' | 'allPending' |'completed'>('my');
     const [searchTerm, setSearchTerm] = useState('');
     const [searchType, setSearchType] = useState<'all'|'applicant'|'substitute'|'status'>('all');
     const [hasHrLeavePermission, setHasHrLeavePermission] = useState(false);
@@ -66,6 +66,8 @@ const LeaveApplicationBoard: React.FC = () => {
                 return '내 휴가원 검색...';
             case 'pending':
                 return '승인 대기 검색...';
+            case 'allPending':
+                return '전체 진행중 검색...';
             case 'completed':
                 return '완료된 휴가원 검색...';
             default:
@@ -357,6 +359,14 @@ const LeaveApplicationBoard: React.FC = () => {
         return 0;
     };
 
+    useEffect(() => {
+        if (currentUser) {
+            setHasHrLeavePermission(
+                currentUser.permissions?.includes('HR_LEAVE_APPLICATION') ?? false
+            );
+        }
+    }, [currentUser]);
+
 // 탭 변경 시 검색 초기화를 위한 useEffect 수정
     useEffect(() => {
         if (currentUser  && !isSearchMode) {
@@ -394,23 +404,43 @@ const LeaveApplicationBoard: React.FC = () => {
     const fetchApplications = async () => {
         setLoading(true);
         try {
-            const apiPage = currentPage - 1; // API는 0부터 시작하므로 변환
+            const apiPage = currentPage - 1;
 
-            // 모든 탭에 대해 서버 측 페이지네이션 적용
+            // ✅ pending 탭에서 HR 권한자는 전체 조회 API 사용
+            if (tab === 'allPending' && hasHrLeavePermission) {
+                const res = await fetch(
+                    `/api/v1/leave-application/pending/all?page=${apiPage}&size=${itemsPerPage}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                const raw = await res.json();
+
+                // ✅ 기존 탭과 동일한 형태로 변환
+                const data: PaginationData = {
+                    content: raw.content || [],
+                    totalElements: raw.totalElements,
+                    totalPages: raw.totalPages,
+                    currentPage: raw.number,  // Spring의 number → currentPage로 매핑
+                    size: raw.size,
+                };
+
+                setPaginationData(data);
+                setApplications(data.content);
+                return;
+            }
+
+            // 기존 로직 유지
             const data = await fetchLeaveApplications(
                 token,
-                tab,
+                tab as 'my' | 'pending' | 'completed',
                 canViewCompleted,
                 apiPage,
                 itemsPerPage
-            ) as PaginationData; // 타입 캐스팅
+            ) as PaginationData;
 
             setPaginationData(data);
 
-            // 'my' 탭에 대한 추가적인 클라이언트 필터링 로직 유지
             let filtered = data.content;
             if (tab === 'my') {
-                // 상태 필터링 (DRAFT, PENDING*, REJECTED만)
                 filtered = data.content.filter((app: LeaveApplication) =>
                     app.status === 'DRAFT' ||
                     app.status.startsWith('PENDING') ||
@@ -418,7 +448,6 @@ const LeaveApplicationBoard: React.FC = () => {
                 );
             }
 
-            // 'completed' 탭의 경우 'APPROVED' 상태만 필터링 (이 로직은 백엔드에서 처리하는 게 더 효율적)
             if (tab === 'completed') {
                 filtered = data.content.filter(app => app.status === 'APPROVED');
             }
@@ -496,7 +525,16 @@ const LeaveApplicationBoard: React.FC = () => {
                     apiPage,
                     itemsPerPage
                 ) as PaginationData;
-            } else {
+            } else if (tab === 'allPending') {
+                result = await searchPendingApplications(
+                    token,
+                    searchStartDate,
+                    searchEndDate,
+                    apiPage,
+                    itemsPerPage
+                ) as PaginationData;
+            }
+            else {
                 result = await searchCompletedApplications(
                     token,
                     searchStartDate,
@@ -536,7 +574,7 @@ const LeaveApplicationBoard: React.FC = () => {
                         apiPage,
                         itemsPerPage
                     ) as PaginationData;
-                } else if (tab === 'pending') {
+                } else if (tab === 'pending' || tab === 'allPending') {
                     result = await searchPendingApplications(
                         token,
                         searchStartDate,
@@ -655,6 +693,15 @@ const LeaveApplicationBoard: React.FC = () => {
                     >
                         승인 대기
                     </button>
+
+                    {hasHrLeavePermission && (
+                        <button
+                            onClick={() => { setTab('allPending'); setCurrentPage(1); }}
+                            className={tab === 'allPending' ? 'active' : ''}
+                        >
+                            전체 진행중
+                        </button>
+                    )}
 
                     {/* 3) 완료된 휴가원 탭 (권한이 있을 때만) */}
                     {/* 완료된 휴가원: 모든 사용자에게 보여주기 */}

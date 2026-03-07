@@ -25,6 +25,8 @@ interface VacationLedgerEntry {
     };
     totalUsed: number;
     remaining: number | null;
+    regularRemaining: number | null;
+    carryoverRemaining: number | null;
     remarks: string;
 }
 
@@ -1057,11 +1059,12 @@ const AdminVacationStatistics: React.FC = () => {
                                             <th key={month} colSpan={2}>{month}월</th>
                                         ))}
                                         <th rowSpan={2}>사용계</th>
-                                        <th rowSpan={2}>남은개수</th>
+                                        <th rowSpan={2}>정상 잔여</th>
+                                        <th rowSpan={2}>이월 잔여</th>
                                         <th rowSpan={2}>비고</th>
                                     </tr>
                                     <tr>
-                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(month => (
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(month => (
                                             <React.Fragment key={month}>
                                                 <th>사용일</th>
                                                 <th>계</th>
@@ -1078,7 +1081,8 @@ const AdminVacationStatistics: React.FC = () => {
                                             <tr key={`${entry.userName}-${entry.leaveType}-${index}`}>
                                                 {isNewUser ? (
                                                     <>
-                                                        <td rowSpan={2} className="vs-merged-cell">{entry.rowNumber}</td>
+                                                        <td rowSpan={2}
+                                                            className="vs-merged-cell">{entry.rowNumber}</td>
                                                         <td rowSpan={2} className="vs-merged-cell">{entry.deptName}</td>
                                                         <td rowSpan={2} className="vs-merged-cell">{entry.userName}</td>
                                                         <td rowSpan={2} className="vs-merged-cell">
@@ -1104,7 +1108,7 @@ const AdminVacationStatistics: React.FC = () => {
 
                                                                     return (
                                                                         <React.Fragment key={idx}>
-                                                                            {needsLineBreak && <br />}
+                                                                            {needsLineBreak && <br/>}
                                                                             <span
                                                                                 className="vs-daily-usage"
                                                                                 style={{
@@ -1126,7 +1130,8 @@ const AdminVacationStatistics: React.FC = () => {
                                                 })}
 
                                                 <td>{entry.totalUsed}</td>
-                                                <td>{entry.remaining !== null ? entry.remaining : '-'}</td>
+                                                <td>{entry.regularRemaining !== null ? entry.regularRemaining : '-'}</td>
+                                                <td>{entry.carryoverRemaining !== null ? entry.carryoverRemaining : '-'}</td>
                                                 <td>{entry.remarks}</td>
                                             </tr>
                                         );

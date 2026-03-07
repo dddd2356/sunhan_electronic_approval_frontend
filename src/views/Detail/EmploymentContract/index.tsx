@@ -11,8 +11,7 @@ import {
 import RejectModal from "../../../components/RejectModal";
 import CeoDirectorSignImage from './assets/images/선한병원직인.png';
 import { Document, Page, pdfjs } from 'react-pdf';
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
-
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 interface PageData {
     id: number;
     title: string;
@@ -22,7 +21,7 @@ interface PageData {
 interface User {
     id: string;
     name: string;
-    jobLevel: string; // 0: 직원, 1 : 부서장, 2: 진료센터장, 3:원장, 4 : 행정원장, 5 : 대표원장, 6 : Admin
+    jobLevel: string; // 0: 직원, 1 : 부서장, 2: 센터장, 3:원장, 4 : 행정원장, 5 : 대표원장, 6 : Admin
     role: string;
     userId?: string;
     userName?: string;
@@ -96,7 +95,7 @@ const EmploymentContract = () => {
     const [cookies] = useCookies(['accessToken']);
     const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const [contract, setContract] = useState<Contract | null>(null);
-    const [status, setStatus] = useState<string>('DRAFT'); // 초깃값은 'DRAFT' 또는 ''
+    const [status, setStatus] = useState<string | null>(null);
     const navigate = useNavigate();
     const [userSignatureImage, setUserSignatureImage] = useState<string | null>(null);
     const addressTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1924,9 +1923,32 @@ const EmploymentContract = () => {
         console.log("FormData updated:", formData);
     }, [formData]);
 
+    if (status === 'COMPLETED' && contract?.pdfUrl && !pdfBlobUrl && !pdfError) {
+        return <Layout>
+            <div style={{
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                height: '60vh', gap: '16px'
+            }}>
+                <div style={{
+                    width: '50px', height: '50px',
+                    border: '5px solid #e5e7eb',
+                    borderTop: '5px solid #2563eb',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite'
+                }} />
+                <div style={{ color: '#555', fontSize: '15px', fontWeight: 500 }}>문서를 불러오는 중...</div>
+                <div style={{ color: '#aaa', fontSize: '12px' }}>잠시만 기다려주세요</div>
+            </div>
+        </Layout>;
+    }
+
     return (
         <Layout>
-            <div className="contract-container">
+            {(!contract || status === null) ? (
+                <div className="loading">로딩 중...</div>
+            ) : (
+                <div className="contract-container">
                 {status === 'COMPLETED' && contract?.pdfUrl ? (
                     <div className="pdf-viewer">
                         {pdfLoading && (
@@ -1975,8 +1997,8 @@ const EmploymentContract = () => {
                                         setNumPages(numPages);
                                     }}
                                     onLoadError={(error) => {
-                                        console.error('PDF 로드 실패:', error);
-                                        setPdfError('PDF를 불러올 수 없습니다.');
+                                        console.error('PDF 로드 실패 상세:', error);
+                                        setPdfError(`PDF 로드 실패: ${error?.message || JSON.stringify(error)}`);
                                     }}
                                     loading={
                                         <div style={{
@@ -1991,9 +2013,9 @@ const EmploymentContract = () => {
                                 >
                                     <Page
                                         pageNumber={pageNumber}
-                                        width={isMobile ? Math.min(window.innerWidth - 40, 600) : 800}
-                                        renderTextLayer={false}  // ✅ true → false 변경
-                                        renderAnnotationLayer={false}  // ✅ true → false 변경
+                                        scale={isMobile ? 0.8 : 1.2}
+                                        renderTextLayer={false}
+                                        renderAnnotationLayer={false}
                                         loading={
                                             <div style={{
                                                 textAlign: 'center',
@@ -2134,7 +2156,8 @@ const EmploymentContract = () => {
                         </>
                     )}
                 </div>
-            </div>
+                </div>
+            )}
             <RejectModal
                 isOpen={rejectModalOpen}
                 onClose={() => setRejectModalOpen(false)}
