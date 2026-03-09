@@ -1772,36 +1772,42 @@ const EmploymentContract = () => {
                             <p>
                                 ※ 아래의 음영부분을 자필로 기재합니다.
                             </p>
-                            <div className="input-group">
-                                <span>근로계약서를 </span>
-                                <input
-                                    type="text"
-                                    name="receiptConfirmation1"
-                                    value={formData.receiptConfirmation1 || ''}
-                                    onChange={handleInputChange}
-                                    placeholder="교부"
-                                    className={formData.receiptConfirmation1 === '교부' ? 'receipt-correct' : 'receipt-incorrect'}
-                                    style={{
-                                        textAlign: "center",
-                                        backgroundColor: formData.receiptConfirmation1 === '교부' ? '#e8f5e8' : '#ffe8e8'
-                                    }}
-                                />
-                                <span>받았음을 </span>
-                                <input
-                                    type="text"
-                                    name="receiptConfirmation2"
-                                    value={formData.receiptConfirmation2 || ''}
-                                    onChange={handleInputChange}
-                                    placeholder="확인"
-                                    className={formData.receiptConfirmation2 === '확인' ? 'receipt-correct' : 'receipt-incorrect'}
-                                    style={{
-                                        textAlign: "center",
-                                        backgroundColor: formData.receiptConfirmation2 === '확인' ? '#e8f5e8' : '#ffe8e8'
-                                    }}
-                                />
-                                <span>합니다.</span>
+                            {/* ✅ input-group을 column으로 변경 */}
+                            <div className="input-group" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
+                                {/* 첫 번째 줄: 교부/확인 입력 */}
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px', width: '100%'}}>
+                                    <span>근로계약서를 </span>
+                                    <input
+                                        type="text"
+                                        name="receiptConfirmation1"
+                                        value={formData.receiptConfirmation1 || ''}
+                                        onChange={handleInputChange}
+                                        placeholder="교부"
+                                        className={formData.receiptConfirmation1 === '교부' ? 'receipt-correct' : 'receipt-incorrect'}
+                                        style={{
+                                            textAlign: "center",
+                                            backgroundColor: formData.receiptConfirmation1 === '교부' ? '#e8f5e8' : '#ffe8e8'
+                                        }}
+                                    />
+                                    <span>받았음을 </span>
+                                    <input
+                                        type="text"
+                                        name="receiptConfirmation2"
+                                        value={formData.receiptConfirmation2 || ''}
+                                        onChange={handleInputChange}
+                                        placeholder="확인"
+                                        className={formData.receiptConfirmation2 === '확인' ? 'receipt-correct' : 'receipt-incorrect'}
+                                        style={{
+                                            textAlign: "center",
+                                            backgroundColor: formData.receiptConfirmation2 === '확인' ? '#e8f5e8' : '#ffe8e8'
+                                        }}
+                                    />
+                                    <span>합니다.</span>
+                                </div>
+
+                                {/* ✅ 두 번째 줄: 서명 영역 - 별도 줄로 분리 */}
                                 <label className="signature-section"
-                                       style={{justifyContent: 'flex-end', width: '100%'}}>
+                                       style={{justifyContent: 'flex-end', width: '100%', marginTop: '8px'}}>
                                     <span className="signature-label">근로자 :</span>
                                     {signatures.page4_receipt.map((sig, idx) => (
                                         <React.Fragment key={idx}>
@@ -1816,16 +1822,12 @@ const EmploymentContract = () => {
                                                 className="signature-suffix-container clickable"
                                                 onClick={handleSignatureClick('page4_receipt', idx)}
                                             >
-                                    {sig.isSigned && sig.imageUrl ? (
-                                        <img
-                                            src={sig.imageUrl}
-                                            alt="서명"
-                                            className="signature-image"
-                                        />
-                                    ) : (
-                                        <span className="signature-text">(서명/인)</span>
-                                    )}
-                                    </span>
+                                            {sig.isSigned && sig.imageUrl ? (
+                                                <img src={sig.imageUrl} alt="서명" className="signature-image"/>
+                                            ) : (
+                                                <span className="signature-text">(서명/인)</span>
+                                            )}
+                                        </span>
                                         </React.Fragment>
                                     ))}
                                 </label>
@@ -1838,7 +1840,8 @@ const EmploymentContract = () => {
                                  justifyContent: 'center',
                                  marginTop: -25
                              }}>
-                            <div style={{justifyContent: 'center', marginTop: '80px', marginBottom:'40px'}} className="signature-section">
+                            <div style={{justifyContent: 'center', marginTop: '80px', marginBottom: '40px'}}
+                                 className="signature-section">
                                 <div className="date-section">
                                     <span>작성일자 : </span>
                                     <input type="date" name="contractSignDate" className="input" style={{
@@ -1936,9 +1939,9 @@ const EmploymentContract = () => {
                     borderTop: '5px solid #2563eb',
                     borderRadius: '50%',
                     animation: 'spin 0.8s linear infinite'
-                }} />
-                <div style={{ color: '#555', fontSize: '15px', fontWeight: 500 }}>문서를 불러오는 중...</div>
-                <div style={{ color: '#aaa', fontSize: '12px' }}>잠시만 기다려주세요</div>
+                }}/>
+                <div style={{color: '#555', fontSize: '15px', fontWeight: 500}}>문서를 불러오는 중...</div>
+                <div style={{color: '#aaa', fontSize: '12px'}}>잠시만 기다려주세요</div>
             </div>
         </Layout>;
     }
@@ -1949,36 +1952,36 @@ const EmploymentContract = () => {
                 <div className="loading">로딩 중...</div>
             ) : (
                 <div className="contract-container">
-                {status === 'COMPLETED' && contract?.pdfUrl ? (
-                    <div className="pdf-viewer">
-                        {pdfLoading && (
-                            <div style={{
-                                textAlign: 'center',
-                                padding: '50px',
-                                fontSize: '16px',
-                                color: '#666'
-                            }}>
-                                <div style={{ fontSize: '32px', marginBottom: '15px' }}>📄</div>
-                                <div>PDF 로딩 중...</div>
-                            </div>
-                        )}
+                    {status === 'COMPLETED' && contract?.pdfUrl ? (
+                        <div className="pdf-viewer">
+                            {pdfLoading && (
+                                <div style={{
+                                    textAlign: 'center',
+                                    padding: '50px',
+                                    fontSize: '16px',
+                                    color: '#666'
+                                }}>
+                                    <div style={{fontSize: '32px', marginBottom: '15px'}}>📄</div>
+                                    <div>PDF 로딩 중...</div>
+                                </div>
+                            )}
 
-                        {pdfError && (
-                            <div style={{
-                                textAlign: 'center',
-                                padding: '50px',
-                                color: '#dc3545'
-                            }}>
-                                <div style={{ fontSize: '32px', marginBottom: '15px' }}>⚠️</div>
-                                <div style={{ marginBottom: '20px', fontSize: '16px' }}>{pdfError}</div>
-                                <button
-                                    onClick={() => window.location.reload()}
-                                    style={{
-                                        padding: '10px 20px',
-                                        backgroundColor: '#007bff',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '5px',
+                            {pdfError && (
+                                <div style={{
+                                    textAlign: 'center',
+                                    padding: '50px',
+                                    color: '#dc3545'
+                                }}>
+                                    <div style={{fontSize: '32px', marginBottom: '15px'}}>⚠️</div>
+                                    <div style={{marginBottom: '20px', fontSize: '16px'}}>{pdfError}</div>
+                                    <button
+                                        onClick={() => window.location.reload()}
+                                        style={{
+                                            padding: '10px 20px',
+                                            backgroundColor: '#007bff',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '5px',
                                         cursor: 'pointer',
                                         fontSize: '14px'
                                     }}
