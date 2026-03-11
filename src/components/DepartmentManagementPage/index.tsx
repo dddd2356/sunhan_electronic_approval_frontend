@@ -118,7 +118,8 @@ export const DepartmentManagementPage: React.FC = () => {
     const handleOpenMembersModal = (dept: Department) => {
         setSelectedDept(dept);
         setIsMembersModalOpen(true);
-        fetchDepartmentUsers(dept.deptCode);
+        const baseDeptCode = dept.deptCode.replace(/\d+$/, ''); // IM1 → IM
+        fetchDepartmentUsers(baseDeptCode);
     };
 
     const handleCloseMembersModal = () => {
