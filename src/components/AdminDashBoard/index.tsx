@@ -45,9 +45,11 @@ interface User {
     userId: string;
     userName: string;
     deptCode: string;
+    deptName: string;
     jobLevel: string;
     role: string;
     useFlag: string;
+    passwdChangeRequired: boolean;
 }
 
 interface UserListResponse {
@@ -799,6 +801,7 @@ export const AdminDashboard: React.FC = () => {
                                 <th>Department</th>
                                 <th>Level</th>
                                 <th>Status</th>
+                                <th>PassWord</th>
                                 <th>Role</th>
                                 <th>Action</th>
                             </tr>
@@ -817,7 +820,8 @@ export const AdminDashboard: React.FC = () => {
                                                 <span className="user-id">{user.userId}</span>
                                             </div>
                                         </td>
-                                        <td className="admin-table-cell">{user.deptCode.replace(/\d+$/, '')}</td>
+                                        {/*<td className="admin-table-cell">{user.deptCode.replace(/\d+$/, '')}</td>*/}
+                                        <td className="admin-table-cell">{user.deptName || user.deptCode}</td>
                                         <td className="admin-table-cell">
                                             <span className="badge-level">Lv.{user.jobLevel}</span>
                                         </td>
@@ -825,6 +829,12 @@ export const AdminDashboard: React.FC = () => {
                                             <span
                                                 className={`status-dot ${user.useFlag === '1' ? 'active' : 'inactive'}`}></span>
                                             {user.useFlag === '1' ? 'Active' : 'Left'}
+                                        </td>
+                                        <td className="admin-table-cell">
+                                            {user.passwdChangeRequired
+                                                ? <span style={{color: '#DC2626', fontWeight: 600}}>미변경</span>
+                                                : <span style={{color: '#16A34A', fontWeight: 600}}>변경완료</span>
+                                            }
                                         </td>
                                         <td className="admin-table-cell">
                                             {user.role === 'ADMIN' ?
@@ -839,7 +849,7 @@ export const AdminDashboard: React.FC = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={6} className="admin-table-cell admin-no-results">검색 결과가 없습니다.</td>
+                                    <td colSpan={7} className="admin-table-cell admin-no-results">검색 결과가 없습니다.</td>
                                 </tr>
                             )}
                             </tbody>
@@ -917,7 +927,7 @@ export const AdminDashboard: React.FC = () => {
                                         <h3>{selectedUser.userName}</h3>
                                         <p>{selectedUser.userId}</p>
                                         <p style={{fontSize: '0.8rem', color: '#6B7280'}}>
-                                            {selectedUser.deptCode} • {selectedUser.useFlag === '1' ? '재직중' : '퇴사'}
+                                            {selectedUser.deptName || selectedUser.deptCode} • {selectedUser.useFlag === '1' ? '재직중' : '퇴사'}
                                         </p>
                                     </div>
                                 </div>

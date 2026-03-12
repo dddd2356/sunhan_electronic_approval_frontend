@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import { useCookies } from 'react-cookie';
 import axios from 'axios';
 import Layout from '../Layout';
@@ -208,6 +208,15 @@ export const DepartmentManagementPage: React.FC = () => {
         }
     };
 
+    const deptUserCountMap = useMemo(() => {
+        const map: Record<string, number> = {};
+        allUsers.forEach(u => {
+            const base = u.deptCode.replace(/\d+$/, '');
+            map[base] = (map[base] || 0) + 1;
+        });
+        return map;
+    }, [allUsers]);
+
     return (
         <Layout>
             <div className="dm-container">
@@ -279,14 +288,15 @@ export const DepartmentManagementPage: React.FC = () => {
                             <tr>
                                 <th style={{width: '150px'}}>부서 코드</th>
                                 <th>부서 이름</th>
-                                <th style={{width: '80px'}}>상태</th>
+                                <th style={{width: '100px', textAlign:"center"}}>인원</th>
+                                <th style={{width: '100px', textAlign:"center"}}>상태</th>
                                 <th style={{width: '200px', textAlign: 'right'}}>관리</th>
                             </tr>
                             </thead>
                             <tbody>
                             {departments.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="dm-empty-state">
+                                    <td colSpan={5} className="dm-empty-state">
                                         등록된 부서가 없습니다.
                                     </td>
                                 </tr>
@@ -297,9 +307,13 @@ export const DepartmentManagementPage: React.FC = () => {
                                             <span className="dm-badge">{dept.deptCode}</span>
                                         </td>
                                         <td data-label="부서 이름" style={{fontWeight: 500}}>{dept.deptName}</td>
+                                        <td data-label="인원" style={{textAlign: 'center', color: '#374151'}}>
+                                            {deptUserCountMap[dept.deptCode] || 0}명
+                                        </td>
                                         <td data-label="상태">
-                                            <span className={`dm-status-badge ${dept.useFlag === '1' ? 'active' : 'inactive'}`}>
-                                                {dept.useFlag === '1' ? '활성' : '비활성'}
+                                            <span
+                                                className={`dm-status-badge ${dept.useFlag === '1' ? 'active' : 'inactive'}`}>
+                                                {dept.useFlag === '1' ? 'Active' : 'InActive'}
                                             </span>
                                         </td>
                                         <td>
