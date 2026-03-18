@@ -159,7 +159,7 @@ const PositionManagement: React.FC = () => {
                     <div className="pm-header-title">
                         <h1>직책 관리</h1>
                         <span className="pm-header-info">
-                            근무표 및 결재 라인에 표시될 직책 목록을 관리합니다.
+                            근무표에 표시될 직책 목록을 관리합니다.
                         </span>
                     </div>
                     <button className="pm-btn-create" onClick={handleCreate}>
