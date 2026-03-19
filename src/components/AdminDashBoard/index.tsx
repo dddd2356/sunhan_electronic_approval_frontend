@@ -999,14 +999,14 @@ export const AdminDashboard: React.FC = () => {
                                                 </div>
                                             </div>
 
-                                            {currentUser?.jobLevel === '6' && (
+
                                                 <div
                                                     className={`password-reset-zone ${showPasswordSection ? 'active' : ''}`}>
                                                     {/* 헤더 영역 */}
                                                     <div className="password-header">
                                                         <div className="password-label">
                                                             <Lock size={16}/>
-                                                            <span>비밀번호 재설정 (최고관리자)</span>
+                                                            <span>비밀번호 재설정</span>
                                                         </div>
                                                         <button
                                                             onClick={() => {
@@ -1051,7 +1051,6 @@ export const AdminDashboard: React.FC = () => {
                                                         </div>
                                                     )}
                                                 </div>
-                                            )}
 
                                             {/* Admin Role */}
                                             <div className="permission-item" style={{marginTop: '1rem'}}>

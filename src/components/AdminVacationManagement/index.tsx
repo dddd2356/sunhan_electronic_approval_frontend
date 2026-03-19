@@ -185,8 +185,8 @@ const AdminVacationManagement: React.FC = () => {
                 setVacationStatus(data);
 
                 // 이월/정상 값 설정
-                setAnnualCarryover(data.annualCarryoverDays || 0);
-                setAnnualRegular(data.annualRegularDays || 15);
+                setAnnualCarryover(data.annualCarryoverDays ?? 0);
+                setAnnualRegular(data.annualRegularDays ?? 15);
             }
         } catch (err: any) {
             console.error('휴가 현황 조회 실패:', err);
@@ -435,39 +435,39 @@ const AdminVacationManagement: React.FC = () => {
                                             <div className="vacation-current-stat carryover">
                                                 <span className="vacation-current-stat-label">이월 일수</span>
                                                 <span className="vacation-current-stat-value">
-                                                    {vacationStatus.annualCarryoverDays || 0}일
+                                                    {vacationStatus.annualCarryoverDays ?? 0}일
                                                 </span>
                                             </div>
                                             <div className="vacation-current-stat used">
                                                 <span className="vacation-current-stat-label">이월 사용</span>
                                                 <span className="vacation-current-stat-value">
-                                                    {vacationStatus.usedCarryoverDays || 0}일
+                                                    {vacationStatus.usedCarryoverDays ?? 0}일
                                                 </span>
                                             </div>
                                             <div className="vacation-current-stat remaining">
                                                 <span className="vacation-current-stat-label">이월 미사용</span>
                                                 <span className="vacation-current-stat-value">
-                                                    {(vacationStatus.annualCarryoverDays || 0) - (vacationStatus.usedCarryoverDays || 0)}일
+                                                    {(vacationStatus.annualCarryoverDays ?? 0) - (vacationStatus.usedCarryoverDays ?? 0)}일
                                                 </span>
                                             </div>
 
                                             <div className="vacation-current-stat regular">
                                                 <span className="vacation-current-stat-label">정상 일수</span>
                                                 <span className="vacation-current-stat-value">
-                                                    {vacationStatus.annualRegularDays || 15}일
+                                                    {vacationStatus.annualRegularDays ?? 15}일
                                                 </span>
                                             </div>
                                             <div className="vacation-current-stat used">
                                                 <span className="vacation-current-stat-label">정상 사용</span>
                                                 <span className="vacation-current-stat-value">
-                                                    {vacationStatus.usedRegularDays || 0}일
+                                                    {vacationStatus.usedRegularDays ?? 0}일
                                                 </span>
                                             </div>
 
                                             <div className="vacation-current-stat remaining">
                                                 <span className="vacation-current-stat-label">정상 미사용</span>
                                                 <span className="vacation-current-stat-value">
-                                                    {(vacationStatus.annualRegularDays || 0) - (vacationStatus.usedRegularDays || 0)}일
+                                                    {(vacationStatus.annualRegularDays ?? 0) - (vacationStatus.usedRegularDays ?? 0)}일
                                                 </span>
                                             </div>
                                             <div className="vacation-current-stat total">
