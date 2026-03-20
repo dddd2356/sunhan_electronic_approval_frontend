@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useCookies } from 'react-cookie';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Layout from '../Layout';
 import './style.css';
@@ -73,9 +72,6 @@ interface DepartmentSummary {
 }
 
 const AdminVacationStatistics: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
-
     const [selectedDept, setSelectedDept] = useState<DepartmentStatistics | null>(null);
     const [loading, setLoading] = useState(true);
     const [deptLoading, setDeptLoading] = useState(false);
@@ -131,10 +127,8 @@ const AdminVacationStatistics: React.FC = () => {
 
             const response = await fetch('/api/v1/leave-application/admin/recalculate-total-days', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
             });
 
             if (response.ok) {
@@ -176,11 +170,7 @@ const AdminVacationStatistics: React.FC = () => {
 
     const fetchDepartmentNames = async () => {
         try {
-            const response = await fetch('/api/v1/departments/names', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const response = await fetch('/api/v1/departments/names', { credentials: 'include' });
             if (response.ok) {
                 const data = await response.json();
                 setDepartmentNames(data);
@@ -207,16 +197,7 @@ const AdminVacationStatistics: React.FC = () => {
             setLoading(true);
             setError('');
 
-            const response = await fetch(
-                `/api/v1/vacation/statistics/summary`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                }
-            );
+            const response = await fetch(`/api/v1/vacation/statistics/summary`, { credentials: 'include' });
 
             if (response.ok) {
                 const data = await response.json();
@@ -264,13 +245,7 @@ const AdminVacationStatistics: React.FC = () => {
 
             const response = await fetch(
                 `/api/v1/vacation/statistics/department/${deptCode}?sortBy=${sortBy}&sortOrder=${sortOrder}`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                }
+                { credentials: 'include' }
             );
 
             if (response.ok) {
@@ -301,21 +276,14 @@ const AdminVacationStatistics: React.FC = () => {
                 url = `/api/v1/vacation/statistics/ledger/users?year=${ledgerYear}`;
                 options = {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify(ledgerUserIds)
                 };
             } else {
                 // 부서별 조회
                 url = `/api/v1/vacation/statistics/ledger?deptCode=${ledgerDeptCode}&leaveType=ALL&year=${ledgerYear}`;
-                options = {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                };
+                options = { credentials: 'include' };
             }
 
             const response = await fetch(url, options);
@@ -341,20 +309,13 @@ const AdminVacationStatistics: React.FC = () => {
                 url = `/api/v1/vacation/statistics/ledger/excel/users?year=${ledgerYear}`;
                 options = {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify(ledgerUserIds)
                 };
             } else {
                 url = `/api/v1/vacation/statistics/ledger/excel?deptCode=${ledgerDeptCode}&leaveType=ALL&year=${ledgerYear}`;
-                options = {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                };
+                options = { credentials: 'include' };
             }
 
             const response = await fetch(url, options);
@@ -407,10 +368,8 @@ const AdminVacationStatistics: React.FC = () => {
                 `/api/v1/vacation/statistics/specific`,
                 {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify(userIds)
                 }
             );
@@ -488,10 +447,8 @@ const AdminVacationStatistics: React.FC = () => {
                     `/api/v1/vacation/statistics/excel/custom`,
                     {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
                         body: JSON.stringify(selectedEmployees)
                     }
                 );
@@ -512,9 +469,7 @@ const AdminVacationStatistics: React.FC = () => {
                 const response = await fetch(
                     `/api/v1/vacation/statistics/excel/department/${selectedDept.deptCode}?sortBy=${sortBy}&sortOrder=${sortOrder}`,
                     {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
+                        credentials: 'include'
                     }
                 );
 

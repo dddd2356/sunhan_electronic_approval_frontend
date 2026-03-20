@@ -1,6 +1,5 @@
 import React, {useState, useEffect, useMemo} from 'react';
-import { useCookies } from 'react-cookie';
-import axios from 'axios';
+import axiosInstance from '../../views/Authentication/axiosInstance';
 import Layout from '../Layout';
 import './style.css';
 // ✅ 필요한 아이콘 추가 Import
@@ -21,9 +20,7 @@ interface User {
 }
 
 export const DepartmentManagementPage: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
-    const API_BASE_URL = process.env.REACT_APP_API_URL;
+
     const [showInactive, setShowInactive] = useState<boolean>(false);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -57,10 +54,9 @@ export const DepartmentManagementPage: React.FC = () => {
         }
 
         try {
-            await axios.put(
-                `${API_BASE_URL}/departments/${editingDept.deptCode}`,
-                { deptName: newDeptNameForEdit.trim() },
-                { headers: { Authorization: `Bearer ${token}` } }
+            await axiosInstance.put(
+                `/departments/${editingDept.deptCode}`,
+                { deptName: newDeptNameForEdit.trim() }
             );
 
             setSuccess('부서명이 성공적으로 수정되었습니다.');
@@ -81,12 +77,10 @@ export const DepartmentManagementPage: React.FC = () => {
         try {
             // ✅ showInactive에 따라 다른 API 호출
             const endpoint = showInactive
-                ? `${API_BASE_URL}/departments/all`
-                : `${API_BASE_URL}/departments`;
+                ? `/departments/all`
+                : `/departments`;
 
-            const response = await axios.get(endpoint, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await axiosInstance.get(endpoint);
             setDepartments(response.data);
         } catch (err) {
             console.error('부서 목록 조회 실패', err);
@@ -95,9 +89,7 @@ export const DepartmentManagementPage: React.FC = () => {
 
     const fetchAllUsers = async () => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/user/all`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await axiosInstance.get(`/user/all`);
             setAllUsers(response.data);
         } catch (err) {
             console.error('사용자 목록 조회 실패', err);
@@ -106,9 +98,7 @@ export const DepartmentManagementPage: React.FC = () => {
 
     const fetchDepartmentUsers = async (deptCode: string) => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/departments/${deptCode}/users`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await axiosInstance.get(`/departments/${deptCode}/users`);
             setDeptUsers(response.data);
         } catch (err) {
             console.error('부서 사용자 조회 실패', err);
@@ -135,11 +125,7 @@ export const DepartmentManagementPage: React.FC = () => {
         setLoading(true);
 
         try {
-            await axios.post(
-                `${API_BASE_URL}/departments`,
-                { deptCode: newDeptCode, deptName: newDeptName },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            await axiosInstance.post(`/departments`, { deptCode: newDeptCode, deptName: newDeptName });
 
             setSuccess('성공적으로 부서가 생성되었습니다.');
             setNewDeptCode('');
@@ -160,11 +146,7 @@ export const DepartmentManagementPage: React.FC = () => {
         if (!window.confirm(`'${dept.deptName}' 부서를 ${action}하시겠습니까?`)) return;
 
         try {
-            await axios.put(
-                `${API_BASE_URL}/departments/${dept.deptCode}/toggle`,
-                {},
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            await axiosInstance.put(`/departments/${dept.deptCode}/toggle`, {});
 
             setSuccess(`부서가 ${action}되었습니다.`);
             fetchDepartments();
@@ -190,11 +172,7 @@ export const DepartmentManagementPage: React.FC = () => {
         }
 
         try {
-            await axios.put(
-                `${API_BASE_URL}/admin/users/${userId}/department`,
-                { deptCode: targetDeptCode },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            await axiosInstance.put(`/admin/users/${userId}/department`, { deptCode: targetDeptCode });
 
             alert(`${user.userName}님이 이동되었습니다.`);
             fetchAllUsers();

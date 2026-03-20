@@ -1,10 +1,10 @@
 import React, {useEffect, useState, useRef} from 'react';
-import {useCookies} from 'react-cookie';
 import Layout from '../../../components/Layout';
 import SignatureCanvas from 'react-signature-canvas';
 import './style.css';
 import NotificationPolicy from "../../../components/NotificationPolicy";
-import axios from "axios";
+import axiosInstance from "../../../views/Authentication/axiosInstance";
+import { toSafeDataUrl } from '../../../utils/imageUtils';
 
 interface User {
     id?: string;
@@ -25,8 +25,6 @@ interface User {
 }
 
 const MyPage: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -77,16 +75,14 @@ const MyPage: React.FC = () => {
     useEffect(() => {
         const fetchDepartmentNames = async () => {
             try {
-                const response = await axios.get('/api/v1/departments/names', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const response = await axiosInstance.get('/departments/names');
                 setDepartmentNames(response.data);
             } catch (error) {
                 console.error('부서 이름 조회 실패:', error);
             }
         };
         fetchDepartmentNames();
-    }, [token]);
+    }, []);
 
     useEffect(() => {
         fetchMyProfile();
@@ -95,13 +91,7 @@ const MyPage: React.FC = () => {
     const fetchMyProfile = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/v1/user/me', {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? {Authorization: `Bearer ${token}`} : {})
-                },
-                credentials: 'include'
-            });
+            const res = await fetch('/api/v1/user/me', { credentials: 'include' });
             if (!res.ok) throw new Error('사용자 정보를 불러올 수 없습니다.');
             const data = await res.json();
 
@@ -199,10 +189,7 @@ const MyPage: React.FC = () => {
 
             const res = await fetch(`/api/v1/user/update-profile/${user?.userId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
+                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify(body)
             });
@@ -241,8 +228,16 @@ const MyPage: React.FC = () => {
 
         const reader = new FileReader();
         reader.onload = (event) => {
-            setUploadedImage(event.target?.result as string);
-            setSigError('');
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d')!.drawImage(img, 0, 0);
+                setUploadedImage(canvas.toDataURL('image/png'));
+                setSigError('');
+            };
+            img.src = event.target?.result as string;
         };
         reader.readAsDataURL(file);
     };
@@ -283,9 +278,6 @@ const MyPage: React.FC = () => {
         try {
             const resp = await fetch(`/api/v1/user/${user?.userId}/signature`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
                 body: form,
                 credentials: 'include',
             });
@@ -433,9 +425,15 @@ const MyPage: React.FC = () => {
                                         <div className="up-signature-display">
                                             {user.signimage ? (
                                                 <img
-                                                    src={`data:image/png;base64,${user.signimage.replace(/\s/g, '')}`}
+                                                    src={toSafeDataUrl(user.signimage)}
                                                     alt="서명"
                                                     className="up-signature-img"
+                                                    onError={(e) => {
+                                                        if (user.signpath) {
+                                                            (e.target as HTMLImageElement).src = `${process.env.REACT_APP_SERVER_URL || ''}${user.signpath}`;
+                                                            (e.target as HTMLImageElement).onerror = null;
+                                                        }
+                                                    }}
                                                 />
                                             ) : user.signpath ? (
                                                 <img

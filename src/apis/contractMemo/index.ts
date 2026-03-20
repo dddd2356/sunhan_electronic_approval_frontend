@@ -1,4 +1,4 @@
-import axios from 'axios';  // 기존 import 유지
+import axiosInstance from '../../views/Authentication/axiosInstance';
 
 export interface ContractMemo {
     id: number;
@@ -11,30 +11,25 @@ export interface ContractMemo {
 const API_BASE = '';
 
 /** 유틸: 토큰이 있으면 Authorization 헤더 반환 */
-const authHeader = (token?: string) =>
-    token ? {headers: {Authorization: `Bearer ${token}`}} : undefined;
-
-
-export const createMemo = async (userId: string, memoText: string, token?: string): Promise<ContractMemo> => {
-    const resp = await axios.post(`${API_BASE}/api/v1/memo/${userId}`, { memoText }, authHeader(token));
+export const createMemo = async (userId: string, memoText: string): Promise<ContractMemo> => {
+    const resp = await axiosInstance.post(`/memo/${userId}`, { memoText });
     return resp.data;
 };
 
-export const updateMemo = async (memoId: number, memoText: string, token?: string): Promise<ContractMemo> => {
-    const resp = await axios.put(`${API_BASE}/api/v1/memo/${memoId}`, { memoText }, authHeader(token));
+export const updateMemo = async (memoId: number, memoText: string): Promise<ContractMemo> => {
+    const resp = await axiosInstance.put(`/memo/${memoId}`, { memoText });
     return resp.data;
 };
 
-export const deleteMemo = async (memoId: number, token?: string): Promise<void> => {
-    await axios.delete(`${API_BASE}/api/v1/memo/${memoId}`, authHeader(token));
+export const deleteMemo = async (memoId: number): Promise<void> => {
+    await axiosInstance.delete(`/memo/${memoId}`);
 };
 
-export const getMyMemos = async (token?: string): Promise<ContractMemo[]> => {
-    const resp = await axios.get(`${API_BASE}/api/v1/memo/my`, authHeader(token));
+export const getMyMemos = async (): Promise<ContractMemo[]> => {
+    const resp = await axiosInstance.get(`/memo/my`);
     return resp.data;
 };
-
-export const getUserMemos = async (userId: string, token?: string): Promise<ContractMemo[]> => {
-    const resp = await axios.get(`${API_BASE}/api/v1/memo/${userId}`, authHeader(token));
+export const getUserMemos = async (userId: string): Promise<ContractMemo[]> => {
+    const resp = await axiosInstance.get(`/memo/${userId}`);
     return resp.data;
 };

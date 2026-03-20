@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useCookies } from 'react-cookie';
 import Layout from '../../components/Layout';
 import { getUserMemos, createMemo, updateMemo, deleteMemo, ContractMemo } from '../../apis/contractMemo';
 import './style.css';
@@ -26,9 +25,6 @@ const MemoSkeleton = () => (
 );
 
 const AdminMemoManagement: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
-
     // 상태 관리
     const [isHR, setIsHR] = useState(false);
     const [users, setUsers] = useState<User[]>([]); // 전체 유저 (검색용)
@@ -52,7 +48,7 @@ const AdminMemoManagement: React.FC = () => {
     useEffect(() => {
         checkPermissions();
         fetchUsers();
-    }, [token]);
+    }, []);
 
     // 검색 로직
     useEffect(() => {
@@ -69,7 +65,7 @@ const AdminMemoManagement: React.FC = () => {
 
     const checkPermissions = async () => {
         try {
-            const user = await fetchCurrentUser(token);
+            const user = await fetchCurrentUser();
             // 실제 권한 로직에 맞춰 수정 (예: 'HR_ADMIN' 등)
             setIsHR(user.permissions?.includes('HR_CONTRACT') || false);
         } catch (err) {
@@ -80,9 +76,7 @@ const AdminMemoManagement: React.FC = () => {
     const fetchUsers = async () => {
         try {
             setLoadingUsers(true);
-            const response = await fetch('/api/v1/admin/users', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await fetch('/api/v1/admin/users', { credentials: 'include' });
             if (response.ok) {
                 const data = await response.json();
                 setUsers(data);
@@ -105,7 +99,7 @@ const AdminMemoManagement: React.FC = () => {
     const fetchMemos = async (userId: string) => {
         setLoadingMemos(true);
         try {
-            const data = await getUserMemos(userId, token);
+            const data = await getUserMemos(userId);
             setMemos(data);
         } catch (err) {
             console.error("메모 로드 실패", err);
@@ -127,7 +121,7 @@ const AdminMemoManagement: React.FC = () => {
     const handleCreateMemo = async () => {
         if (!selectedUser || !newMemoText.trim()) return;
         try {
-            await createMemo(selectedUser.userId, newMemoText, token);
+            await createMemo(selectedUser.userId, newMemoText);
             setNewMemoText('');
             fetchMemos(selectedUser.userId);
         } catch (err) {
@@ -139,7 +133,7 @@ const AdminMemoManagement: React.FC = () => {
         if (!selectedUser) return;
         setUpdating(true);
         try {
-            await updateMemo(memoId, editingMemoText, token);
+            await updateMemo(memoId, editingMemoText);
             setEditingMemoId(null);
             setEditingMemoText('');
             fetchMemos(selectedUser.userId);
@@ -153,7 +147,7 @@ const AdminMemoManagement: React.FC = () => {
     const handleDeleteMemo = async (memoId: number) => {
         if (!window.confirm("정말 삭제하시겠습니까?")) return;
         try {
-            await deleteMemo(memoId, token);
+            await deleteMemo(memoId);
             if (selectedUser) fetchMemos(selectedUser.userId);
         } catch (err) {
             alert("삭제 실패");

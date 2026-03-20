@@ -11,7 +11,6 @@ type AttachmentDto = {
 
 interface Props {
     leaveApplicationId: number;
-    token: string;
     initialAttachments?: AttachmentDto[];
     onChange?: (attachments: AttachmentDto[]) => void;
     disabled?: boolean; // 읽기전용 제어
@@ -30,7 +29,7 @@ const prefixAttachmentName = (att: AttachmentDto) => {
     return `attachment_${att.id}_${safeName}`;
 };
 
-const LeaveAttachments: React.FC<Props> = ({ leaveApplicationId, token, initialAttachments = [], onChange, disabled = false, readOnly = false }) => {
+const LeaveAttachments: React.FC<Props> = ({ leaveApplicationId, initialAttachments = [], onChange, disabled = false, readOnly = false }) => {
     const [attachments, setAttachments] = useState<AttachmentDto[]>(initialAttachments);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -49,7 +48,7 @@ const LeaveAttachments: React.FC<Props> = ({ leaveApplicationId, token, initialA
             const tooLarge = fileArray.find(f => f.size > 10*1024*1024);
             if (tooLarge) throw new Error(`${tooLarge.name} 파일이 너무 큽니다. (최대 10MB)`);
 
-            const uploaded = await uploadAttachments(leaveApplicationId, fileArray, token);
+            const uploaded = await uploadAttachments(leaveApplicationId, fileArray);
             const newList = [...attachments, ...uploaded];
             setAttachments(newList);
             onChange?.(newList);
@@ -66,7 +65,7 @@ const LeaveAttachments: React.FC<Props> = ({ leaveApplicationId, token, initialA
         if (disabled || readOnly) return;
         setError(null);
         try {
-            await deleteAttachmentApi(leaveApplicationId, attachmentId, token);
+            await deleteAttachmentApi(leaveApplicationId, attachmentId);
             const newList = attachments.filter(a => a.id !== attachmentId);
             setAttachments(newList);
             onChange?.(newList);
@@ -77,7 +76,7 @@ const LeaveAttachments: React.FC<Props> = ({ leaveApplicationId, token, initialA
 
     const handleDownload = async (attachmentId: number, att: AttachmentDto) => {
         try {
-            const blob = await downloadAttachmentApi(attachmentId, token);
+            const blob = await downloadAttachmentApi(attachmentId);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;

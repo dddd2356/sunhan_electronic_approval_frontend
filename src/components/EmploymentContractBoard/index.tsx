@@ -1,5 +1,4 @@
 import React, {useState, useEffect, useMemo} from 'react';
-import { useCookies } from 'react-cookie';
 import './style.css';
 import Layout from "../Layout";
 import {
@@ -44,7 +43,6 @@ interface CreateContractModalProps {
     onClose: () => void;
     onSubmit: (employeeId: string) => void;
     users: User[];
-    token: string;
 }
 
 // 조직도 모달 컴포넌트
@@ -52,8 +50,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({
                                                                      isOpen,
                                                                      onClose,
                                                                      onSubmit,
-                                                                     users,
-                                                                     token  // 추가
+                                                                     users
                                                                  }) => {
     const navigate = useNavigate();
     const [selectedEmployee, setSelectedEmployee] = useState<string>('');
@@ -98,7 +95,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({
 
         setLoadingPrevious(true);
         try {
-            const contracts = await fetchPreviousContracts(selectedEmployee, token);
+            const contracts = await fetchPreviousContracts(selectedEmployee);
             setPreviousContracts(contracts);
             setShowPreviousContracts(true);
         } catch (error) {
@@ -113,7 +110,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({
     const handleSelectPrevious = async (previousContractId: number) => {
         try {
             // 빈 계약서 생성
-            const newContract = await createContract(selectedEmployee, token);
+            const newContract = await createContract(selectedEmployee);
             if (newContract && newContract.id) {
                 // 편집 페이지로 이동하면서 이전 계약서 ID 전달
                 navigate(`/detail/employment-contract/edit/${newContract.id}?loadFrom=${previousContractId}`);
@@ -292,8 +289,6 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({
 };
 
 const EmploymentContractBoard: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -316,10 +311,8 @@ const EmploymentContractBoard: React.FC = () => {
     };
     // 현재 사용자 정보 가져오기
     useEffect(() => {
-        if (token) {
-            loadCurrentUser();
-        }
-    }, [token]);
+        loadCurrentUser();
+    }, []);
 
     // 계약서 목록 가져오기 (currentUser 또는 tab 변경 시)
     useEffect(() => {
@@ -348,7 +341,7 @@ const EmploymentContractBoard: React.FC = () => {
 
     const loadCurrentUser = async () => {
         try {
-            const userData = await fetchCurrentUser(token);
+            const userData = await fetchCurrentUser();
             setCurrentUser(userData);
         } catch (err) {
             console.error(err);
@@ -370,7 +363,7 @@ const EmploymentContractBoard: React.FC = () => {
         setIsLoadingContracts(true);
         setLoading(true);
         try {
-            const contractsData = await fetchContracts(tab === 'completed', token);
+            const contractsData = await fetchContracts(tab === 'completed');
             const myIdCandidates = [
                 currentUser?.id,
                 currentUser?.userId,
@@ -444,7 +437,7 @@ const EmploymentContractBoard: React.FC = () => {
             }
 
             console.log('🔄 직원 목록 조회 중...');
-            const usersData = await fetchUsers(token);
+            const usersData = await fetchUsers();
 
             const activeOnly = (usersData || []).filter((u: any) => String(u.useFlag ?? '1') === '1');
             setUsers(activeOnly as any);
@@ -463,7 +456,7 @@ const EmploymentContractBoard: React.FC = () => {
 
     const handleCreateContract = async (employeeId: string) => {
         try {
-            const newContract = await createContract(employeeId, token);
+            const newContract = await createContract(employeeId);
             if (newContract && (newContract as any).id) {
                 navigate(`/detail/employment-contract/edit/${(newContract as any).id}`);
             } else {
@@ -756,7 +749,6 @@ const EmploymentContractBoard: React.FC = () => {
                     onClose={() => setIsCreateModalOpen(false)}
                     onSubmit={handleCreateContract}
                     users={users}
-                    token={token}
                 />
             </div>
         </Layout>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useCookies } from 'react-cookie';
 import Layout from '../Layout';
 import {
     fetchWorkScheduleDetail,
@@ -13,11 +12,12 @@ import {
 } from '../../apis/workSchedule';
 import { fetchPositionsByDept, Position } from '../../apis/Position';
 import './style.css';
-import axios from "axios";
+import axiosInstance from "../../views/Authentication/axiosInstance";
 import ApprovalLineSelector from "../ApprovalLineSelector";
 import RejectModal from "../RejectModal";
 import OrgChartModal from "../OrgChartModal";
 import OrganizationChart from "../OrganizationChart";
+import { toSafeDataUrl } from '../../utils/imageUtils';
 
 interface TextRange {
     entryId: number;
@@ -29,8 +29,6 @@ interface TextRange {
 const WorkScheduleEditor: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const [scheduleData, setScheduleData] = useState<WorkScheduleDetail | null>(null);
     const [positions, setPositions] = useState<Position[]>([]);
     const [loading, setLoading] = useState(true);
@@ -108,10 +106,7 @@ const WorkScheduleEditor: React.FC = () => {
     const loadHolidays = async (year: number) => {
         try {
             // ✅ 백엔드 프록시를 통해 호출
-            const response = await axios.get(
-                `/api/v1/holidays?year=${year}`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const response = await axiosInstance.get(`/holidays?year=${year}`);
 
             const holidaySet = new Set<string>();
             const items = response.data.response?.body?.items?.item;
@@ -215,12 +210,9 @@ const WorkScheduleEditor: React.FC = () => {
             setIsGeneratingPdf(true);
 
             const timestamp = new Date().getTime();
-            const response = await axios.get(
-                `/api/v1/work-schedules/${id}/pdf?t=${timestamp}`,
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                    responseType: 'blob'
-                }
+            const response = await axiosInstance.get(
+                `/work-schedules/${id}/pdf?t=${timestamp}`,
+                { responseType: 'blob' }
             );
 
             // 202: 생성 중
@@ -264,8 +256,7 @@ const WorkScheduleEditor: React.FC = () => {
             await new Promise(resolve => setTimeout(resolve, 3000));
 
             try {
-                const response = await axios.get(`/api/v1/work-schedules/${id}/pdf`, {
-                    headers: { Authorization: `Bearer ${token}` },
+                const response = await axiosInstance.get(`/work-schedules/${id}/pdf`, {
                     responseType: 'blob'
                 });
 
@@ -308,11 +299,7 @@ const WorkScheduleEditor: React.FC = () => {
         // handleAddMembers 자체는 'void'를 반환하도록 유지
         (async () => {
             try {
-                await axios.post(
-                    `/api/v1/work-schedules/${id}/members`,
-                    { userIds },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                await axiosInstance.post(`/work-schedules/${id}/members`, { userIds });
 
                 alert('인원이 추가되었습니다.');
                 setShowAddMemberModal(false);
@@ -345,12 +332,9 @@ const WorkScheduleEditor: React.FC = () => {
         }
 
         try {
-            await axios.delete(
-                `/api/v1/work-schedules/${id}/members`,
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                    data: { entryIds: selectedEntriesForRemoval }
-                }
+            await axiosInstance.delete(
+                `/work-schedules/${id}/members`,
+                { data: { entryIds: selectedEntriesForRemoval } }
             );
 
             alert('인원이 삭제되었습니다.');
@@ -370,11 +354,7 @@ const WorkScheduleEditor: React.FC = () => {
         }
 
         try {
-            await copyFromSpecificMonth(
-                parseInt(id!),
-                copySourceMonth,
-                token
-            );
+            await copyFromSpecificMonth(parseInt(id!), copySourceMonth);
 
             alert('데이터 불러오기 완료');
             setShowCopyModal(false);
@@ -432,11 +412,7 @@ const WorkScheduleEditor: React.FC = () => {
             }
 
             try {
-                const response = await axios.get(
-                    `/api/v1/work-schedules/${id}/can-final-approve`,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
-
+                const response = await axiosInstance.get(`/work-schedules/${id}/can-final-approve`);
                 setCanFinalApprove(response.data.canFinalApprove);
 
             } catch (err) {
@@ -459,10 +435,9 @@ const WorkScheduleEditor: React.FC = () => {
         try {
             const currentStep = scheduleData?.approvalSteps?.find((step: any) => step.isCurrent);
 
-            await axios.post(
-                `/api/v1/work-schedules/${id}/final-approve`,
-                { stepOrder: currentStep?.stepOrder },
-                { headers: { Authorization: `Bearer ${token}` } }
+            await axiosInstance.post(
+                `/work-schedules/${id}/final-approve`,
+                { stepOrder: currentStep?.stepOrder }
             );
 
             alert('전결 승인이 완료되었습니다.');
@@ -538,13 +513,11 @@ const WorkScheduleEditor: React.FC = () => {
             } else {
                 if (window.confirm('서명하시겠습니까?')) {
                     try {
-                        const userRes = await fetch('/api/v1/user/me', {
-                            headers: { Authorization: `Bearer ${token}` }
-                        });
+                        const userRes = await fetch('/api/v1/user/me', { credentials: 'include' });
                         const userData = await userRes.json();
 
                         if (userData.signimage) {
-                            const signatureUrl = `data:image/png;base64,${userData.signimage}`;
+                            const signatureUrl = toSafeDataUrl(userData.signimage);
                             setLocalCreatorSignatureUrl(signatureUrl);
                             setLocalCreatorSigned(true);
 
@@ -618,9 +591,7 @@ const WorkScheduleEditor: React.FC = () => {
 
         try {
             // ✅ 서명 이미지 가져오기
-            const userRes = await fetch('/api/v1/user/me', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const userRes = await fetch('/api/v1/user/me', { credentials: 'include' });
             const userData = await userRes.json();
 
             if (!userData.signimage) {
@@ -628,14 +599,10 @@ const WorkScheduleEditor: React.FC = () => {
                 return;
             }
 
-            const signatureUrl = `data:image/png;base64,${userData. signimage}`;
+            const signatureUrl = toSafeDataUrl(userData.signimage);
 
             // ✅ API 호출 (서명 저장)
-            await axios.post(
-                `/api/v1/work-schedules/${id}/sign-step`,
-                { stepOrder },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            await axiosInstance.post(`/work-schedules/${id}/sign-step`, { stepOrder });
 
             // ✅ [중요] 먼저 signedSteps에 추가
             setSignedSteps(prev => new Set(Array.from(prev).concat(stepOrder)));
@@ -774,11 +741,7 @@ const WorkScheduleEditor: React.FC = () => {
 
             console.log('💾 저장할 설정:', configToSave);
 
-            await axios.post(
-                '/api/v1/dept-duty-config',
-                configToSave,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            await axiosInstance.post('/dept-duty-config', configToSave);
 
             setDutyConfig(configToSave);
             setShowConfigModal(false);
@@ -796,7 +759,7 @@ const WorkScheduleEditor: React.FC = () => {
         if (!entry) return;
 
         const newWorkData = { ...entry.workData, longTextValue: text };
-        await updateWorkData(parseInt(id!), [{ entryId, workData: newWorkData }], token);
+        await updateWorkData(parseInt(id!), [{ entryId, workData: newWorkData }]);
     };
 
     // 임시저장 함수
@@ -819,32 +782,27 @@ const WorkScheduleEditor: React.FC = () => {
             }));
 
             // ✅ 하나의 API 호출로 모든 업데이트
-            await updateWorkData(parseInt(id!), updates, token);
+            await updateWorkData(parseInt(id!), updates);
 
             // ✅ 하단 비고 저장
             if (scheduleData.schedule.remarks !== undefined) {
-                await axios.put(
-                    `/api/v1/work-schedules/${id}/remarks`,
-                    { remarks: scheduleData.schedule.remarks },
-                    { headers: { Authorization: `Bearer ${token}` } }
+                await axiosInstance.put(
+                    `/work-schedules/${id}/remarks`,
+                    { remarks: scheduleData.schedule.remarks }
                 );
             }
 
             // ✅ [수정] 작성자 서명은 DRAFT 상태일 때만 업데이트
             if (scheduleData.schedule.approvalStatus === 'DRAFT') {
-                await axios.put(
-                    `/api/v1/work-schedules/${id}/creator-signature`,
-                    { isSigned: localCreatorSigned },
-                    { headers: { Authorization: `Bearer ${token}` } }
+                await axiosInstance.put(
+                    `/work-schedules/${id}/creator-signature`,
+                    { isSigned: localCreatorSigned }
                 );
             }
 
             // ✅ PDF 삭제 (APPROVED 상태일 때만)
             if (scheduleData.schedule.approvalStatus === 'APPROVED') {
-                await axios.delete(
-                    `/api/v1/work-schedules/${id}/pdf`,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                await axiosInstance.delete(`/work-schedules/${id}/pdf`);
             }
 
             const message = scheduleData.schedule.approvalStatus === 'APPROVED'
@@ -941,10 +899,7 @@ const WorkScheduleEditor: React.FC = () => {
     const loadApprovalLines = async () => {
         try {
             // ✅ 내가 생성한 결재라인만 조회
-            const response = await axios.get(
-                '/api/v1/approval-lines/my?documentType=WORK_SCHEDULE',
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const response = await axiosInstance.get('/approval-lines/my?documentType=WORK_SCHEDULE');
             setApprovalLines(response.data);
         } catch (err) {
             console.error('결재라인 조회 실패:', err);
@@ -956,20 +911,16 @@ const WorkScheduleEditor: React.FC = () => {
             setLoading(true);
 
             // 현재 사용자 정보
-            const userRes = await fetch('/api/v1/user/me', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const userRes = await fetch('/api/v1/user/me', { credentials: 'include' });
             const userData = await userRes.json();
             setCurrentUser(userData);
 
             // ✅ 권한 정보 조회
-            const permRes = await fetch('/api/v1/user/me/permissions', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const permRes = await fetch('/api/v1/user/me/permissions', { credentials: 'include' });
             const permData = await permRes.json();
 
             // 근무표 상세 정보
-            const detail = await fetchWorkScheduleDetail(parseInt(id!), token);
+            const detail = await fetchWorkScheduleDetail(parseInt(id!));
 
             if (detail.dutyConfig) {
                 setDutyConfig(detail.dutyConfig);
@@ -986,7 +937,7 @@ const WorkScheduleEditor: React.FC = () => {
                 entries: parsedEntries
             });
 
-            const positionsData = await fetchPositionsByDept(detail.schedule.deptCode, token);
+            const positionsData = await fetchPositionsByDept(detail.schedule.deptCode);
             setPositions(positionsData);
 
             // ✅ 권한 확인
@@ -1029,7 +980,7 @@ const WorkScheduleEditor: React.FC = () => {
         }
 
         try {
-            const result = await toggleFinalApproval(parseInt(id!), token);
+            const result = await toggleFinalApproval(parseInt(id!));
             setIsFinalApproved(result.isFinalApproved);
             alert(result.message);
             await loadData(); // 데이터 새로고침
@@ -1042,9 +993,7 @@ const WorkScheduleEditor: React.FC = () => {
         if (!window.confirm('임시저장된 근무표를 삭제하시겠습니까?')) return;
 
         try {
-            await axios.delete(`/api/v1/work-schedules/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await axiosInstance.delete(`/work-schedules/${id}`);
             alert('삭제되었습니다.');
             navigate('/detail/work-schedule');
         } catch (err: any) {
@@ -1064,13 +1013,9 @@ const WorkScheduleEditor: React.FC = () => {
         try {
             const currentStep = scheduleData?.approvalSteps?.find((step: any) => step.isCurrent);
 
-            await axios.post(
-                `/api/v1/work-schedules/${id}/approve-step`,
-                {
-                    approve: true,
-                    stepOrder: currentStep?.stepOrder
-                },
-                { headers: { Authorization: `Bearer ${token}` } }
+            await axiosInstance.post(
+                `/work-schedules/${id}/approve-step`,
+                { approve: true, stepOrder: currentStep?.stepOrder }
             );
 
             alert('결재가 완료되었습니다.');
@@ -1086,14 +1031,9 @@ const WorkScheduleEditor: React.FC = () => {
         try {
             const currentStep = scheduleData?.approvalSteps?.find((step: any) => step.isCurrent);
 
-            await axios. post(
-                `/api/v1/work-schedules/${id}/approve-step`,
-                {
-                    approve: false,
-                    rejectionReason: reason,
-                    stepOrder: currentStep?.stepOrder
-                },
-                { headers: { Authorization: `Bearer ${token}` } }
+            await axiosInstance.post(
+                `/work-schedules/${id}/approve-step`,
+                { approve: false, rejectionReason: reason, stepOrder: currentStep?.stepOrder }
             );
 
             alert('근무표가 반려되었습니다.');
@@ -1432,22 +1372,20 @@ const WorkScheduleEditor: React.FC = () => {
             }));
 
             // ✅ 1. 모든 엔트리 데이터 한 번에 저장 (기존 43회 → 1회)
-            await updateWorkData(parseInt(id!), updates, token);
+            await updateWorkData(parseInt(id!), updates);
 
             // ✅ 2. 비고 저장 (1회)
             if (scheduleData.schedule.remarks !== undefined) {
-                await axios.put(
-                    `/api/v1/work-schedules/${id}/remarks`,
-                    { remarks: scheduleData.schedule.remarks },
-                    { headers: { Authorization: `Bearer ${token}` } }
+                await axiosInstance.put(
+                    `/work-schedules/${id}/remarks`,
+                    { remarks: scheduleData.schedule.remarks }
                 );
             }
 
             // ✅ 3. 작성자 서명 저장 (1회)
-            await axios.put(
-                `/api/v1/work-schedules/${id}/creator-signature`,
-                { isSigned: localCreatorSigned },
-                { headers: { Authorization: `Bearer ${token}` } }
+            await axiosInstance.put(
+                `/work-schedules/${id}/creator-signature`,
+                { isSigned: localCreatorSigned }
             );
 
             // ✅ 4. 결재라인 선택 모달 표시
@@ -1481,11 +1419,9 @@ const WorkScheduleEditor: React.FC = () => {
         }
 
         try {
-            await axios.post(`/api/v1/work-schedules/${id}/submit`, {
+            await axiosInstance.post(`/work-schedules/${id}/submit`, {
                 approvalLineId: lineId,
                 departmentHeadInfo: departmentHeadInfo.userId ? departmentHeadInfo : null
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
             });
 
             alert('근무표가 제출되었습니다.');
@@ -1867,6 +1803,9 @@ const WorkScheduleEditor: React.FC = () => {
                         <button onClick={() => applyWorkType('D1')} className="wse-btn-work-type wse-btn-d1">D1</button>
                         <button onClick={() => applyWorkType('N')} className="wse-btn-work-type wse-btn-n">N</button>
                         <button onClick={() => applyWorkType('E')} className="wse-btn-work-type wse-btn-e">E</button>
+                        <button onClick={() => applyWorkType('A')} className="wse-btn-work-type wse-btn-a">A</button>
+                        <button onClick={() => applyWorkType('B')} className="wse-btn-work-type wse-btn-b">B</button>
+                        <button onClick={() => applyWorkType('F')} className="wse-btn-work-type wse-btn-f">F</button>
                         <button onClick={() => applyWorkType('HD')} className="wse-btn-work-type wse-btn-half">HD
                         </button>
                         <button onClick={() => applyWorkType('HE')} className="wse-btn-work-type wse-btn-half">HE
@@ -1879,9 +1818,8 @@ const WorkScheduleEditor: React.FC = () => {
                         </button>
                         <button onClick={() => applyWorkType('반차')} className="wse-btn-work-type wse-btn-half">반차
                         </button>
-                        <button onClick={() => applyWorkType('대')} className="wse-btn-work-type wse-btn-d1">대</button>
-                        <button onClick={() => applyWorkType('')} className="wse-btn-work-type wse-btn-clear">지우기
-                        </button>
+                        <button onClick={() => applyWorkType('대')} className="wse-btn-work-type wse-btn-대">대</button>
+                        <button onClick={() => applyWorkType('')} className="wse-btn-work-type wse-btn-clear">지우기</button>
                         <button onClick={toggleCellRangeTextMode} className="wse-btn-work-type"
                                 style={{backgroundColor: '#6c757d', color: 'white'}}>
                             텍스트/셀 전환

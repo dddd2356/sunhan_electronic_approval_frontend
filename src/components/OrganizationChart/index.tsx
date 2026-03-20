@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useCookies } from 'react-cookie';
 import { ChevronRight, ChevronDown, User, Users } from 'lucide-react';
 import './style.css';
 
@@ -33,9 +32,6 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
                                                                  multiSelect = false,
                                                                  allDepartments = false
                                                              }) => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
-
     const [departments, setDepartments] = useState<Department[]>([]);
     const [deptNames, setDeptNames] = useState<Record<string, string>>({});  // ✅ 추가
     const [employees, setEmployees] = useState<Record<string, Employee[]>>({});
@@ -68,7 +64,7 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
     const handleSearch = async (term: string) => {
         try {
             const response = await fetch(`/api/v1/user/search?query=${encodeURIComponent(term)}`, {
-                headers: { Authorization: `Bearer ${token}` }
+                credentials: 'include'
             });
             const data = await response.json();
             setSearchResults(data);
@@ -80,26 +76,10 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
         }
     };
 
-    // const fetchDepartments = async () => {
-    //     try {
-    //         const response = await fetch('/api/v1/user/departments', {
-    //             headers: { Authorization: `Bearer ${token}` }
-    //         });
-    //         const data = await response.json();
-    //         setDepartments(buildDepartmentTree(data));
-    //     } catch (error) {
-    //         console.error('부서 목록 조회 실패:', error);
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
-
     // ✅ 부서명 조회 추가
     const fetchDepartmentNames = async () => {
         try {
-            const response = await fetch('/api/v1/departments/names', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await fetch('/api/v1/departments/names', { credentials: 'include' });
             const data = await response.json();
 
             const normalized: Record<string, string> = {};
@@ -133,9 +113,7 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
 
         try {
             // ✅ 새로운 API 엔드포인트 사용
-            const response = await fetch(`/api/v1/departments/${baseCode}/users`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await fetch(`/api/v1/departments/${baseCode}/users`, { credentials: 'include' });
 
             const data = await response.json();
             setEmployees(prev => ({ ...prev, [baseCode]: data }));

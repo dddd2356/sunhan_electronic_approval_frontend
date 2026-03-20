@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useCookies } from 'react-cookie';
 import { X, FileText, Clock, XCircle, CheckCircle, Eye } from 'lucide-react';
 import './style.css'; // CSS 파일 import
 import {useNavigate} from "react-router-dom";
@@ -40,9 +39,6 @@ interface ReportDataFromApi {
 }
 
 const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose }) => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
-
     const [reportData, setReportData] = useState<ReportDataFromApi | null>(null);
     const [currentPage, setCurrentPage] = useState<number>(0);
     const [totalPages, setTotalPages] = useState<number>(1);
@@ -111,10 +107,7 @@ const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose }) => {
 
             const res = await fetch('/api/v1/user/reports/documents', {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                }
+                credentials: 'include'
             });
 
             if (!res.ok) {
@@ -139,10 +132,7 @@ const ReportsModal: React.FC<ReportsModalProps> = ({ isOpen, onClose }) => {
             const url = `/api/v1/user/reports/documents/${category}?page=${page}&size=10`;
             const res = await fetch(url, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                }
+                credentials: 'include'
             });
 
             if (!res.ok) {

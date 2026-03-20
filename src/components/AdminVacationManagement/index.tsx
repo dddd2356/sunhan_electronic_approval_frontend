@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useCookies } from 'react-cookie';
 import Layout from '../Layout';
 import './style.css';
 import OrganizationChart from "../OrganizationChart";
@@ -32,8 +31,6 @@ interface VacationStatus {
 }
 
 const AdminVacationManagement: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
 
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -73,10 +70,8 @@ const AdminVacationManagement: React.FC = () => {
                 `/api/v1/admin/users?year=${targetYear}`,
                 {
                     method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
                 }
             );
 
@@ -106,10 +101,8 @@ const AdminVacationManagement: React.FC = () => {
                 `/api/v1/vacation/admin/recalculate-history?year=${selectedYear}`,
                 {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
                 }
             );
 
@@ -137,13 +130,7 @@ const AdminVacationManagement: React.FC = () => {
 
     const fetchDepartmentNames = async () => {
         try {
-            const response = await fetch('/api/v1/departments/names', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const response = await fetch('/api/v1/departments/names', { credentials: 'include' });
 
             if (response.ok) {
                 const data = await response.json();
@@ -171,14 +158,7 @@ const AdminVacationManagement: React.FC = () => {
         try {
             const response = await fetch(
                 `/api/v1/vacation/status/${userId}?year=${selectedYear}`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                }
-            );
+                { credentials: 'include' });
 
             if (response.ok) {
                 const data: VacationStatus = await response.json();
@@ -203,15 +183,10 @@ const AdminVacationManagement: React.FC = () => {
                 `/api/v1/vacation/vacation-details/${selectedUser.userId}?year=${selectedYear}`,
                 {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        annualCarryoverDays: annualCarryover,
-                        annualRegularDays: annualRegular
-                    })
-                }
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ annualCarryoverDays: annualCarryover, annualRegularDays: annualRegular })
+                    }
             );
 
             if (response.ok) {

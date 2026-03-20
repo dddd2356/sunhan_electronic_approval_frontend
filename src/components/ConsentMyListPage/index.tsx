@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useCookies } from 'react-cookie';
 import Layout from '../Layout';
 import { FileText, Clock, CheckCircle, Eye, Calendar, Inbox } from 'lucide-react';
 import './style.css';
@@ -19,8 +18,6 @@ interface ConsentAgreement {
 }
 
 const ConsentMyListPage: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
 
     const [pendingList, setPendingList] = useState<ConsentAgreement[]>([]);
     const [completedList, setCompletedList] = useState<ConsentAgreement[]>([]);
@@ -45,17 +42,13 @@ const ConsentMyListPage: React.FC = () => {
     const loadMyConsents = async () => {
         try {
             // 작성 대기 중
-            const pendingRes = await fetch(`${API_BASE}/consents/my/pending`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const pendingRes = await fetch(`${API_BASE}/consents/my/pending`, { credentials: 'include' });
             if (pendingRes.ok) {
                 setPendingList(await pendingRes.json());
             }
 
             // 작성 완료
-            const completedRes = await fetch(`${API_BASE}/consents/my/list`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const completedRes = await fetch(`${API_BASE}/consents/my/list`, { credentials: 'include' });
             if (completedRes.ok) {
                 const all = await completedRes.json();
                 setCompletedList(all.filter((a: ConsentAgreement) => a.status === 'COMPLETED'));
@@ -178,7 +171,7 @@ const ConsentMyListPage: React.FC = () => {
                                         onClick={async () => {
                                             try {
                                                 const pdfResp = await fetch(`${API_BASE}/consents/${agreement.id}/pdf`, {
-                                                    headers: {Authorization: `Bearer ${token}`}
+                                                    credentials: 'include'
                                                 });
 
                                                 if (!pdfResp.ok) {

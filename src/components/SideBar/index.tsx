@@ -1,23 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useCookies } from 'react-cookie';
-import axios from 'axios';
+import axiosInstance from '../../views/Authentication/axiosInstance';
 import './style.css';
 import defaultProfileImage from './assets/images/profile.png';
 
-// 아이콘 라이브러리 도입
 import {
-    Home,
-    FileText,
-    Calendar,
-    ClipboardList,
-    Users,
-    ShieldCheck,
-    BarChart3,
-    RefreshCcw,
-    UserCircle,
-    LogOut, Shield, FileSignature, UserPlus, Building
+    Home, FileText, Calendar, ClipboardList, Users,
+    ShieldCheck, BarChart3, UserCircle, LogOut,
+    FileSignature, UserPlus, Building
 } from 'lucide-react';
+import {toSafeDataUrl} from "../../utils/imageUtils";
 
 interface SidebarProps {
     isOpen: boolean;
@@ -26,9 +18,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
-    const location = useLocation(); // 현재 URL 경로 파악용
-    const [cookies, , removeCookie] = useCookies(["accessToken"]);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
+    const location = useLocation();
 
     const [profileName, setProfileName] = useState<string>('사용자');
     const [profileDepartment, setProfileDepartment] = useState<string>('');
@@ -39,141 +29,64 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     const [canCreateConsent, setCanCreateConsent] = useState<boolean>(false);
     const [canManageConsent, setCanManageConsent] = useState<boolean>(false);
 
-    const API_BASE_URL = process.env.REACT_APP_API_URL;
-    // 모바일 여부 체크 함수
     const isMobile = () => window.innerWidth <= 768;
-
-    // 메뉴 클릭 핸들러 - 모바일에서만 닫기
     const handleMenuClick = (path: string) => {
         navigate(path);
-
-        // 모바일 환경에서만 사이드바 닫기
-        if (isMobile() && onClose) {
-            onClose();
-        }
+        if (isMobile() && onClose) onClose();
     };
-
-    // 현재 페이지 활성화 체크 함수
     const isActive = (path: string) => location.pathname === path;
 
-
     useEffect(() => {
-        const currentToken = localStorage.getItem('accessToken') || cookies.accessToken;
-
-        if (!currentToken) {
-            console.log('⚠️ Sidebar: accessToken 없음');
-            localStorage.removeItem('userCache');
-            return;
-        }
-
-        // 1️⃣ 캐시만 로드 (API 호출 제거)
+        // 5분 이내 캐시 있으면 API 호출 생략
         const cachedUser = localStorage.getItem('userCache');
         if (cachedUser) {
             try {
                 const userData = JSON.parse(cachedUser);
-                // ✅ 캐시된 토큰과 현재 토큰 비교 (불일치하면 캐시 무효화)
-                const cachedToken = localStorage.getItem('cachedTokenHash');
-                const currentTokenHash = currentToken.substring(0, 50); // 토큰 일부를 해시로 사용
-
-                if (cachedToken !== currentTokenHash) {
-                    console.log('🔄 토큰 변경 감지 - 캐시 무효화');
-                    localStorage.removeItem('userCache');
-                    localStorage.removeItem('cachedTokenHash');
-                    checkUserStatus();
-                    checkConsentPermissions();
+                if (Date.now() - (userData.timestamp || 0) < 5 * 60 * 1000) {
+                    setProfileName(userData.userName || '사용자');
+                    setProfileDepartment(userData.deptName || '');
+                    setJobLevel(Number(userData.jobLevel) || 0);
+                    setIsAdmin(userData.role === 'ADMIN');
+                    setPermissions(userData.permissions || []);
+                    if (userData.userId) fetchProfileImage(userData.userId);
+                    if (!userData.consentPermissions) {
+                        checkConsentPermissions();
+                    } else {
+                        setCanCreateConsent(userData.consentPermissions.canCreate);
+                        setCanManageConsent(userData.consentPermissions.canManage);
+                    }
                     return;
                 }
-
-                console.log('📦 Sidebar: 캐시된 데이터 로드:', userData);
-
-                setProfileName(userData.userName || '사용자');
-                setProfileDepartment(userData.deptName || '');
-                setJobLevel(Number(userData.jobLevel) || 0);
-                setIsAdmin(userData.role === 'ADMIN');
-                setPermissions(userData.permissions || []);
-
-                console.log('✅ Sidebar: 캐시 복원 완료');
-
-                // ✅ 프로필 이미지만 별도 로드
-                if (userData.userId) {
-                    fetchProfileImage(userData.userId);
-                }
-
-                // ✅ 동의서 권한만 별도 확인 (캐시 없으면)
-                if (!userData.consentPermissions) {
-                    checkConsentPermissions();
-                } else {
-                    setCanCreateConsent(userData.consentPermissions.canCreate);
-                    setCanManageConsent(userData.consentPermissions.canManage);
-                }
-
-                return; // ✅ API 호출 생략
-            } catch (e) {
-                console.error('❌ Sidebar: 캐시 파싱 실패:', e);
+            } catch {
                 localStorage.removeItem('userCache');
             }
         }
-
-        // 2️⃣ 캐시 없으면만 API 호출
         checkUserStatus();
         checkConsentPermissions();
-    }, [token]); // ✅ 빈 배열 유지
+    }, []);
 
     const checkUserStatus = () => {
-        const token = localStorage.getItem('accessToken') || cookies.accessToken;
-        axios.get(`${API_BASE_URL}/user/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
+        axiosInstance.get('/user/me')
             .then((res) => {
                 const userData = res.data;
-                console.log("📥 받은 사용자 데이터:", userData);
-                console.log("🔍 타입 확인:", {
-                    jobLevel: userData.jobLevel,
-                    jobLevelType: typeof userData.jobLevel,
-                    role: userData.role,
-                    roleType: typeof userData.role
-                });
-
-                // ✅ 수정된 매핑
                 setProfileName(userData.userName || '사용자');
-                setProfileDepartment(userData.deptName || userData.deptCode || ''); // deptName 우선
-
-                // ⚠️ jobLevel 처리 개선
-                const level = userData.jobLevel ?? userData.joblevel ?? 0; // 대소문자 모두 체크
+                setProfileDepartment(userData.deptName || userData.deptCode || '');
+                const level = userData.jobLevel ?? userData.joblevel ?? 0;
                 setJobLevel(Number(level));
-
-                // ⚠️ role 처리 개선
                 setIsAdmin(userData.role === 'ADMIN');
-
-                // ⚠️ permissions 처리 개선
                 setPermissions(Array.isArray(userData.permissions) ? userData.permissions : []);
-
-                console.log("✅ State 업데이트 완료:", {
-                    name: userData.userName,
-                    dept: userData.deptName || userData.deptCode,
-                    level: Number(level),
-                    isAdmin: userData.role === 'ADMIN',
-                    permissions: userData.permissions
-                });
-
-                // 캐시 저장
                 localStorage.setItem('userCache', JSON.stringify({
                     userName: userData.userName,
                     deptName: userData.deptName || userData.deptCode,
                     jobLevel: Number(level),
                     role: userData.role,
                     permissions: userData.permissions || [],
-                    userId: userData.userId
+                    userId: userData.userId,
+                    timestamp: Date.now()
                 }));
-                // ✅ 현재 토큰 해시도 함께 저장
-                const currentTokenHash = (localStorage.getItem('accessToken') || cookies.accessToken || '').substring(0, 50);
-                localStorage.setItem('cachedTokenHash', currentTokenHash);
                 if (userData.userId) fetchProfileImage(userData.userId);
             })
-            .catch((err) => {
-                console.error('❌ 사용자 정보 로드 실패', err);
-                console.error('응답:', err.response?.data);
-            });
+            .catch((err) => console.error('사용자 정보 로드 실패', err));
     };
 
     const fetchProfileImage = (userId: string) => {
@@ -181,56 +94,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             setProfileImage(defaultProfileImage);
             return;
         }
-        axios.get(`${API_BASE_URL}/user/${userId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
+        axiosInstance.get(`/user/${userId}`)
             .then((res) => {
                 const imageData = res.data?.profile_image;
-                setProfileImage(imageData ? `data:image/png;base64,${imageData}` : defaultProfileImage);
+                setProfileImage(imageData ? toSafeDataUrl(imageData) : defaultProfileImage);
             })
             .catch(() => setProfileImage(defaultProfileImage));
     };
 
     const handleLogout = async () => {
-        const token = localStorage.getItem('accessToken') || cookies.accessToken;
-
         try {
-            await axios.post(`${API_BASE_URL}/auth/logout/web`, {}, {
-                headers: { "Authorization": `Bearer ${token}` },
-                withCredentials: true
-            });
+            await axiosInstance.post('/auth/logout/web');
         } finally {
-            // ✅ 모든 저장소 클리어
-            removeCookie("accessToken", {
-                path: "/",
-                secure: false,
-                sameSite: "lax"
-            });
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('tokenExpires');
             localStorage.removeItem('userCache');
-            localStorage.removeItem('cachedTokenHash');
             window.location.href = '/';
         }
     };
 
-    // 권한 계산
-    const canViewContractMemoAdmin = (permissions.includes('HR_CONTRACT')) || jobLevel === 6;
-    const canViewVacationAdmin = (permissions.includes('HR_LEAVE_APPLICATION')) || jobLevel === 6;
-    const canCreatePositionAdmin = jobLevel === 6 || permissions.includes("WORK_SCHEDULE_CREATE");
-    const canViewUserManageAdmin = permissions.includes('MANAGE_USERS') || jobLevel === 6;
-
-    // ✅ 동의서 권한 체크 추가
     const checkConsentPermissions = async () => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/consents/permissions`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
+            const response = await axiosInstance.get('/consents/permissions');
             setCanCreateConsent(response.data.canCreate);
             setCanManageConsent(response.data.canManage);
-
-            // ✅ 캐시에 권한 정보 추가
             const cached = localStorage.getItem('userCache');
             if (cached) {
                 const userData = JSON.parse(cached);
@@ -245,15 +130,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         }
     };
 
-    useEffect(() => {
-        console.log("현재 직급(jobLevel):", jobLevel, typeof jobLevel);
-        console.log("보유 권한(permissions):", permissions);
-        console.log("관리자 여부(isAdmin):", isAdmin);
-    }, [jobLevel, permissions, isAdmin]);
+    const canViewContractMemoAdmin = permissions.includes('HR_CONTRACT') || jobLevel === 6;
+    const canViewVacationAdmin = permissions.includes('HR_LEAVE_APPLICATION') || jobLevel === 6;
+    const canCreatePositionAdmin = jobLevel === 6 || permissions.includes("WORK_SCHEDULE_CREATE");
+    const canViewUserManageAdmin = permissions.includes('MANAGE_USERS') || jobLevel === 6;
 
     return (
         <div className={`sidebar ${isOpen ? "active" : ""}`}>
-            {/* 1. 프로필 섹션 */}
             <div className="profile-section">
                 <div className="profile-header">
                     <img src={profileImage || defaultProfileImage} alt="Profile" className="profile-img"/>
@@ -274,63 +157,52 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
             <ul className="main-menu">
                 <div className="menu-section-label">General</div>
-
                 <li onClick={() => handleMenuClick('/detail/main-page')}
                     className={`menu-item ${isActive('/detail/main-page') ? 'active' : ''}`}>
                     <Home size={18}/> <span>메인 화면</span>
                 </li>
-
                 <li onClick={() => handleMenuClick('/detail/consent/my-list')}
                     className={`menu-item ${isActive('/detail/consent/my-list') ? 'active' : ''}`}>
                     <FileSignature size={18}/> <span>동의서</span>
                 </li>
-
                 <li onClick={() => handleMenuClick('/detail/employment-contract')}
                     className={`menu-item ${isActive('/detail/employment-contract') ? 'active' : ''}`}>
                     <FileText size={18}/> <span>근로계약서</span>
                 </li>
-
                 <li onClick={() => handleMenuClick('/detail/leave-application')}
                     className={`menu-item ${isActive('/detail/leave-application') ? 'active' : ''}`}>
                     <Calendar size={18}/> <span>휴가원</span>
                 </li>
-
                 <li onClick={() => handleMenuClick('/detail/work-schedule')}
                     className={`menu-item ${isActive('/detail/work-schedule') ? 'active' : ''}`}>
                     <ClipboardList size={18}/> <span>근무현황표</span>
                 </li>
-
                 <li onClick={() => handleMenuClick('/detail/approval-lines')}
                     className={`menu-item ${isActive('/detail/approval-lines') ? 'active' : ''}`}>
                     <ShieldCheck size={18}/> <span>결재라인 관리</span>
                 </li>
 
-                {/* 관리자 메뉴들도 동일하게 수정 */}
-                {(isAdmin) && (
+                {isAdmin && (
                     <>
                         <div className="menu-section-label">Administration</div>
-
                         {canViewUserManageAdmin && (
                             <li onClick={() => handleMenuClick('/admin/dashboard')}
                                 className={`menu-item admin ${isActive('/admin/dashboard') ? 'active' : ''}`}>
                                 <ShieldCheck size={18}/> <span>권한 관리자</span>
                             </li>
                         )}
-
                         {permissions.includes('MANAGE_USERS') && (
                             <li onClick={() => handleMenuClick('/admin/users/register')}
                                 className={`menu-item admin ${isActive('/admin/users/register') ? 'active' : ''}`}>
                                 <UserPlus size={18}/> <span>회원 등록</span>
                             </li>
                         )}
-
                         {permissions.includes('MANAGE_USERS') && (
                             <li onClick={() => handleMenuClick('/admin/departments/manage')}
                                 className={`menu-item admin ${isActive('/admin/departments/manage') ? 'active' : ''}`}>
                                 <Building size={18}/> <span>부서 관리</span>
                             </li>
                         )}
-
                         {canCreateConsent && (
                             <>
                                 <li onClick={() => handleMenuClick('/admin/consent/issue')}
@@ -343,21 +215,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                                 </li>
                             </>
                         )}
-
                         {canManageConsent && (
                             <li onClick={() => handleMenuClick('/admin/consent/management')}
                                 className={`menu-item admin ${isActive('/admin/consent/management') ? 'active' : ''}`}>
                                 <BarChart3 size={18}/> <span>동의서 관리</span>
                             </li>
                         )}
-
                         {canViewContractMemoAdmin && (
                             <li onClick={() => handleMenuClick('/admin/memo-management')}
                                 className={`menu-item admin ${isActive('/admin/memo-management') ? 'active' : ''}`}>
                                 <BarChart3 size={18}/> <span>근로계약서 메모 관리</span>
                             </li>
                         )}
-
                         {canViewVacationAdmin && (
                             <>
                                 <li onClick={() => handleMenuClick('/admin/vacation')}
@@ -370,7 +239,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                                 </li>
                             </>
                         )}
-
                         {canCreatePositionAdmin && (
                             <li onClick={() => handleMenuClick('/detail/positions')}
                                 className={`menu-item admin ${isActive('/detail/positions') ? 'active' : ''}`}>

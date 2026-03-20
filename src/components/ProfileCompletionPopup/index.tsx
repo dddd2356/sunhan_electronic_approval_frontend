@@ -193,14 +193,8 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
         form.append('file', blob, `${userId}_signature.png`);
 
         try {
-            const token = localStorage.getItem('accessToken') ||
-                document.cookie.split('; ').find(row => row.startsWith('accessToken='))?.split('=')[1];
-
             const resp = await fetch(`/api/v1/user/${userId}/signature`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
                 body: form,
                 credentials: 'include',
             });
@@ -283,16 +277,12 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
                 requestBody.newPassword = newPassword.trim();
             }
 
-            const token = localStorage.getItem('accessToken') ||
-                document.cookie.split('; ').find(row => row.startsWith('accessToken='))?.split('=')[1];
-
             const response = await fetch(`/api/v1/user/update-profile/${userId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
                 },
-                credentials: 'include', // 중요: 쿠키를 포함하여 요청을 보낼 때 필요
+                credentials: 'include',
                 body: JSON.stringify(requestBody),
             });
 

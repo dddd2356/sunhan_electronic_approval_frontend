@@ -95,7 +95,7 @@
     background: white;
     padding: 8px; /* 15px → 8px */
     margin: 15px 0; /* 20px → 15px */
-    border: 2px solid #4CAF50;
+    border: 2px solid #e2e8f0;
     border-radius: 8px;
     display: flex;
     gap: 6px; /* 10px → 6px */
@@ -120,27 +120,36 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
-.wse-btn-d { background-color: #2196F3; }
-.wse-btn-n { background-color: #9C27B0; }
-.wse-btn-e { background-color: #FF9800; }
-.wse-btn-off { background-color: #4CAF50; }
-.wse-btn-leave { background-color: #F44336; }
-.wse-btn-clear { background-color: #9E9E9E; }
+.wse-btn-d    { background-color: #3B82F6; } /* 파랑 — 주간 D */
+.wse-btn-d1   { background-color: #0EA5E9; } /* 하늘 — 주간 D1, D와 구별 */
+.wse-btn-n    { background-color: #8B5CF6; } /* 보라 — 야간 N */
+.wse-btn-e    { background-color: #F97316; } /* 주황 — 이브닝 E */
+.wse-btn-half { background-color: #06B6D4; } /* 청록 — 반일 HD/HE/HN/반차 */
+.wse-btn-off  { background-color: #10B981; } /* 초록 — Off */
+.wse-btn-leave { background-color: #EF4444; } /* 빨강 — 연차 */
+.wse-btn-clear { background-color: #6B7280; } /* 회색 — 지우기 */
+.wse-btn-a { background-color: #14B8A6; }    /* 틸 — A */
+.wse-btn-b { background-color: #84CC16; }    /* 라임 — B */
+.wse-btn-f { background-color: #EC4899; }    /* 핑크 — F */
 .wse-btn-d1 { background-color: #1976D2; } /* D1 버튼 */
-.wse-btn-half { background-color: #7e6036; } /* HD, HE, HN, 반차 버튼 */
+.wse-btn-대  { background-color: #6366F1; }
 .wse-btn-temp-save { /* 임시저장 버튼 */
     background-color: #757575;
     color: white;
 }
 
-.wse-btn-d:hover { background-color: #1565C0; }
-.wse-btn-d1:hover { background-color: #1565C0; }
-.wse-btn-n:hover { background-color: #7B1FA2; }
-.wse-btn-e:hover { background-color: #F57C00; }
-.wse-btn-half:hover { background-color: #56442e; }
-.wse-btn-off:hover { background-color: #388E3C; }
-.wse-btn-leave:hover { background-color: #D32F2F; }
-.wse-btn-clear:hover { background-color: #616161; }
+.wse-btn-d:hover    { background-color: #2563EB; }
+.wse-btn-d1:hover   { background-color: #0284C7; }
+.wse-btn-n:hover    { background-color: #7C3AED; }
+.wse-btn-e:hover    { background-color: #EA580C; }
+.wse-btn-half:hover { background-color: #0891B2; }
+.wse-btn-off:hover  { background-color: #059669; }
+.wse-btn-leave:hover { background-color: #DC2626; }
+.wse-btn-clear:hover { background-color: #4B5563; }
+.wse-btn-a:hover { background-color: #0D9488; }
+.wse-btn-b:hover { background-color: #65A30D; }
+.wse-btn-f:hover { background-color: #DB2777; }
+.wse-btn-대:hover { background-color: #4F46E5; }
 .wse-btn-temp-save:hover { background-color: #616161; }
 
 .wse-selected-count {
@@ -242,40 +251,17 @@
     height: 24px; /* 추가 */
 }
 
-.wse-work-cell.d {
-    color: #0d47a1;
-}
-
-.wse-work-cell.n {
-    color: #4a148c;
-}
-
-.wse-work-cell.e {
-    color: #e65100;
-}
-
-.wse-work-cell.off {
-    color: #1b5e20;
-}
-
-.wse-work-cell.d1 {
-    color: #0d47a1;
-}
-
+.wse-work-cell.d    { color: #1D4ED8; }
+.wse-work-cell.d1   { color: #0369A1; }
+.wse-work-cell.n    { color: #6D28D9; }
+.wse-work-cell.e    { color: #C2410C; }
 .wse-work-cell.hd,
 .wse-work-cell.he,
 .wse-work-cell.hn,
-.wse-work-cell.반차 {
-    color: #ab7c39;
-}
-
-.wse-work-cell.대 {
-    color: #01579b;
-}
-
-.wse-work-cell.연 {
-    color: #b71c1c;
-}
+.wse-work-cell.반차  { color: #0E7490; }
+.wse-work-cell.off  { color: #047857; }
+.wse-work-cell.대   { color: #4338CA; }
+.wse-work-cell.연   { color: #B91C1C; }
 
 
 /* 입력 필드 */

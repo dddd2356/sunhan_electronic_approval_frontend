@@ -1,5 +1,4 @@
 import React, {useState, useEffect, useCallback, useMemo} from 'react';
-import { useCookies } from 'react-cookie';
 import Layout from "../Layout";
 import "./style.css";
 import {
@@ -142,9 +141,6 @@ const HR_PERMISSION_TYPES_LIST = [
 
 export const AdminDashboard: React.FC = () => {
     // ## State Management ##
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
-
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>('');
 
@@ -253,9 +249,8 @@ export const AdminDashboard: React.FC = () => {
     const getAuthHeaders = useCallback(() => {
         return {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
         };
-    }, [token]);
+    }, []);
 
     // ✅ 통계 데이터 호출 함수
     const fetchStats = useCallback(async () => {
@@ -331,7 +326,6 @@ export const AdminDashboard: React.FC = () => {
     }, [getAuthHeaders]);
 
     const fetchUserPermissions = useCallback(async () => {
-        if (!token) return;
         try {
             setHrPermissionLoading(true);
 
@@ -357,10 +351,9 @@ export const AdminDashboard: React.FC = () => {
         } finally {
             setHrPermissionLoading(false);
         }
-    }, [getAuthHeaders, token]);
+    }, [getAuthHeaders]);
 
     const fetchDeptPermissions = useCallback(async () => {
-        if (!token) return;
         try {
             // 💡 [개선] 단일 API 호출
             const res = await fetch('/api/v1/admin/permissions/departments/all', {
@@ -382,7 +375,7 @@ export const AdminDashboard: React.FC = () => {
         } catch (e: any) {
             console.error('Dept permissions fetch error (Unified):', e.message);
         }
-    }, [getAuthHeaders, token]);
+    }, [getAuthHeaders]);
 
     const fetchDepartments = useCallback(async () => {
         try {
@@ -479,11 +472,6 @@ export const AdminDashboard: React.FC = () => {
     // ## Initialization Effect ##
     useEffect(() => {
         const initialize = async () => {
-            if (!token) {
-                setLoading(false);
-                setError('Please log in to access the admin dashboard.');
-                return;
-            }
 
             setLoading(true);
             try {
@@ -514,7 +502,7 @@ export const AdminDashboard: React.FC = () => {
         };
 
         initialize();
-    }, [getAuthHeaders, token]);
+    }, [getAuthHeaders]);
 
     // ✅ 통계 데이터를 최초 1회만 호출하는 useEffect
     useEffect(() => {
@@ -548,7 +536,7 @@ export const AdminDashboard: React.FC = () => {
     }, [users, searchTerm, showAllUsers]);
 
     const totalPages = Math.ceil(totalItems / usersPerPage); // 💡 totalItems 기반 계산
-    const paginatedUsers = users;
+    const paginatedUsers = filteredUsers;
 
     const handlePageChange = (page: number) => {
         if (page >= 0 && page < totalPages && !isPageChanging) {

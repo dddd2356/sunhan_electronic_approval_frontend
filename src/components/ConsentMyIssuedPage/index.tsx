@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useCookies } from 'react-cookie';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../Layout';
 import {
@@ -31,9 +30,6 @@ interface ConsentAgreement {
 }
 
 const ConsentMyIssuedPage: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
-
     const navigate = useNavigate();
 
     const [allList, setAllList] = useState<ConsentAgreement[]>([]);
@@ -51,9 +47,7 @@ const ConsentMyIssuedPage: React.FC = () => {
 
     const loadMyIssuedConsents = async () => {
         try {
-            const response = await fetch(`${API_BASE}/consents/creator/list`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await fetch(`${API_BASE}/consents/creator/list`, { credentials: 'include' });
 
             if (response.ok) {
                 const data = await response.json();
@@ -76,9 +70,7 @@ const ConsentMyIssuedPage: React.FC = () => {
 
     const downloadPdf = async (agreementId: number) => {
         try {
-            const pdfResp = await fetch(`${API_BASE}/consents/${agreementId}/pdf`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const pdfResp = await fetch(`${API_BASE}/consents/${agreementId}/pdf`, { credentials: 'include' });
 
             if (!pdfResp.ok) {
                 if (pdfResp.status === 404) {

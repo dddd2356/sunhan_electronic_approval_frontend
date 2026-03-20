@@ -1,13 +1,6 @@
 const API_BASE = process.env.REACT_APP_API_URL || '/api/v1';
 
-const withAuth = (token: string) => ({
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-});
-
-const authHeaderOnly = (token: string) => ({
-    'Authorization': `Bearer ${token}`
-});
+const defaultHeaders = { 'Content-Type': 'application/json' };
 
 interface PaginationResponse {
     content: any[];
@@ -17,9 +10,10 @@ interface PaginationResponse {
     size: number;
 }
 // 사용자 정보 조회
-export const fetchCurrentUser = async (token: string) => {
+export const fetchCurrentUser = async () => {
     const response = await fetch(`${API_BASE}/user/me`, {
-        headers: withAuth(token)
+        headers: defaultHeaders,
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -31,7 +25,6 @@ export const fetchCurrentUser = async (token: string) => {
 
 // 휴가원 목록 조회
 export const fetchLeaveApplications = async (
-    token: string,
     type: 'my' | 'pending' | 'completed',
     canViewCompleted?: boolean,
     page: number = 0, // Default to page 0
@@ -54,7 +47,8 @@ export const fetchLeaveApplications = async (
     }
 
     const response = await fetch(path, {
-        headers: withAuth(token)
+        headers: defaultHeaders,
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -74,9 +68,10 @@ export const fetchLeaveApplications = async (
 };
 
 // 휴가원 상세 조회
-export const fetchLeaveApplicationDetail = async (id: number, token: string) => {
+export const fetchLeaveApplicationDetail = async (id: number) => {
     const response = await fetch(`${API_BASE}/leave-application/${id}`, {
-        headers: withAuth(token)
+        headers: defaultHeaders,
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -87,10 +82,11 @@ export const fetchLeaveApplicationDetail = async (id: number, token: string) => 
 };
 
 // 새 휴가원 생성
-export const createLeaveApplication = async (token: string) => {
+export const createLeaveApplication = async () => {
     const response = await fetch(`${API_BASE}/leave-application`, {
         method: 'POST',
-        headers: withAuth(token)
+        headers: defaultHeaders,
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -102,7 +98,7 @@ export const createLeaveApplication = async (token: string) => {
 
 // 휴가원 저장/수정 (임시저장) - 수정된 payload 구조
 // API 함수도 수정 (paste-3.txt의 saveLeaveApplication 함수 대체)
-export const saveLeaveApplication = async (id: number, updateData: any, token: string) => {
+export const saveLeaveApplication = async (id: number, updateData: any) => {
     // 데이터 유효성 검사
     if (!updateData.leaveTypes || updateData.leaveTypes.length === 0) {
         throw new Error('휴가 종류를 선택해주세요.');
@@ -123,11 +119,10 @@ export const saveLeaveApplication = async (id: number, updateData: any, token: s
         currentApprovalStep: updateData.currentApprovalStep
     };
 
-    console.log('API 전송 payload:', JSON.stringify(payload, null, 2)); // 디버깅용
-
     const response = await fetch(`${API_BASE}/leave-application/${id}`, {
         method: 'PUT',
-        headers: withAuth(token),
+        headers: defaultHeaders,
+        credentials: 'include',
         body: JSON.stringify(payload)
     });
 
@@ -141,10 +136,11 @@ export const saveLeaveApplication = async (id: number, updateData: any, token: s
 };
 
 // 휴가원 제출
-export const submitLeaveApplication = async (id: number, currentApprovalStep: string, token: string) => {
+export const submitLeaveApplication = async (id: number, currentApprovalStep: string) => {
     const response = await fetch(`${API_BASE}/leave-application/${id}/submit`, {
         method: 'POST',
-        headers: withAuth(token),
+        headers: defaultHeaders,
+        credentials: 'include',
         body: JSON.stringify({ currentApprovalStep })
     });
 
@@ -157,10 +153,11 @@ export const submitLeaveApplication = async (id: number, currentApprovalStep: st
 };
 
 // 휴가원 승인
-export const approveLeaveApplication = async (id: number, signatureDate: string, token: string) => {
+export const approveLeaveApplication = async (id: number, signatureDate: string) => {
     const response = await fetch(`${API_BASE}/leave-application/${id}/approve`, {
         method: 'PUT',
-        headers: withAuth(token),
+        headers: defaultHeaders,
+        credentials: 'include',
         body: JSON.stringify({ signatureDate })
     });
 
@@ -173,10 +170,11 @@ export const approveLeaveApplication = async (id: number, signatureDate: string,
 };
 
 // 휴가원 반려
-export const rejectLeaveApplication = async (id: number, reason: string, token: string) => {
+export const rejectLeaveApplication = async (id: number, reason: string) => {
     const response = await fetch(`${API_BASE}/leave-application/${id}/reject`, {
         method: 'PUT',
-        headers: withAuth(token),
+        headers: defaultHeaders,
+        credentials: 'include',
         body: JSON.stringify({ rejectionReason: reason })
     });
 
@@ -189,10 +187,11 @@ export const rejectLeaveApplication = async (id: number, reason: string, token: 
 };
 
 // 휴가원 전결 승인
-export const finalApproveLeaveApplication = async (id: number, token: string) => {
+export const finalApproveLeaveApplication = async (id: number) => {
     const response = await fetch(`${API_BASE}/leave-application/${id}/final-approve`, {
         method: 'PUT',
-        headers: withAuth(token)
+        headers: defaultHeaders,
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -204,10 +203,11 @@ export const finalApproveLeaveApplication = async (id: number, token: string) =>
 };
 
 // 휴가원 삭제
-export const deleteLeaveApplication = async (id: number, token: string) => {
+export const deleteLeaveApplication = async (id: number) => {
     const response = await fetch(`${API_BASE}/leave-application/${id}`, {
         method: 'DELETE',
-        headers: withAuth(token)
+        headers: defaultHeaders,
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -219,13 +219,13 @@ export const deleteLeaveApplication = async (id: number, token: string) => {
 };
 
 // 대직자 지정
-export const updateSubstitute = async (id: number, substituteUserId: string, token: string) => {
+export const updateSubstitute = async (id: number, substituteUserId: string) => {
     const response = await fetch(`${API_BASE}/leave-application/${id}/substitute`, {
         method: 'PUT',
-        headers: withAuth(token),
+        headers: defaultHeaders,
+        credentials: 'include',
         body: JSON.stringify({ userId: substituteUserId })
     });
-
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || '대직자 지정에 실패했습니다.');
@@ -235,9 +235,10 @@ export const updateSubstitute = async (id: number, substituteUserId: string, tok
 };
 
 // 서명 정보 조회
-export const fetchLeaveApplicationSignatures = async (id: number, token: string) => {
+export const fetchLeaveApplicationSignatures = async (id: number) => {
     const response = await fetch(`${API_BASE}/leave-application/${id}/signatures`, {
-        headers: withAuth(token)
+        headers: defaultHeaders,
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -248,10 +249,11 @@ export const fetchLeaveApplicationSignatures = async (id: number, token: string)
 };
 
 // 서명 업데이트/취소
-export const updateSignature = async (id: number, signatureType: string, signatureData: any, token: string) => {
+export const updateSignature = async (id: number, signatureType: string, signatureData: any) => {
     const response = await fetch(`${API_BASE}/leave-application/${id}/signature/${signatureType}`, {
         method: 'PUT',
-        headers: withAuth(token),
+        headers: defaultHeaders,
+        credentials: 'include',
         body: JSON.stringify(signatureData)
     });
 
@@ -273,13 +275,13 @@ export const signLeaveApplication = async (id: number, signRequest: {
         isSigned: boolean;
         signatureDate: string;
     };
-}, token: string) => {
+}) => {
     const response = await fetch(`${API_BASE}/leave-application/${id}/sign`, {
         method: 'PUT',
-        headers: withAuth(token),
+        headers: defaultHeaders,
+        credentials: 'include',
         body: JSON.stringify(signRequest)
     });
-
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || '서명에 실패했습니다.');
@@ -289,9 +291,10 @@ export const signLeaveApplication = async (id: number, signRequest: {
 };
 
 // 대직자 후보 목록 조회
-export const fetchSubstituteCandidates = async (token: string) => {
+export const fetchSubstituteCandidates = async () => {
     const response = await fetch(`${API_BASE}/leave-application/substitute-candidates`, {
-        headers: withAuth(token)
+        headers: defaultHeaders,
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -303,9 +306,9 @@ export const fetchSubstituteCandidates = async (token: string) => {
 };
 
 // PDF 다운로드
-export const downloadLeaveApplicationPdf = async (id: number, token: string) => {
+export const downloadLeaveApplicationPdf = async (id: number) => {
     const response = await fetch(`${API_BASE}/leave-application/${id}/pdf`, {
-        headers: withAuth(token)
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -316,14 +319,15 @@ export const downloadLeaveApplicationPdf = async (id: number, token: string) => 
 };
 
 // 첨부파일 업로드 (단일 파일). 백엔드는 'file' 파라미터를 기대합니다.
-export const uploadAttachment = async (leaveApplicationId: number, file: File, token: string) => {
+export const uploadAttachment = async (leaveApplicationId: number, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
 
     const response = await fetch(`${API_BASE}/leave-application/${leaveApplicationId}/attachments`, {
         method: 'POST',
-        headers: authHeaderOnly(token), // 절대 Content-Type을 직접 설정하지 말 것
+        credentials: 'include',
         body: formData
+        // Content-Type 헤더 없음 - FormData면 브라우저가 자동 설정
     });
 
     if (!response.ok) {
@@ -335,16 +339,17 @@ export const uploadAttachment = async (leaveApplicationId: number, file: File, t
 };
 
 // 멀티 파일을 한 번에 업로드하려면 Promise.all로 여러 파일 호출
-export const uploadAttachments = async (leaveApplicationId: number, files: File[], token: string) => {
-    const results = await Promise.all(files.map(f => uploadAttachment(leaveApplicationId, f, token)));
-    return results; // 배열 of AttachmentResponseDto
+export const uploadAttachments = async (leaveApplicationId: number, files: File[]) => {
+    const results = await Promise.all(files.map(f => uploadAttachment(leaveApplicationId, f)));
+    return results;
 };
 
 // 첨부파일 삭제
-export const deleteAttachmentApi = async (leaveApplicationId: number, attachmentId: number, token: string) => {
+export const deleteAttachmentApi = async (leaveApplicationId: number, attachmentId: number) => {
     const response = await fetch(`${API_BASE}/leave-application/${leaveApplicationId}/attachments/${attachmentId}`, {
         method: 'DELETE',
-        headers: withAuth(token) // 기존 withAuth는 JSON 헤더 포함. DELETE body 없음 -> 문제 없음.
+        headers: defaultHeaders,
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -356,31 +361,30 @@ export const deleteAttachmentApi = async (leaveApplicationId: number, attachment
 };
 
 // 첨부파일 다운로드 (blob)
-export const downloadAttachmentApi = async (attachmentId: number, token: string) => {
+export const downloadAttachmentApi = async (attachmentId: number) => {
     const response = await fetch(`${API_BASE}/leave-application/attachments/${attachmentId}/download`, {
-        headers: authHeaderOnly(token)
+        credentials: 'include'
     });
 
     if (!response.ok) {
         throw new Error('첨부파일 다운로드에 실패했습니다.');
     }
 
-    const blob = await response.blob();
-    return blob;
+    return response.blob();
 };
 
 // 날짜 범위로 완료된 휴가원 검색
 export const searchCompletedApplications = async (
-    token: string,
-    startDate: string, // YYYY-MM-DD
-    endDate: string,   // YYYY-MM-DD
+    startDate: string,
+    endDate: string,
     page: number = 0,
     size: number = 10
 ): Promise<PaginationResponse> => {
     const response = await fetch(
         `${API_BASE}/leave-application/completed/search?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`,
         {
-            headers: withAuth(token)
+            headers: defaultHeaders,
+            credentials: 'include'
         }
     );
 
@@ -402,22 +406,17 @@ export const searchCompletedApplications = async (
 
 // 내 휴가원 검색
 export const searchMyApplications = async (
-    accessToken: string,
     startDate: string,
     endDate: string,
     page: number = 0,
     size: number = 10
 ) => {
-    const response = await fetch(
-        `${API_BASE}/leave-application/my/search?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`,
-        {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-            },
-        }
-    );
+    const url = `${API_BASE}/leave-application/my/search?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`;
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: defaultHeaders,
+        credentials: 'include'
+    });
 
     if (!response.ok) {
         throw new Error('내 휴가원 검색에 실패했습니다.');
@@ -428,7 +427,6 @@ export const searchMyApplications = async (
 
 // 승인 대기 검색
 export const searchPendingApplications = async (
-    accessToken: string,
     startDate: string,
     endDate: string,
     page: number = 0,
@@ -438,10 +436,8 @@ export const searchPendingApplications = async (
         `${API_BASE}/leave-application/pending/search?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`,
         {
             method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-            },
+            headers: defaultHeaders,
+            credentials: 'include'
         }
     );
 

@@ -1,5 +1,4 @@
 import React, {ChangeEvent, useCallback, useEffect, useRef, useState} from 'react';
-import {useCookies} from "react-cookie";
 import {SignatureState} from '../../../types/signature';
 import './style.css';
 import {useNavigate, useParams, useSearchParams} from "react-router-dom";
@@ -11,6 +10,7 @@ import {
 import RejectModal from "../../../components/RejectModal";
 import CeoDirectorSignImage from './assets/images/선한병원직인.png';
 import { Document, Page, pdfjs } from 'react-pdf';
+import { toSafeDataUrl } from '../../../utils/imageUtils';
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 interface PageData {
     id: number;
@@ -92,8 +92,6 @@ interface FormDataFields {
 
 const EmploymentContract = () => {
     const {id} = useParams<{ id: string }>();
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const [contract, setContract] = useState<Contract | null>(null);
     const [status, setStatus] = useState<string | null>(null);
     const navigate = useNavigate();
@@ -184,7 +182,7 @@ const EmploymentContract = () => {
             // updateContract API는 ID와 저장할 데이터 객체를 인자로 받도록 구현해야 합니다.
             // 이 API는 내부적으로 데이터를 JSON 문자열로 변환하여 서버에 보냅니다.
             // 🚨 updateContract는 apis/contract.ts에서 AxiosResponse 전체를 반환하도록 되어 있어야 합니다.
-            const response = await updateContract(parseInt(id), saveData, token);
+            const response = await updateContract(parseInt(id), saveData);
 
             // 🚨 응답 상태 코드를 확인하여 성공 여부를 판단합니다 (200-299가 성공 범위).
             if (response.status >= 200 && response.status < 300) {
@@ -218,7 +216,7 @@ const EmploymentContract = () => {
             }
             alert(`저장 중 오류가 발생했습니다: ${errorMessage}`);
         }
-    }, [id, contract, formData, signatures, agreements, token, navigate, setContract, setFormData, setSignatures, setAgreements]); // 의존성 배열에 모든 외부 변수 포함
+    }, [id, contract, formData, signatures, agreements, navigate, setContract, setFormData, setSignatures, setAgreements]); // 의존성 배열에 모든 외부 변수 포함
 
     // 모든 페이지에 대해 최소 한 개의 서명이 있고, 필수 동의가 'agree'인지 확인
     const validateAllSignedAndAgreed = (): boolean => {
@@ -271,7 +269,7 @@ const EmploymentContract = () => {
         if (!isConfirmed) return;
 
         try {
-            const response = await deleteContract(parseInt(id), token);
+            const response = await deleteContract(parseInt(id));
 
             if (response.status >= 200 && response.status < 300) {
                 alert('근로계약서가 성공적으로 삭제되었습니다.');
@@ -301,7 +299,7 @@ const EmploymentContract = () => {
 
             alert(`근로계약서 삭제 중 오류가 발생했습니다: ${errorMessage}`);
         }
-    }, [contract, id, token, navigate]);
+    }, [contract, id, navigate]);
 
 
     // 반려 버튼 클릭 시 모달 열기
@@ -374,14 +372,14 @@ const EmploymentContract = () => {
         if (!contract) return;
         try {
             // 🚨 1. 폼 데이터 저장을 다시 추가합니다. 이전에 누락되었습니다.
-            const saveResponse = await updateContract(contract.id, formData, token);
+            const saveResponse = await updateContract(contract.id, formData);
 
             if (saveResponse.status < 200 || saveResponse.status >= 300) {
                 throw new Error('폼 데이터 저장 실패 (상태 코드: ' + saveResponse.status + ')');
             }
 
             // 🚨 2. 데이터 저장이 성공하면, 계약서 상태를 변경하여 직원에게 보냅니다.
-            const sendResponse = await sendContract(contract.id, token);
+            const sendResponse = await sendContract(contract.id);
 
             if (sendResponse.status >= 200 && sendResponse.status < 300) {
                 const updatedContract: Contract = sendResponse.data; // 🚨 .data 사용 및 타입 명시 (TS2345 해결)
@@ -429,7 +427,7 @@ const EmploymentContract = () => {
             };
 
             // signContract 함수는 payloadData를 formDataJson으로 직렬화하여 보냅니다.
-            const response = await signContract(parseInt(id), payloadData, token);
+            const response = await signContract(parseInt(id), payloadData);
 
             if (response.status >= 200 && response.status < 300) {
                 const completed: Contract = response.data; // 서버에서 반환된 최신 계약서 데이터
@@ -468,7 +466,7 @@ const EmploymentContract = () => {
         finally {
             setIsSubmitting(false);
         }
-    }, [id, contract, formData, signatures, agreements, token, navigate, setContract, setFormData, setSignatures, setAgreements]); // 의존성 배열 확인
+    }, [id, contract, formData, signatures, agreements, navigate, setContract, setFormData, setSignatures, setAgreements]); // 의존성 배열 확인
 
 // ③ 반려 사유 제출
     const handleRejectSubmit = async (reason: string) => {
@@ -481,9 +479,9 @@ const EmploymentContract = () => {
             // 🚨 returnToAdmin 헬퍼 함수를 사용하도록 변경하고, 응답 처리 방식 수정
             let response;
             if (status === 'COMPLETED') {
-                response = await rejectCompletedContract(contract.id, reason, token);
+                response = await rejectCompletedContract(contract.id, reason);
             } else {
-                response = await returnToAdmin(contract.id, reason, token);
+                response = await returnToAdmin(contract.id, reason);
             }
             if (response.status >= 200 && response.status < 300) {
                 const updated: Contract = response.data; // 🚨 .data 사용 및 타입 명시
@@ -510,17 +508,14 @@ const EmploymentContract = () => {
     useEffect(() => {
         const loadUserInfo = async () => {
             try {
-                const userData = await fetchCurrentUser(token);
+                const userData = await fetchCurrentUser();
                 setCurrentUser(userData);
             } catch (error) {
                 console.error("사용자 정보 가져오기 실패", error);
             }
         };
-
-        if (token) {
-            loadUserInfo();
-        }
-    }, [token]);
+        loadUserInfo();
+    }, []);
 
     const formatSSN = (value: string): string => {
         // 숫자만 추출
@@ -576,7 +571,7 @@ const EmploymentContract = () => {
     // 사용자 서명 가져오는 함수
     const fetchUserSignatureData = async (): Promise<string | undefined> => {
         try {
-            const signatureData = await fetchUserSignature(token);
+            const signatureData = await fetchUserSignature();
             const signatureUrl = signatureData.imageUrl || signatureData.signatureUrl;
             setUserSignatureImage(signatureUrl || null);
             return signatureUrl || undefined;
@@ -588,10 +583,8 @@ const EmploymentContract = () => {
 
     // useEffect로 컴포넌트 로드 시 서명 가져오기
     useEffect(() => {
-        if (token) {
-            fetchUserSignatureData();
-        }
-    }, [token]);
+        fetchUserSignatureData();
+    }, []);
 
     // 수정된 handleSignatureClick 함수
     const handleSignatureClick = (page: string, idx: number) => async () => {
@@ -650,10 +643,10 @@ const EmploymentContract = () => {
 
     const handleDownload = useCallback(
         async (type: 'pdf') => {
-            if (!id || !token) return;
+            if (!id) return;
 
             try {
-                const blob = await downloadContract(parseInt(id), type, token);
+                const blob = await downloadContract(parseInt(id), type);
 
                 // 파일명은 Content-Disposition 헤더에서 가져와도 되지만, 여기선 간단히
                 const filename = `contract_${id}.${type}`;
@@ -672,12 +665,12 @@ const EmploymentContract = () => {
                 alert(e.message || '다운로드 중 오류가 발생했습니다.');
             }
         },
-        [id, token]
+        [id]
     );
 
     const loadPreviousContractData = async (previousId: string) => {
         try {
-            const previousContract = await fetchContract(parseInt(previousId), token);
+            const previousContract = await fetchContract(parseInt(previousId));
             const previousData = JSON.parse(previousContract.formDataJson);
 
             // 서명과 동의 초기화
@@ -706,7 +699,7 @@ const EmploymentContract = () => {
             setAgreements(cleanedData.agreements);
 
             // ✅ 서버에 즉시 저장 (임시저장)
-            await updateContract(parseInt(id!), cleanedData, token);
+            await updateContract(parseInt(id!), cleanedData);
 
             alert('이전 계약서 데이터를 불러왔습니다.');
         } catch (error) {
@@ -717,11 +710,11 @@ const EmploymentContract = () => {
 
     // ✅ 통합된 하나의 useEffect
     useEffect(() => {
-        if (!token || !id) return;
+        if (!id) return;
 
         const loadContractDetails = async () => {
             try {
-                const contractData = await fetchContract(parseInt(id), token);
+                const contractData = await fetchContract(parseInt(id));
                 setContract(contractData);
                 setStatus(contractData.status);
 
@@ -751,7 +744,7 @@ const EmploymentContract = () => {
         };
 
         loadContractDetails();
-    }, [token, id, loadFromId]);  // ✅ loadFromId 의존성 추가
+    }, [id, loadFromId]);  // ✅ loadFromId 의존성 추가
 
     const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
     const [pdfLoading, setPdfLoading] = useState<boolean>(false);
@@ -774,14 +767,12 @@ const EmploymentContract = () => {
 
     /* ✅ 기존 PDF useEffect 수정 */
     useEffect(() => {
-        if (status === 'COMPLETED' && contract?.pdfUrl && id && token) {
+        if (status === 'COMPLETED' && contract?.pdfUrl && id) {
             setPdfLoading(true);
             setPdfError(null);
 
             fetch(`/api/v1/employment-contract/${id}/pdf`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                credentials: 'include'
             })
                 .then(res => {
                     if (!res.ok) throw new Error(`PDF 로드 실패 (상태: ${res.status})`);
@@ -820,7 +811,7 @@ const EmploymentContract = () => {
                 });
             };
         }
-    }, [status, contract?.pdfUrl, id, token]); // ✅ pdfBlobUrl 제거
+    }, [status, contract?.pdfUrl, id]); // ✅ pdfBlobUrl 제거
 
     const isAdmin = currentUser?.role === 'ADMIN';
     const isEmployee = currentUser?.id === contract?.employeeId;
@@ -1153,7 +1144,7 @@ const EmploymentContract = () => {
                                                 >
                                              {sig.isSigned && sig.imageUrl ? (
                                                  <img
-                                                     src={sig.imageUrl}
+                                                     src={toSafeDataUrl(sig.imageUrl)}
                                                      alt="서명"
                                                      className="signature-image"
                                                  />
@@ -1503,7 +1494,7 @@ const EmploymentContract = () => {
                                     >
                                     {sig.isSigned && sig.imageUrl ? (
                                         <img
-                                            src={sig.imageUrl}
+                                            src={toSafeDataUrl(sig.imageUrl)}
                                             alt="서명"
                                             className="signature-image"
                                         />
@@ -1625,7 +1616,7 @@ const EmploymentContract = () => {
                                     >
                                     {sig.isSigned && sig.imageUrl ? (
                                         <img
-                                            src={sig.imageUrl}
+                                            src={toSafeDataUrl(sig.imageUrl)}
                                             alt="서명"
                                             className="signature-image"
                                         />
@@ -1736,7 +1727,7 @@ const EmploymentContract = () => {
                                                             >
                                                             {sig.isSigned && sig.imageUrl ? (
                                                                 <img
-                                                                    src={sig.imageUrl}
+                                                                    src={toSafeDataUrl(sig.imageUrl)}
                                                                     alt="서명"
                                                                     className="signature-image"
                                                                 />
@@ -1823,7 +1814,8 @@ const EmploymentContract = () => {
                                                 onClick={handleSignatureClick('page4_receipt', idx)}
                                             >
                                             {sig.isSigned && sig.imageUrl ? (
-                                                <img src={sig.imageUrl} alt="서명" className="signature-image"/>
+                                                <img src={toSafeDataUrl(sig.imageUrl)} alt="서명"
+                                                     className="signature-image"/>
                                             ) : (
                                                 <span className="signature-text">(서명/인)</span>
                                             )}
@@ -1905,7 +1897,7 @@ const EmploymentContract = () => {
                                         >
                                     {sig.isSigned && sig.imageUrl ? (
                                         <img
-                                            src={sig.imageUrl}
+                                            src={toSafeDataUrl(sig.imageUrl)}
                                             alt="서명"
                                             className="signature-image"
                                         />

@@ -1,6 +1,7 @@
-import axios from 'axios';
+import axiosInstance from "../../views/Authentication/axiosInstance";
 
-const API_BASE = '/api/v1/positions';
+
+const API_BASE = '/positions';
 
 export interface Position {
     id: number;
@@ -17,12 +18,9 @@ export interface Position {
  * 부서별 직책 목록 조회
  */
 export const fetchPositionsByDept = async (
-    deptCode: string,
-    token: string
+    deptCode: string
 ): Promise<Position[]> => {
-    const response = await axios.get(`${API_BASE}/department/${deptCode}`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await axiosInstance.get(`${API_BASE}/department/${deptCode}`);
     return response.data;
 };
 
@@ -32,13 +30,11 @@ export const fetchPositionsByDept = async (
 export const createPosition = async (
     deptCode: string,
     positionName: string,
-    displayOrder: number | null,
-    token: string
+    displayOrder: number | null
 ): Promise<Position> => {
-    const response = await axios.post(
+    const response = await axiosInstance.post(
         API_BASE,
-        { deptCode, positionName, displayOrder },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { deptCode, positionName, displayOrder }
     );
     return response.data;
 };
@@ -49,27 +45,23 @@ export const createPosition = async (
 export const updatePosition = async (
     positionId: number,
     positionName: string,
-    displayOrder: number | null,
-    token: string
+    displayOrder: number | null
 ): Promise<Position> => {
-    const response = await axios.put(
+    const response = await axiosInstance.put(
         `${API_BASE}/${positionId}`,
-        { positionName, displayOrder },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { positionName, displayOrder }
     );
     return response.data;
 };
+
 
 /**
  * 직책 삭제
  */
 export const deletePosition = async (
-    positionId: number,
-    token: string
+    positionId: number
 ): Promise<void> => {
-    await axios.delete(`${API_BASE}/${positionId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+    await axiosInstance.delete(`${API_BASE}/${positionId}`);
 };
 
 /**
@@ -77,12 +69,10 @@ export const deletePosition = async (
  */
 export const reorderPositions = async (
     deptCode: string,
-    positionIds: number[],
-    token: string
+    positionIds: number[]
 ): Promise<void> => {
-    await axios.put(
+    await axiosInstance.put(
         `${API_BASE}/department/${deptCode}/reorder`,
-        { positionIds },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { positionIds }
     );
 };

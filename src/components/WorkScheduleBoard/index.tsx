@@ -1,15 +1,12 @@
 import React, {useState, useEffect, useMemo, useRef} from 'react';
-import { useCookies } from 'react-cookie';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../Layout';
 import {fetchMyWorkSchedules, createWorkSchedule, WorkSchedule, fetchWorkScheduleDetail} from '../../apis/workSchedule';
 import './style.css';
-import axios from "axios";
 import OrgChartModal from "../OrgChartModal";
+import axiosInstance from "../../views/Authentication/axiosInstance";
 
 const WorkScheduleBoard: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const navigate = useNavigate();
     const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
     const [loading, setLoading] = useState(true);
@@ -40,10 +37,7 @@ const WorkScheduleBoard: React.FC = () => {
     const fetchDepartmentNames = async () => {
         if (deptNamesLoaded) return;
         try {
-            const response = await axios.get('/api/v1/departments/names', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            console.log('부서 이름 데이터:', response.data); // 디버깅용
+            const response = await axiosInstance.get('/departments/names');
             setDepartmentNames(response.data);
         } catch (error) {
             console.error('부서 이름 조회 실패:', error);
@@ -89,9 +83,7 @@ const WorkScheduleBoard: React.FC = () => {
 
     const checkPermissions = async (): Promise<boolean> => {
         try {
-            const permRes = await fetch('/api/v1/user/me/permissions', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const permRes = await fetch('/api/v1/user/me/permissions', { credentials: 'include' });
             const permData = await permRes.json();
 
             const hasCreatePermission = permData.permissions?.includes('WORK_SCHEDULE_CREATE') ?? false;
@@ -107,10 +99,7 @@ const WorkScheduleBoard: React.FC = () => {
 
     const checkPendingApprovals = async () => {
         try {
-            const response = await axios.get(
-                '/api/v1/work-schedules/pending-approvals',
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const response = await axiosInstance.get('/work-schedules/pending-approvals');
             setPendingCount(response.data.length);
             setHasApprovalPermission(response.data.length > 0);
         } catch (err) {
@@ -133,24 +122,19 @@ const WorkScheduleBoard: React.FC = () => {
                 }
 
                 // 내 작성 문서: DRAFT, SUBMITTED, REJECTED 상태만
-                const response = await axios.get('/api/v1/work-schedules/my-documents', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const response = await axiosInstance.get('/work-schedules/my-documents');
                 setSchedules(response.data);
 
             } else if (tab === 'completed') {
                 // 완료 문서: APPROVED 상태 (모두 조회 가능)
-                const data = await fetchMyWorkSchedules(token);
+                const data = await fetchMyWorkSchedules();
                 const completedData = data.filter((schedule: WorkSchedule) =>
                     schedule.approvalStatus === 'APPROVED'
                 );
                 setSchedules(completedData);
 
             }  else if (tab === 'pending') {
-                const response = await axios.get(
-                    '/api/v1/work-schedules/pending-approvals',
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                const response = await axiosInstance.get('/work-schedules/pending-approvals');
                 setSchedules(response.data);
                 setPendingCount(response.data.length);
             }
@@ -196,7 +180,7 @@ const WorkScheduleBoard: React.FC = () => {
 
         try {
             const [deptCode] = await getCurrentUserDept();
-            const newSchedule = await createWorkSchedule(deptCode, selectedYearMonth, token);
+            const newSchedule = await createWorkSchedule(deptCode, selectedYearMonth);
             alert('근무표가 생성되었습니다.');
             navigate(`/detail/work-schedule/edit/${newSchedule.id}`);
         } catch (err: any) {
@@ -205,9 +189,7 @@ const WorkScheduleBoard: React.FC = () => {
     };
 
     const getCurrentUserDept = async (): Promise<[string]> => {
-        const response = await fetch('/api/v1/user/me', {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await fetch('/api/v1/user/me', { credentials: 'include' });
         const userData = await response.json();
         return [userData.deptCode];
     };

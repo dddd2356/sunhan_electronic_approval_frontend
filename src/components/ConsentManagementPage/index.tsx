@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useCookies } from 'react-cookie';
 import {
     FileText,
     CheckCircle,
@@ -37,8 +36,6 @@ interface Statistics {
 }
 
 const ConsentManagementPage: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
 
     const [agreements, setAgreements] = useState<ConsentAgreement[]>([]);
     const [statistics, setStatistics] = useState<Statistics | null>(null);
@@ -66,9 +63,7 @@ const ConsentManagementPage: React.FC = () => {
         setLoading(true);
         try {
             // 통계 조회
-            const statsRes = await fetch(`${API_BASE}/consents/admin/statistics`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const statsRes = await fetch(`${API_BASE}/consents/admin/statistics`, { credentials: 'include' });
             if (statsRes.ok) {
                 const stats = await statsRes.json();
                 setStatistics(stats);
@@ -85,9 +80,7 @@ const ConsentManagementPage: React.FC = () => {
 
             const listRes = await fetch(
                 `${API_BASE}/consents/admin/search?${params}`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
+                { credentials: 'include' }
             );
 
             if (listRes.ok) {
@@ -106,9 +99,7 @@ const ConsentManagementPage: React.FC = () => {
     // ✅ PDF 다운로드 함수 수정
     const downloadPdf = async (agreementId: number) => {
         try {
-            const pdfResp = await fetch(`${API_BASE}/consents/${agreementId}/pdf`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const pdfResp = await fetch(`${API_BASE}/consents/${agreementId}/pdf`, { credentials: 'include' });
 
             if (!pdfResp.ok) {
                 if (pdfResp.status === 404) {

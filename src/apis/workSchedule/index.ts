@@ -1,6 +1,7 @@
 import axios from 'axios';
+import axiosInstance from "../../views/Authentication/axiosInstance";
 
-const API_BASE = '/api/v1/work-schedules';
+const API_BASE = '/work-schedules';
 
 export interface ApprovalStepInfo {
     stepOrder: number;
@@ -93,37 +94,27 @@ export interface WorkScheduleDetail {
  * 부서 당직 설정 저장
  */
 export const saveDeptDutyConfig = async (
-    config: DeptDutyConfig,
-    token: string
+    config: DeptDutyConfig
 ): Promise<DeptDutyConfig> => {
-    const response = await axios.post(
-        `/api/v1/dept-duty-config`, // DeptDutyConfigController의 경로
-        config,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
+    const response = await axiosInstance.post(`/dept-duty-config`, config);
     return response.data;
 };
 
 /**
  * 근무표 목록 조회 (내 부서)
  */
-export const fetchMyWorkSchedules = async (token: string): Promise<WorkSchedule[]> => {
-    const response = await axios.get(`${API_BASE}/my-department`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
-    return response.data;
+export const fetchMyWorkSchedules = async (): Promise<WorkSchedule[]> => {
+    return (await axiosInstance.get(`${API_BASE}/my-department`)).data;
 };
+
 
 /**
  * 근무표 상세 조회
  */
 export const fetchWorkScheduleDetail = async (
-    scheduleId: number,
-    token: string
+    scheduleId: number
 ): Promise<WorkScheduleDetail> => {
-    const response = await axios.get(`${API_BASE}/${scheduleId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await axiosInstance.get(`${API_BASE}/${scheduleId}`);
     return response.data;
 };
 
@@ -132,14 +123,9 @@ export const fetchWorkScheduleDetail = async (
  */
 export const createWorkSchedule = async (
     deptCode: string,
-    yearMonth: string,
-    token: string
+    yearMonth: string
 ): Promise<WorkSchedule> => {
-    const response = await axios.post(
-        API_BASE,
-        { deptCode, yearMonth },
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
+    const response = await axiosInstance.post(API_BASE, { deptCode, yearMonth });
     return response.data;
 };
 
@@ -148,14 +134,9 @@ export const createWorkSchedule = async (
  */
 export const updateWorkData = async (
     scheduleId: number,
-    updates: { entryId: number; workData: Record<string, string> }[],
-    token: string
+    updates: { entryId: number; workData: Record<string, string> }[]
 ): Promise<void> => {
-    await axios.put(
-        `${API_BASE}/${scheduleId}/work-data`,
-        { updates },
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
+    await axiosInstance.put(`${API_BASE}/${scheduleId}/work-data`, { updates });
 };
 
 /**
@@ -163,25 +144,15 @@ export const updateWorkData = async (
  */
 export const updateNightRequired = async (
     entryId: number,
-    requiredCount: number,
-    token: string
+    requiredCount: number
 ): Promise<void> => {
-    await axios.put(
-        `${API_BASE}/entries/${entryId}/night-required`,
-        { requiredCount },
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
+    await axiosInstance.put(`${API_BASE}/entries/${entryId}/night-required`, { requiredCount });
 };
 
 export const toggleFinalApproval = async (
-    scheduleId: number,
-    token: string
+    scheduleId: number
 ): Promise<{ message: string; isFinalApproved: boolean }> => {
-    const response = await axios.post(
-        `${API_BASE}/${scheduleId}/toggle-final-approval`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
+    const response = await axiosInstance.post(`${API_BASE}/${scheduleId}/toggle-final-approval`, {});
     return response.data;
 };
 
@@ -190,12 +161,7 @@ export const toggleFinalApproval = async (
  */
 export const copyFromSpecificMonth = async (
     scheduleId: number,
-    sourceYearMonth: string,
-    token: string
+    sourceYearMonth: string
 ): Promise<void> => {
-    await axios.post(
-        `${API_BASE}/${scheduleId}/copy-from`,
-        { sourceYearMonth },
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
+    await axiosInstance.post(`${API_BASE}/${scheduleId}/copy-from`, { sourceYearMonth });
 };

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useCookies } from 'react-cookie';
 import './style.css';
 import Layout from "../Layout";
 import {
@@ -46,8 +45,6 @@ interface PaginationData {
 }
 
 const LeaveApplicationBoard: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>('');
@@ -115,7 +112,7 @@ const LeaveApplicationBoard: React.FC = () => {
             case 'FAMILY_EVENT_LEAVE': return '경조휴가';
             case 'SPECIAL_LEAVE':     return '특별휴가';
             case 'MENSTRUAL_LEAVE':   return '생리휴가';
-            case 'MATERNITY_LEAVE':   return '보민휴가'; // Java에 정의된 대로
+            case 'MATERNITY_LEAVE':   return '분만휴가'; // Java에 정의된 대로
             case 'MISCARRIAGE_LEAVE': return '유산사산휴가';
             case 'SICK_LEAVE':        return '병가';
             case 'OTHER':             return '기타';
@@ -389,12 +386,12 @@ const LeaveApplicationBoard: React.FC = () => {
     }, [searchTerm, searchType]);
 
     useEffect(() => {
-        if (token) fetchCurrentUser();
-    }, [token]);
+        fetchCurrentUser();
+    }, []);
 
     const fetchCurrentUser = async () => {
         try {
-            const data = await apiFetchCurrentUser(token);
+            const data = await apiFetchCurrentUser();
             setCurrentUser(data);
         } catch (err: any) {
             setError(err.message || '사용자 정보를 불러올 수 없습니다.');
@@ -410,7 +407,7 @@ const LeaveApplicationBoard: React.FC = () => {
             if (tab === 'allPending' && hasHrLeavePermission) {
                 const res = await fetch(
                     `/api/v1/leave-application/pending/all?page=${apiPage}&size=${itemsPerPage}`,
-                    { headers: { Authorization: `Bearer ${token}` } }
+                    { credentials: 'include' }
                 );
                 const raw = await res.json();
 
@@ -430,7 +427,6 @@ const LeaveApplicationBoard: React.FC = () => {
 
             // 기존 로직 유지
             const data = await fetchLeaveApplications(
-                token,
                 tab as 'my' | 'pending' | 'completed',
                 canViewCompleted,
                 apiPage,
@@ -463,7 +459,7 @@ const LeaveApplicationBoard: React.FC = () => {
 
     const handleCreate = async () => {
         try {
-            const newApp: LeaveApplication = await createLeaveApplication(token);
+            const newApp: LeaveApplication = await createLeaveApplication();
             navigate(`/detail/leave-application/edit/${newApp.id}`);
         } catch (err: any) {
             setError(err.message || '휴가원 생성에 실패했습니다.');
@@ -511,7 +507,6 @@ const LeaveApplicationBoard: React.FC = () => {
 
             if (tab === 'my') {
                 result = await searchMyApplications(
-                    token,
                     searchStartDate,
                     searchEndDate,
                     apiPage,
@@ -519,7 +514,6 @@ const LeaveApplicationBoard: React.FC = () => {
                 ) as PaginationData;
             } else if (tab === 'pending') {
                 result = await searchPendingApplications(
-                    token,
                     searchStartDate,
                     searchEndDate,
                     apiPage,
@@ -527,7 +521,6 @@ const LeaveApplicationBoard: React.FC = () => {
                 ) as PaginationData;
             } else if (tab === 'allPending') {
                 result = await searchPendingApplications(
-                    token,
                     searchStartDate,
                     searchEndDate,
                     apiPage,
@@ -536,7 +529,6 @@ const LeaveApplicationBoard: React.FC = () => {
             }
             else {
                 result = await searchCompletedApplications(
-                    token,
                     searchStartDate,
                     searchEndDate,
                     apiPage,
@@ -568,7 +560,6 @@ const LeaveApplicationBoard: React.FC = () => {
 
                 if (tab === 'my') {
                     result = await searchMyApplications(
-                        token,
                         searchStartDate,
                         searchEndDate,
                         apiPage,
@@ -576,7 +567,6 @@ const LeaveApplicationBoard: React.FC = () => {
                     ) as PaginationData;
                 } else if (tab === 'pending' || tab === 'allPending') {
                     result = await searchPendingApplications(
-                        token,
                         searchStartDate,
                         searchEndDate,
                         apiPage,
@@ -584,7 +574,6 @@ const LeaveApplicationBoard: React.FC = () => {
                     ) as PaginationData;
                 } else {
                     result = await searchCompletedApplications(
-                        token,
                         searchStartDate,
                         searchEndDate,
                         apiPage,

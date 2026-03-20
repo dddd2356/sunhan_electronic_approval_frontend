@@ -1,37 +1,24 @@
-import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import axios, { InternalAxiosRequestConfig } from 'axios';
 
 const BASE_URL = process.env.REACT_APP_API_URL || "/api/v1";
 
 const axiosInstance = axios.create({
     baseURL: BASE_URL,
-    withCredentials: true,
+    withCredentials: true, // httpOnly 쿠키 자동 전송
 });
 
+// 요청 인터셉터: Authorization 헤더 주입 제거 (쿠키가 자동으로 전송됨)
 axiosInstance.interceptors.request.use(
-    (config: InternalAxiosRequestConfig) => {
-        // ✅ localStorage를 최우선으로 사용
-        const accessToken = localStorage.getItem('accessToken');
-
-        if (accessToken) {
-            config.headers['Authorization'] = `Bearer ${accessToken}`;
-            console.log("🚀 [인터셉터] 토큰 주입 성공 (localStorage)");
-        } else {
-            console.error("🚫 [인터셉터] localStorage에서 accessToken을 찾을 수 없음");
-        }
-        return config;
-    },
+    (config: InternalAxiosRequestConfig) => config,
     (error) => Promise.reject(error)
 );
 
-// ✅ 401 에러 시 자동 로그아웃 처리
+// 응답 인터셉터: 401/403 시 로그인 페이지로 이동
 axiosInstance.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401 || error.response?.status === 403) {
-            console.warn('⚠️ 인증 만료 - 로그인 페이지로 이동');
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('tokenExpires');
-            localStorage.removeItem('userCache');
+            localStorage.removeItem('userCache'); // userCache만 제거
             window.location.href = '/';
         }
         return Promise.reject(error);

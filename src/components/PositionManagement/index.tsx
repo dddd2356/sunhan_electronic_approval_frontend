@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useCookies } from 'react-cookie';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../Layout';
 import {
@@ -11,11 +10,9 @@ import {
     Position
 } from '../../apis/Position';
 import './style.css';
-import axios from "axios";
+
 
 const PositionManagement: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
 
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [positions, setPositions] = useState<Position[]>([]);
@@ -35,9 +32,7 @@ const PositionManagement: React.FC = () => {
 
     const checkAccess = async () => {
         try {
-            const userRes = await fetch('/api/v1/user/me/permissions', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const userRes = await fetch('/api/v1/user/me/permissions', { credentials: 'include' });
             const userData = await userRes.json();
             const permissions: string[] = userData.permissions || [];
 
@@ -62,14 +57,12 @@ const PositionManagement: React.FC = () => {
             setLoading(true);
 
             // 현재 사용자 정보 재조회 (필요 시)
-            const userRes = await fetch('/api/v1/user/me', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const userRes = await fetch('/api/v1/user/me', { credentials: 'include' });
             const userData = await userRes.json();
             setCurrentUser(userData);
 
             // 직책 목록
-            const positionsData = await fetchPositionsByDept(userData.deptCode, token);
+            const positionsData = await fetchPositionsByDept(userData.deptCode);
             setPositions(positionsData);
 
         } catch (err: any) {
@@ -105,16 +98,14 @@ const PositionManagement: React.FC = () => {
                 await updatePosition(
                     editingPosition.id,
                     positionName,
-                    displayOrder,
-                    token
+                    displayOrder
                 );
             } else {
                 // 생성
                 await createPosition(
                     currentUser.deptCode,
                     positionName,
-                    displayOrder,
-                    token
+                    displayOrder
                 );
             }
             setShowModal(false);
@@ -128,7 +119,7 @@ const PositionManagement: React.FC = () => {
         if (!window.confirm('정말 삭제하시겠습니까? 해당 직책의 데이터가 유실될 수 있습니다.')) return;
 
         try {
-            await deletePosition(positionId, token);
+            await deletePosition(positionId);
             await loadData();
         } catch (err: any) {
             alert(err.response?.data?.error || '삭제 실패');

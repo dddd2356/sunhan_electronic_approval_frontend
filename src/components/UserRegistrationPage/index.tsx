@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useCookies } from 'react-cookie';
-import axios from 'axios';
 import Layout from '../Layout';
 import './style.css';
+import axiosInstance from '../../views/Authentication/axiosInstance';
 
 interface Department {
     deptCode: string;
@@ -10,8 +9,6 @@ interface Department {
 }
 
 export const UserRegistrationPage: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const API_BASE_URL = process.env.REACT_APP_API_URL;
 
     const [formData, setFormData] = useState({
@@ -33,9 +30,7 @@ export const UserRegistrationPage: React.FC = () => {
 
     const fetchDepartments = async () => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/departments`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await axiosInstance.get(`/departments`);
             setDepartments(response.data);
         } catch (err) {
             console.error('부서 목록 조회 실패', err);
@@ -49,9 +44,7 @@ export const UserRegistrationPage: React.FC = () => {
         setLoading(true);
 
         try {
-            await axios.post(`${API_BASE_URL}/admin/users/register`, formData, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await axiosInstance.post(`/admin/users/register`, formData);
 
             setSuccess(`회원 등록이 완료되었습니다. (사원번호: ${formData.usrId})`);
 

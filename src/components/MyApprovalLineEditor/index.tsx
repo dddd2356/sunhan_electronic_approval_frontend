@@ -1,6 +1,5 @@
 // src/pages/approval/MyApprovalLineEditor.tsx
 import React, { useEffect, useState } from 'react';
-import { useCookies } from 'react-cookie';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     Plus,
@@ -60,8 +59,6 @@ const emptyStep = (index: number): ApprovalStepData => ({
 });
 
 const MyApprovalLineEditor: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
 
     const navigate = useNavigate();
     const { id } = useParams<{ id?: string }>(); // id가 있으면 편집 모드
@@ -94,12 +91,10 @@ const MyApprovalLineEditor: React.FC = () => {
     useEffect(() => {
         const fetchMe = async () => {
             try {
-                const res = await fetch('/api/v1/user/me', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await fetch('/api/v1/user/me', { credentials: 'include' });
                 if (res.ok) {
                     const data = await res.json();
-                    setCurrentUserId(data.userId || data.userId === 0 ? data.userId : data.userId);
+                    setCurrentUserId(data.userId ?? null);
                 } else {
                     // ignore
                 }
@@ -108,7 +103,7 @@ const MyApprovalLineEditor: React.FC = () => {
             }
         };
         fetchMe();
-    }, [token]);
+    }, []);
 
     // 편집 모드면 기존 결재라인 로드
     useEffect(() => {
@@ -117,9 +112,7 @@ const MyApprovalLineEditor: React.FC = () => {
         const fetchLine = async () => {
             setLoading(true);
             try {
-                const res = await fetch(`/api/v1/approval-lines/${id}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await fetch(`/api/v1/approval-lines/${id}`, { credentials: 'include' });
                 if (!res.ok) {
                     const err = await res.json().catch(() => null);
                     alert(`결재라인 불러오기 실패: ${err?.error || res.statusText}`);
@@ -155,7 +148,7 @@ const MyApprovalLineEditor: React.FC = () => {
         };
 
         fetchLine();
-    }, [id, isEditMode, token, navigate]);
+    }, [id, isEditMode, navigate]);
 
     const addStep = () => {
         const newStep: ApprovalStepData = {
@@ -266,10 +259,8 @@ const MyApprovalLineEditor: React.FC = () => {
             if (isEditMode) {
                 const res = await fetch(`/api/v1/approval-lines/${id}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify(payload)
                 });
                 if (!res.ok) {
@@ -282,10 +273,8 @@ const MyApprovalLineEditor: React.FC = () => {
             } else {
                 const res = await fetch('/api/v1/approval-lines', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify(payload)
                 });
                 if (!res.ok) {
@@ -311,7 +300,7 @@ const MyApprovalLineEditor: React.FC = () => {
         try {
             const res = await fetch(`/api/v1/approval-lines/${id}`, {
                 method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` }
+                credentials: 'include'
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => null);

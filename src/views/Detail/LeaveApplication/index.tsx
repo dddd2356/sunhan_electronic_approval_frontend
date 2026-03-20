@@ -1,7 +1,7 @@
 import React, {useState, useCallback, useEffect, useMemo} from "react";
 import { useParams, useNavigate } from 'react-router-dom';
-import { useCookies } from 'react-cookie';
 import axios from 'axios';
+import axiosInstance from '../../../views/Authentication/axiosInstance';
 import './style.css';
 import Layout from "../../../components/Layout";
 import {  updateLeaveApplicationSignature, fetchUserSignatureFromDB } from '../../../apis/signatures'
@@ -20,6 +20,7 @@ import LeaveAttachments from "../../../components/LeaveAttachments";
 import ApprovalLineSelector from "../../../components/ApprovalLineSelector";
 import OrganizationChart from "../../../components/OrganizationChart";
 import { Document, Page, pdfjs } from 'react-pdf';
+import { toSafeDataUrl } from '../../../utils/imageUtils';
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 dayjs.extend(isBetween);
 
@@ -167,8 +168,6 @@ interface LeaveApplicationData {
 
 const LeaveApplication = () => {
     const { id } = useParams<{ id: string }>();
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
     const navigate = useNavigate();
     //const [candidates, setCandidates] = useState<{ userId: string; userName: string; jobLevel: string }[]>([]);
     const [signatures, setSignatures] = useState<Record<string, SignatureData[]>>({
@@ -262,7 +261,7 @@ const LeaveApplication = () => {
         경조휴가: false,
         특별휴가: false,
         생리휴가: false,
-        보민휴가: false,
+        분만휴가: false,
         유산사산휴가: false,
         병가: false,
         기타: false
@@ -345,16 +344,14 @@ const LeaveApplication = () => {
     useEffect(() => {
         const fetchDepartmentNames = async () => {
             try {
-                const response = await axios.get('/api/v1/departments/names', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const response = await axiosInstance.get('/departments/names');
                 setDepartmentNames(response.data);
             } catch (error) {
                 console.error('부서 이름 조회 실패:', error);
             }
         };
         fetchDepartmentNames();
-    }, [token]);
+    }, []);
 
     // 결재라인 목록 조회
     useEffect(() => {
@@ -372,7 +369,7 @@ const LeaveApplication = () => {
             const response = await fetch(
                 '/api/v1/approval-lines/my?documentType=LEAVE_APPLICATION',
                 {
-                    headers: { Authorization: `Bearer ${token}` }
+                    credentials: 'include'
                 }
             );
             if (response.ok) {
@@ -496,13 +493,13 @@ const LeaveApplication = () => {
 
         try {
             // 새로운 API 함수 사용
-            await saveLeaveApplication(parseInt(id), payload, token);
+            await saveLeaveApplication(parseInt(id), payload);
             console.log('폼 데이터 동기화 완료');
         } catch (error) {
             console.error('폼 데이터 동기화 실패:', error);
             throw error;
         }
-    }, [id, applicantInfo, substituteInfo, departmentHeadInfo, leaveTypes, leaveContent, flexiblePeriods, consecutivePeriod, totalDays, applicationDate, signatures, token]);
+    }, [id, applicantInfo, substituteInfo, departmentHeadInfo, leaveTypes, leaveContent, flexiblePeriods, consecutivePeriod, totalDays, applicationDate, signatures]);
 
     // 임시저장 함수 (수정된 버전)
     const handleSave = useCallback(async () => {
@@ -544,7 +541,7 @@ const LeaveApplication = () => {
 
     // 휴가원 삭제 (작성중인 신청서, 신청자 본인만)
     const handleDelete = async () => {
-        if (!id || !token || !leaveApplication) {
+        if (!id || !leaveApplication) {
             alert('삭제할 휴가원 정보가 없습니다.');
             return;
         }
@@ -553,9 +550,7 @@ const LeaveApplication = () => {
         if (!window.confirm('정말 이 휴가원을 삭제하시겠습니까? (복구 불가)')) return;
 
         try {
-            const resp = await axios.delete(`/api/v1/leave-application/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const resp = await axiosInstance.delete(`/leave-application/${id}`);
 
             if (resp.status >= 200 && resp.status < 300) {
                 alert('휴가원이 삭제되었습니다.');
@@ -576,9 +571,9 @@ const LeaveApplication = () => {
     };
 
     const loadSignatures = useCallback(async () => {
-        if (!id || !token) return;
+        if (!id) return;
         try {
-            const signaturesData = await fetchLeaveApplicationSignatures(parseInt(id), token);
+            const signaturesData = await fetchLeaveApplicationSignatures(parseInt(id));
 
             // 안전한 서명 데이터 업데이트
             setSignatures(prev => {
@@ -649,7 +644,7 @@ const LeaveApplication = () => {
 
             setSignatures(defaultSignatures);
         }
-    }, [id, token]);
+    }, [id]);
 
     // 신청자 제출 (다음단계로 전송)
     const handleSubmitToSubstitute = useCallback(async () => {
@@ -724,12 +719,9 @@ const LeaveApplication = () => {
 
             console.log('Submit payload:', submitPayload);  // ✅ 로그 추가
 
-            const response = await axios.post(
-                `/api/v1/leave-application/${id}/submit`,
-                submitPayload,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
+            const response = await axiosInstance.post(
+                `/leave-application/${id}/submit`,
+                submitPayload
             );
 
             if (response.status >= 200 && response.status < 300) {
@@ -757,7 +749,6 @@ const LeaveApplication = () => {
         leaveTypes,
         syncFormData,
         loadSignatures,
-        token,
         navigate
     ]);
 
@@ -847,14 +838,13 @@ const LeaveApplication = () => {
             if (usingApprovalLine) {
                 const signatureImageUrl = signatures.substitute?.[0]?.imageUrl;
 
-                const response = await axios.put(
-                    `/api/v1/leave-application/${id}/approve-with-line`, // <--- ✅ 새 API 호출
+                const response = await axiosInstance.put(
+                    `/leave-application/${id}/approve-with-line`, // <--- ✅ 새 API 호출
                     {
                         comment: '대직자 승인',
                         signatureImageUrl: signatureImageUrl,
                         isFinalApproval: false // 대직자는 전결이 아님
-                    },
-                    { headers: { Authorization: `Bearer ${token}` } }
+                    }
                 );
 
                 setLeaveApplication(response.data);
@@ -863,10 +853,9 @@ const LeaveApplication = () => {
 
             } else {
                 // ✅ 3. 이전 하드코딩 로직 (하위 호환성 유지)
-                const response = await axios.put(
-                    `/api/v1/leave-application/${id}/approve`, // <--- ❌ 이전 API 호출
-                    { signatureDate: getCurrentDate() },
-                    { headers: { Authorization: `Bearer ${token}` } }
+                const response = await axiosInstance.put(
+                    `/leave-application/${id}/approve`, // <--- ❌ 이전 API 호출
+                    { signatureDate: getCurrentDate() }
                 );
 
                 setLeaveApplication(response.data);
@@ -937,7 +926,7 @@ const LeaveApplication = () => {
     // handleManagerApproval 함수 전체 교체
     const handleManagerApproval = async (action: 'approve' | 'reject', rejectionReason?: string) => {
 
-        if (!leaveApplication || !id || !token || !currentUser) {
+        if (!leaveApplication || !id || !currentUser) {
             alert("휴가원 정보 또는 권한 정보가 부족합니다.");
             return;
         }
@@ -981,14 +970,13 @@ const LeaveApplication = () => {
 
                     //const signatureImageUrl = signatureKey ? signatures[signatureKey]?.[0]?.imageUrl : null;
                     const signatureImageUrl = userSignatureImage;
-                    const response = await axios.put(
-                        `/api/v1/leave-application/${id}/approve-with-line`,
+                    const response = await axiosInstance.put(
+                        `/leave-application/${id}/approve-with-line`,
                         {
                             comment: '',
                             signatureImageUrl: signatureImageUrl,
                             isFinalApproval: false
-                        },
-                        { headers: { Authorization: `Bearer ${token}` } }
+                        }
                     );
 
                     setLeaveApplication(response.data);
@@ -996,7 +984,7 @@ const LeaveApplication = () => {
                     alert("승인이 완료되었습니다.");
                 } else {
                     // 기존 방식
-                    const response = await approveLeaveApplication(parseInt(id), getCurrentDate(), token);
+                    const response = await approveLeaveApplication(parseInt(id), getCurrentDate());
                     setLeaveApplication(response);
                     setApplicationStatus(response.status);
                     alert("휴가원이 승인되었습니다.");
@@ -1011,10 +999,9 @@ const LeaveApplication = () => {
 
                 // ✅ 결재라인 사용 여부에 따라 다른 API 호출
                 if (usingApprovalLine) {
-                    const response = await axios.put(
-                        `/api/v1/leave-application/${id}/reject-with-line`,
-                        { rejectionReason: rejectionReason },
-                        { headers: { Authorization: `Bearer ${token}` } }
+                    const response = await axiosInstance.put(
+                        `/leave-application/${id}/reject-with-line`,
+                        { rejectionReason: rejectionReason }
                     );
 
                     setLeaveApplication(response.data);
@@ -1022,7 +1009,7 @@ const LeaveApplication = () => {
                     alert("휴가원이 반려되었습니다.");
                 } else {
                     // 기존 방식
-                    const response = await rejectLeaveApplication(parseInt(id), rejectionReason, token);
+                    const response = await rejectLeaveApplication(parseInt(id), rejectionReason);
                     setLeaveApplication(response);
                     setApplicationStatus(response.status);
                     alert("휴가원이 반려되었습니다.");
@@ -1041,7 +1028,7 @@ const LeaveApplication = () => {
 
     // handleFinalApproval 함수도 수정
     const handleFinalApproval = async () => {
-        if (!leaveApplication || !id || !token || !currentUser) {
+        if (!leaveApplication || !id || !currentUser) {
             alert("휴가원 정보 또는 권한 정보가 부족합니다.");
             return;
         }
@@ -1078,17 +1065,16 @@ const LeaveApplication = () => {
                     return null;
                 })();
 
-                await axios.put(
-                    `/api/v1/leave-application/${id}/approve-with-line`,
+                await axiosInstance.put(
+                    `/leave-application/${id}/approve-with-line`,
                     {
                         comment: '전결 승인',
                         signatureImageUrl: signatureImageUrl,
                         isFinalApproval: true
-                    },
-                    { headers: { Authorization: `Bearer ${token}` } }
+                    }
                 );
             } else {
-                await finalApproveLeaveApplication(parseInt(id), token);
+                await finalApproveLeaveApplication(parseInt(id));
             }
 
             alert("전결 승인이 완료되었습니다.");
@@ -1152,10 +1138,7 @@ const LeaveApplication = () => {
         }
 
         const currentSignature = signatures[signatureKey]?.[0];
-        const correctedBase64 = userSignatureImage.startsWith('data:image/')
-            ? userSignatureImage
-            : `data:image/png;base64,${userSignatureImage}`;
-
+        const correctedBase64 = toSafeDataUrl(userSignatureImage);
 
         // 이미 서명된 경우 - 서명 취소 확인
         if (currentSignature?.isSigned) {
@@ -1199,8 +1182,7 @@ const LeaveApplication = () => {
                         const response = await updateLeaveApplicationSignature(
                             parseInt(id!),
                             signatureKey as string, // signatureType
-                            null, // 서명 취소
-                            token!
+                            null // 서명 취소
                         );
 
                         // 성공 시 프론트엔드 상태 업데이트
@@ -1211,9 +1193,7 @@ const LeaveApplication = () => {
 
                         console.log(`${signatureKey} 서명 취소 성공`, response);
 
-                        const updatedAppResponse = await axios.get(`/api/v1/leave-application/${id}`, {
-                            headers: { Authorization: `Bearer ${token}` }
-                        });
+                        const updatedAppResponse = await axiosInstance.get(`/leave-application/${id}`);
 
                         const updatedData = updatedAppResponse.data;
 
@@ -1282,9 +1262,7 @@ const LeaveApplication = () => {
             try {
                 if (signatureKey === 'applicant' && leaveApplication.status === 'DRAFT' && substituteInfo && substituteInfo.userId) {
                     // 서명 직전에 서버에서 최신 데이터를 다시 불러옵니다.
-                    const freshAppResponse = await axios.get(`/api/v1/leave-application/${id}`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
+                    const freshAppResponse = await axiosInstance.get(`/leave-application/${id}`);
                     const freshAppData = freshAppResponse.data;
 
                     // 최신 데이터와 로컬 상태의 대직자 정보를 합쳐서 완전한 페이로드를 만듭니다.
@@ -1294,16 +1272,15 @@ const LeaveApplication = () => {
                         substituteName: substituteInfo.name,
                     };
 
-                    await axios.put(
-                        `/api/v1/leave-application/${id}/substitute`,
-                        updatePayload,
-                        { headers: { Authorization: `Bearer ${token}` } }
+                    await axiosInstance.put(
+                        `/leave-application/${id}/substitute`,
+                        updatePayload
                     );
                 }
 
             // 올바른 데이터 구조로 API 호출
-            const response = await axios.put(
-                `/api/v1/leave-application/${id}/sign`,
+            const response = await axiosInstance.put(
+                `/leave-application/${id}/sign`,
                 {
                     signerId: currentUser.id,
                     signerType: signatureKey,
@@ -1313,8 +1290,7 @@ const LeaveApplication = () => {
                         isSigned: true,
                         signatureDate: currentDate
                     }
-                },
-                { headers: { Authorization: `Bearer ${token}` } }
+                }
             );
 
             // 성공 시 프론트엔드 상태 업데이트
@@ -1326,9 +1302,7 @@ const LeaveApplication = () => {
             console.log(`${signatureKey} 서명 성공`, response);
 
                 // 휴가원 데이터 다시 로드 (서명 상태 동기화)
-                const updatedAppResponse = await axios.get(`/api/v1/leave-application/${id}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const updatedAppResponse = await axiosInstance.get(`/leave-application/${id}`);
                 const updatedData = updatedAppResponse.data;
 
                 // ✅ 추가: 백엔드 응답의 approvalSteps에 signatureUrl이 없으면 로컬 서명 이미지 유지
@@ -1359,7 +1333,7 @@ const LeaveApplication = () => {
             }
         }
     }
-    }, [currentUser, userSignatureImage, signatures, leaveApplication, id, token, applicantInfo.department, checkApprovalPermissions,
+    }, [currentUser, userSignatureImage, signatures, leaveApplication, id, applicantInfo.department, checkApprovalPermissions,
             departmentHeadInfo,
             applicationStatus]);
 
@@ -1383,15 +1357,13 @@ const LeaveApplication = () => {
         if (!window.confirm('서명하시겠습니까?')) return;
 
         const currentDate = new Date().toISOString();
-        const correctedBase64 = userSignatureImage.startsWith('data:image/')
-            ? userSignatureImage
-            : `data:image/png;base64,${userSignatureImage}`;
+        const correctedBase64 = toSafeDataUrl(userSignatureImage);
 
         try {
             // signerType을 stepOrder 기반으로 결정
             // SPECIFIC_USER는 백엔드에서 approverId로 판단하므로 signerType은 참고용
-            const response = await axios.put(
-                `/api/v1/leave-application/${id}/sign`,
+            const response = await axiosInstance.put(
+                `/leave-application/${id}/sign`,
                 {
                     signerId: currentUser.id,
                     signerType: `step_${stepOrder}`, // 백엔드에서 처리 가능한 형태로
@@ -1401,8 +1373,7 @@ const LeaveApplication = () => {
                         isSigned: true,
                         signatureDate: currentDate
                     }
-                },
-                { headers: { Authorization: `Bearer ${token}` } }
+                }
             );
 
             console.log(`step_${stepOrder} 서명 성공`, response);
@@ -1421,9 +1392,7 @@ const LeaveApplication = () => {
             });
 
             // 백엔드 데이터 동기화
-            const updatedAppResponse = await axios.get(`/api/v1/leave-application/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const updatedAppResponse = await axiosInstance.get(`/leave-application/${id}`);
             const updatedData = updatedAppResponse.data;
 
 // ✅ 백엔드 응답의 approvalSteps에 signatureUrl이 없으면 로컬 서명 이미지 유지
@@ -1451,7 +1420,7 @@ const LeaveApplication = () => {
                 alert('서명 중 오류가 발생했습니다.');
             }
         }
-    }, [currentUser, leaveApplication, id, userSignatureImage, token, navigate, checkApprovalPermissions]);
+    }, [currentUser, leaveApplication, id, userSignatureImage, navigate, checkApprovalPermissions]);
 
     const checkCanSign = useCallback((signatureKey: keyof SignatureState) => {
         if (!currentUser || !leaveApplication) return false;
@@ -1519,7 +1488,7 @@ useEffect(() => {
 
 // 완료된 휴가원 취소 핸들러
 const handleCancelApproved = async (cancellationReason: string) => {
-    if (!leaveApplication || !id || !token) {
+    if (!leaveApplication || !id) {
         alert('휴가원 정보가 없습니다.');
         return;
     }
@@ -1534,10 +1503,9 @@ const handleCancelApproved = async (cancellationReason: string) => {
     }
 
     try {
-        const response = await axios.put(
-            `/api/v1/leave-application/${id}/cancel-approved`,
-            { cancellationReason: cancellationReason },
-            { headers: { Authorization: `Bearer ${token}` } }
+        const response = await axiosInstance.put(
+            `/leave-application/${id}/cancel-approved`,
+            { cancellationReason: cancellationReason }
         );
 
         if (response.status === 200) {
@@ -1563,13 +1531,13 @@ const handleCancelApproved = async (cancellationReason: string) => {
 // PDF 다운로드 함수
 const handleDownload = useCallback(
     async (type: 'pdf') => {
-        if (!id || !token) return;
+        if (!id) return;
         try {
             const resp = await fetch(
                 `/api/v1/leave-application/${id}/${type}`,
                 {
                     method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token}` },
+                    credentials: 'include',
                 }
             );
             if (!resp.ok) throw new Error(`${type.toUpperCase()} 다운로드 실패: ${resp.status}`);
@@ -1588,7 +1556,7 @@ const handleDownload = useCallback(
             alert(e.message);
         }
     },
-    [id, token]
+    [id]
 );
 
 // ✅ 추가
@@ -1665,14 +1633,14 @@ const handleDownload = useCallback(
 
     useEffect(() => {
         const fetchApplicationData = async () => {
-            if (!id || !token) {
+            if (!id) {
                 navigate('/detail/leave-application');
                 return;
             }
 
             try {
                 // 1. 현재 사용자 정보 및 서명 이미지 가져오기
-                const userRes = await axios.get('/api/v1/user/me', { headers: { Authorization: `Bearer ${token}` } });
+                const userRes = await axiosInstance.get('/user/me');
                 const userData = userRes.data;
                 const fetchedUser: User = {
                     id: String(userData.userId),
@@ -1688,7 +1656,7 @@ const handleDownload = useCallback(
 
                 // 2. 서명 이미지 가져오기 (404 무시)
                 try {
-                    const userSigImg = await fetchUserSignatureFromDB(token);
+                    const userSigImg = await fetchUserSignatureFromDB();
                     setUserSignatureImage(userSigImg);
                 } catch (sigError) {
                     console.warn('서명 이미지 없음 (정상):', sigError);
@@ -1696,9 +1664,7 @@ const handleDownload = useCallback(
                 }
 
                 // 3. 휴가원 상세 데이터 가져오기
-                const appResponse = await axios.get(`/api/v1/leave-application/${id}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const appResponse = await axiosInstance.get(`/leave-application/${id}`);
                 const appData = appResponse.data;
                 setLeaveApplication(appData);
 
@@ -1762,7 +1728,7 @@ const handleDownload = useCallback(
             // leaveTypes 배열을 Record<string, boolean>으로 변환
             const initialLeaveTypes: Record<string, boolean> = {
                 연차휴가: false, 경조휴가: false, 특별휴가: false, 생리휴가: false,
-                보민휴가: false, 유산사산휴가: false, 병가: false, 기타: false
+                분만휴가: false, 유산사산휴가: false, 병가: false, 기타: false
             };
 
             const leaveTypesArray = formData.leaveTypes || [];
@@ -1843,9 +1809,7 @@ const handleDownload = useCallback(
 
             // 4. 실제 서명 데이터 로드 (백엔드 API에서 가져오기)
             try {
-                const sigResponse = await axios.get(`/api/v1/leave-application/${id}/signatures`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const sigResponse = await axiosInstance.get(`/leave-application/${id}/signatures`);
                 const signaturesData = sigResponse.data;
                 // 백엔드에서 받은 서명 데이터로 상태 업데이트
                 setSignatures(prev => {
@@ -1907,7 +1871,7 @@ const handleDownload = useCallback(
     };
 
     fetchApplicationData();
-}, [id, token, navigate]);
+}, [id, navigate]);
 
     useEffect(() => {
         // PENDING 상태에서만 전결 권한 체크
@@ -1930,7 +1894,7 @@ const handleDownload = useCallback(
             }
 
             fetch(`/api/v1/leave-application/${leaveApplication.id}/can-final-approve`, {
-                headers: { Authorization: `Bearer ${token}` }
+                credentials: 'include'
             })
                 .then(res => res.json())
                 .then(data => {
@@ -1941,7 +1905,7 @@ const handleDownload = useCallback(
                     setCanFinalApprove(false);
                 });
         }
-    }, [currentUser?.id, leaveApplication?.id, leaveApplication?.status, leaveApplication?.currentApproverId, leaveApplication?.approvalLine, token]);
+    }, [currentUser?.id, leaveApplication?.id, leaveApplication?.status, leaveApplication?.currentApproverId, leaveApplication?.approvalLine]);
 
     useEffect(() => {
         if (leaveApplication && currentUser) {
@@ -1972,12 +1936,12 @@ const handleDownload = useCallback(
 
 // APPROVED 상태일 때 PDF 로드
     useEffect(() => {
-        if (applicationStatus === 'APPROVED' && leaveApplication?.printable && id && token) {
+        if (applicationStatus === 'APPROVED' && leaveApplication?.printable && id) {
             setPdfLoading(true);
             setPdfError(null);
 
             fetch(`/api/v1/leave-application/${id}/pdf`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                credentials: 'include'
             })
                 .then(res => {
                     if (!res.ok) throw new Error(`PDF 로드 실패 (상태: ${res.status})`);
@@ -2003,7 +1967,7 @@ const handleDownload = useCallback(
                 });
             };
         }
-    }, [applicationStatus, leaveApplication?.printable, id, token]);
+    }, [applicationStatus, leaveApplication?.printable, id]);
 
     if (!leaveApplication || applicationStatus === null) {
         return <Layout>
@@ -2143,9 +2107,7 @@ return (
                                                             ) : step.isFinalApproved ? (
                                                                 step.signatureUrl ? (
                                                                     <img
-                                                                        src={step.signatureUrl.startsWith('data:')
-                                                                            ? step.signatureUrl
-                                                                            : `data:image/png;base64,${step.signatureUrl}`}
+                                                                        src={toSafeDataUrl(step.signatureUrl)}
                                                                         alt="" style={{width: 70, height: 'auto'}}
                                                                     />
                                                                 ) : (
@@ -2154,9 +2116,7 @@ return (
                                                             ) : step.isSigned ? (
                                                                 step.signatureUrl ? (
                                                                     <img
-                                                                        src={step.signatureUrl.startsWith('data:')
-                                                                            ? step.signatureUrl
-                                                                            : `data:image/png;base64,${step.signatureUrl}`}
+                                                                        src={toSafeDataUrl(step.signatureUrl)}
                                                                         alt="" style={{width: 70, height: 'auto'}}
                                                                     />
                                                                 ) : (
@@ -2258,9 +2218,7 @@ return (
                                                 if (signatures.departmentHead?.[0]?.imageUrl) {
                                                     return (
                                                         <img
-                                                            src={signatures.departmentHead[0].imageUrl.startsWith('data:image/')
-                                                                ? signatures.departmentHead[0].imageUrl
-                                                                : `data:image/png;base64,${signatures.departmentHead[0].imageUrl}`}
+                                                            src={toSafeDataUrl(signatures.departmentHead[0].imageUrl)}
                                                             alt="부서장 서명"
                                                             style={{width: 100, height: 'auto', objectFit: 'contain'}}
                                                         />
@@ -2637,11 +2595,7 @@ return (
                                             {(signatures.substitute?.[0]?.isSigned || leaveApplication?.isSubstituteApproved) ? (
                                                 signatures.substitute[0]?.imageUrl ? (
                                                     <img
-                                                        src={
-                                                            signatures.substitute[0].imageUrl.startsWith('data:image/')
-                                                                ? signatures.substitute[0].imageUrl
-                                                                : `data:image/png;base64,${signatures.substitute[0].imageUrl}`
-                                                        }
+                                                        src={toSafeDataUrl(signatures.substitute[0].imageUrl)}
                                                         alt="대직자 서명"
                                                         className="signature-image-inline"
                                                         style={{width: 60, height: 'auto', objectFit: 'contain'}}
@@ -2830,7 +2784,6 @@ return (
 
                         <LeaveAttachments
                             leaveApplicationId={leaveApplication.id}
-                            token={token!}
                             initialAttachments={memoizedAttachments}
                             disabled={isFormReadOnly}
                             readOnly={applicationStatus !== 'DRAFT'}

@@ -1,4 +1,5 @@
-import axios, { AxiosError }  from 'axios';
+import axios from 'axios';  // axios.isAxiosError 용으로만 유지
+import axiosInstance from "../../views/Authentication/axiosInstance";
 import { SignatureState } from '../../types/signature';
 
 interface LeaveApplicationData {
@@ -52,18 +53,15 @@ export interface ContractSignatures {
 const API_BASE = process.env.REACT_APP_API_URL;
 // 사용자의 DB 저장 서명을 가져오는 함수 추가
 export async function fetchUserSignatureFromDB(
-    token: string,
     userId?: string
-): Promise<string | null> {
+): Promise<string | null>{
     const baseEndpoint = userId
-        ? `${API_BASE}/user/${userId}/signature`
-        : `${API_BASE}/user/me/signature`;
+        ? `/user/${userId}/signature`
+        : `/user/me/signature`;
 
     try {
         // 1) JSON으로 내려오는 imageUrl or signatureUrl 시도
-        const respJson = await axios.get(baseEndpoint, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
+        const respJson = await axiosInstance.get(baseEndpoint);
 
         const { imageUrl, signatureUrl } = respJson.data;
 
@@ -77,17 +75,25 @@ export async function fetchUserSignatureFromDB(
 
         // 2) 없으면 /signature/image로 PNG 바이너리 가져오기
         const imgEndpoint = userId
-            ? `${API_BASE}/user/${userId}/signature/image`
-            : `${API_BASE}/user/me/signature/image`;
+            ? `/user/${userId}/signature/image`
+            : `/user/me/signature/image`;
 
-        const respImg = await axios.get(imgEndpoint, {
-            headers: { Authorization: `Bearer ${token}` },
+        const respImg = await axiosInstance.get(imgEndpoint, {
             responseType: "arraybuffer",
         });
 
         if (respImg.status === 200 && respImg.data) {
-            const b64 = Buffer.from(respImg.data, "binary").toString("base64");
-            return `data:image/png;base64,${b64}`;
+            const uint8Array = new Uint8Array(respImg.data);
+            let binary = '';
+            for (let i = 0; i < uint8Array.length; i += 8192) {
+                binary += String.fromCharCode(...Array.from(uint8Array.subarray(i, i + 8192)));
+            }
+            const b64 = btoa(binary);
+            const b0 = uint8Array[0], b1 = uint8Array[1];
+            const mime = (b0 === 0xFF && b1 === 0xD8) ? 'image/jpeg'
+                : (b0 === 0x47 && b1 === 0x49) ? 'image/gif'
+                    : 'image/png';
+            return `data:${mime};base64,${b64}`;
         }
 
         return null;
@@ -105,13 +111,11 @@ export async function fetchUserSignatureFromDB(
 }
 
 
-export async function fetchSignaturesForUser(token: string, userId?: string): Promise<SignatureState> {
-    const resp = await axios.get<any>(`${API_BASE}/user/me/signature`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+export async function fetchSignaturesForUser(userId?: string): Promise<SignatureState> {
+    const resp = await axiosInstance.get<any>(`/user/me/signature`);
 
     // 사용자의 DB 저장 서명 이미지 가져오기
-    const userSignatureImage = await fetchUserSignatureFromDB(token, userId);
+    const userSignatureImage = await fetchUserSignatureFromDB(userId);
 
     // API 응답을 새로운 SignatureState 형식으로 변환
     const convertedData: SignatureState = {};
@@ -163,17 +167,14 @@ export async function fetchSignaturesForUser(token: string, userId?: string): Pr
 }
 
 export async function fetchSignaturesForContract(
-    token: string,
     contractId: number
 ): Promise<ContractSignatures> {
     // 1) 계약서 DTO 가져오기
-    const resp = await axios.get<{
+    const resp = await axiosInstance.get<{
         formDataJson: string;
         signatures?: SignatureState;
         agreements?: { [page: string]: 'agree' | 'disagree' | '' };
-    }>(`${API_BASE}/employment-contract/${contractId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+    }>(`/employment-contract/${contractId}`);
 
     // 2) formDataJson 파싱
     const form = JSON.parse(resp.data.formDataJson);
@@ -195,13 +196,13 @@ export async function fetchSignaturesForContract(
 }
 
 // 4. 서명 정보 확인 함수
-export async function checkUserSignatureExists(token: string, userId?: string): Promise<boolean> {
+export async function checkUserSignatureExists(userId?: string): Promise<boolean> {
     try {
-        const endpoint = userId ? `${API_BASE}/user/${userId}/signature-info` : `${API_BASE}/user/me/signature-info`;
+        const endpoint = userId
+            ? `/user/${userId}/signature-info`
+            : `/user/me/signature-info`;
 
-        const response = await axios.get(endpoint, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await axiosInstance.get(endpoint);
 
         return response.data.exists || false;
     } catch (error) {
@@ -297,9 +298,8 @@ export async function parseSignaturesFromLeaveApplicationData(
 // 이 함수는 서명 클릭 시 호출되어 formDataJson을 업데이트하는 역할을 합니다.
 export async function updateLeaveApplicationSignature(
     leaveApplicationId: number,
-    signatureType: string, // signatureKey -> signatureType으로 변경
-    signatureImageUrl: string | null, // null이면 서명 취소
-    token: string
+    signatureType: string,
+    signatureImageUrl: string | null
 ): Promise<any> {
     try {
         // 서명 취소인 경우와 서명 추가인 경우를 구분하여 payload 구성
@@ -312,16 +312,9 @@ export async function updateLeaveApplicationSignature(
             imageUrl: null,
             isSigned: false
         };
-
-        const response = await axios.put(
-            `${API_BASE}/leave-application/${leaveApplicationId}/signature/${signatureType}`,
-            payload, // Map<String, Object> signatureData에 해당
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            }
+        const response = await axiosInstance.put(
+            `/leave-application/${leaveApplicationId}/signature/${signatureType}`,
+            payload
         );
         return response.data;
     } catch (error) {

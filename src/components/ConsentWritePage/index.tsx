@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useCookies } from 'react-cookie';
 import { FileText, CheckCircle, AlertCircle, Send, Loader, Trash2 } from 'lucide-react';
 import Layout from '../Layout';
 import {
@@ -12,8 +11,6 @@ import {
 const ConsentWritePage: React.FC = () => {
     const { agreementId } = useParams<{ agreementId: string }>();
     const navigate = useNavigate();
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
 
     const [agreement, setAgreement] = useState<ConsentAgreement | null>(null);
     const [loading, setLoading] = useState(true);
@@ -53,11 +50,9 @@ const ConsentWritePage: React.FC = () => {
 
             // API 호출
             const API_BASE = process.env.REACT_APP_API_URL || '';
-            const response = await fetch(`${API_BASE}/user/${token}/signature`, {
+            const response = await fetch(`${API_BASE}/user/me/signature`, {
                 method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
+                credentials: 'include',
                 body: formData
             });
 
@@ -87,10 +82,7 @@ const ConsentWritePage: React.FC = () => {
 
     const loadAgreement = async () => {
         try {
-            const data = await fetchConsentAgreement(
-                Number(agreementId),
-                token
-            );
+            const data = await fetchConsentAgreement(Number(agreementId));
 
             if (data.status === 'COMPLETED') {
                 alert('이미 작성 완료된 동의서입니다.');
@@ -117,7 +109,7 @@ const ConsentWritePage: React.FC = () => {
 
             // ✅ /user/me/signature 엔드포인트만 사용
             const response = await fetch(`${API_BASE}/user/me/signature`, {
-                headers: { Authorization: `Bearer ${token}` }
+                credentials: 'include'
             });
 
             if (response.ok) {
@@ -304,8 +296,7 @@ const ConsentWritePage: React.FC = () => {
 
             await submitConsentAgreement(
                 Number(agreementId),
-                submitData,
-                token
+                submitData
             );
 
             alert('동의서가 제출되었습니다.');

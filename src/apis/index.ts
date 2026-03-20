@@ -21,7 +21,7 @@ const API_DOMAIN = process.env.REACT_APP_API_URL || '/api/v1';
 const SIGN_IN_URL = () => `${API_DOMAIN}/auth/sign-in`;
 
 export const signInRequest = async (requestBody: SignInRequestDto)=> {
-    const result = await axios.post(SIGN_IN_URL(), requestBody)
+    const result = await axios.post(SIGN_IN_URL(), requestBody, { withCredentials: true })
         .then(responseHandler<SignInResponseDto>)
         .catch(errorHandler)
     return result;

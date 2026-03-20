@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useCookies } from 'react-cookie';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../Layout';
 import OrgChartModal from '../OrgChartModal';
@@ -33,9 +32,6 @@ const CONSENT_TYPES: ConsentType[] = [
 ];
 
 const ConsentIssuePage: React.FC = () => {
-    const [cookies] = useCookies(['accessToken']);
-    const token = localStorage.getItem('accessToken') || cookies.accessToken;
-
     const navigate = useNavigate();
 
     const [selectedType, setSelectedType] = useState<string>('');
@@ -50,9 +46,7 @@ const ConsentIssuePage: React.FC = () => {
 
     const checkPermissions = async () => {
         try {
-            const response = await fetch(`${API_BASE}/consents/permissions`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await fetch(`${API_BASE}/consents/permissions`, { credentials: 'include' });
             const data = await response.json();
 
             if (!data.canCreate) {
@@ -86,14 +80,9 @@ const ConsentIssuePage: React.FC = () => {
                 // 단일 발송
                 const response = await fetch(`${API_BASE}/consents/issue`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        targetUserId: selectedUsers[0].id,
-                        type: selectedType
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ targetUserId: selectedUsers[0].id, type: selectedType })
                 });
 
                 if (!response.ok) {
@@ -106,14 +95,9 @@ const ConsentIssuePage: React.FC = () => {
                 // 배치 발송
                 const response = await fetch(`${API_BASE}/consents/issue/batch`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        targetUserIds: selectedUsers.map(u => u.id),
-                        type: selectedType
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ targetUserIds: selectedUsers.map(u => u.id), type: selectedType })
                 });
 
                 if (!response.ok) {
