@@ -8,8 +8,6 @@ interface LeaveApplicationData {
     applicantName: string; // 추가
     applicantDept: string; // 추가
     applicantPosition: string; // 추가
-    applicantContact: string; // 추가
-    applicantPhone: string; // 추가
     substituteId: string;
     substituteName: string; // 추가
     currentApproverId: string | null;
@@ -51,6 +49,7 @@ export interface ContractSignatures {
     agreements: { [page: string]: 'agree' | 'disagree' | '' };
 }
 const API_BASE = process.env.REACT_APP_API_URL;
+
 // 사용자의 DB 저장 서명을 가져오는 함수 추가
 export async function fetchUserSignatureFromDB(
     userId?: string

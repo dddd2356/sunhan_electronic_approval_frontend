@@ -150,8 +150,18 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
         // 이미지 미리보기
         const reader = new FileReader();
         reader.onload = (event) => {
-            setUploadedImage(event.target?.result as string);
-            setSigError('');
+            const img = new Image();
+            img.onload = () => {
+                const MAX_W = 400, MAX_H = 200;
+                const ratio = Math.min(MAX_W / img.width, MAX_H / img.height, 1);
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.width * ratio);
+                canvas.height = Math.round(img.height * ratio);
+                canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+                setUploadedImage(canvas.toDataURL('image/png'));
+                setSigError('');
+            };
+            img.src = event.target?.result as string;
         };
         reader.readAsDataURL(file);
     };

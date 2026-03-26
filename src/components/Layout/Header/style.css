@@ -68,8 +68,8 @@
 }
 
 .hospital-image {
-    width: 32px; /* 로고는 심볼 중심으로 작고 깔끔하게 */
-    height: 32px;
+    width: 150px; /* 로고는 심볼 중심으로 작고 깔끔하게 */
+    height:60px;
     object-fit: contain;
 }
 

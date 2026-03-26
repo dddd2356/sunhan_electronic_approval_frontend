@@ -20,7 +20,7 @@ import LeaveAttachments from "../../../components/LeaveAttachments";
 import ApprovalLineSelector from "../../../components/ApprovalLineSelector";
 import OrganizationChart from "../../../components/OrganizationChart";
 import { Document, Page, pdfjs } from 'react-pdf';
-import { toSafeDataUrl } from '../../../utils/imageUtils';
+import {repairPngDataUrl, toSafeDataUrl} from '../../../utils/imageUtils';
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 dayjs.extend(isBetween);
 
@@ -76,8 +76,6 @@ interface UserInfo {
     department: string;
     name: string;
     position: string;
-    contact: string;
-    phone: string;
 }
 
 interface User {
@@ -121,8 +119,6 @@ interface LeaveApplicationData {
     applicantName: string; // 추가
     applicantDept: string; // 추가
     applicantPosition: string; // 추가
-    applicantContact: string; // 추가
-    applicantPhone: string; // 추가
     substituteId: string;
     substituteName: string; // 추가
     currentApproverId: string | null;
@@ -215,8 +211,6 @@ const LeaveApplication = () => {
         department: '',
         name: '',
         position: '',
-        contact: '',
-        phone: ''
     });
 
     // 대직자 정보 (데이터베이스에서 가져올 예정)
@@ -225,8 +219,6 @@ const LeaveApplication = () => {
         department: '',
         name: '',
         position: '',
-        contact: '',
-        phone: ''
     });
 
     const [departmentHeadInfo, setDepartmentHeadInfo] = useState<UserInfo>({
@@ -234,11 +226,8 @@ const LeaveApplication = () => {
         department: '',
         name: '',
         position: '',
-        contact: '',
-        phone: ''
     });
     const [showSubstituteSelector, setShowSubstituteSelector] = useState(false);
-    const [showDeptHeadSelector, setShowDeptHeadSelector] = useState(false);
     const [leaveApplication, setLeaveApplication] = useState<LeaveApplicationData | null>(null);
     const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -261,7 +250,7 @@ const LeaveApplication = () => {
         경조휴가: false,
         특별휴가: false,
         생리휴가: false,
-        분만휴가: false,
+        "분만휴가(배우자)": false,
         유산사산휴가: false,
         병가: false,
         기타: false
@@ -271,8 +260,20 @@ const LeaveApplication = () => {
     const [leaveContent, setLeaveContent] = useState({
         경조휴가: '',
         특별휴가: '',
-        병가: ''
+        병가: '',
+        기타: '',
     });
+
+    const leaveTitle = useMemo(() => {
+        const selected = Object.keys(leaveTypes).filter(k => leaveTypes[k]);
+        if (selected.length === 0) return '휴가';
+        const result = selected.map(s =>
+            s === '기타' && leaveContent.기타?.trim()
+                ? leaveContent.기타.trim()
+                : s
+        );
+        return result.join(' / ');
+    }, [leaveTypes, leaveContent]);
 
     //기간 정보 상태 변경
     const [flexiblePeriods, setFlexiblePeriods] = useState<FlexiblePeriod[]>([
@@ -467,7 +468,10 @@ const LeaveApplication = () => {
 
         // 백엔드 LeaveApplicationUpdateFormRequestDto 구조에 맞는 payload 생성
         const payload = {
-            applicantInfo: applicantInfo,
+            applicantInfo: {
+                ...applicantInfo,
+                position: applicantInfo.position || getPositionByJobLevel(currentUser?.jobLevel),
+            },
             substituteInfo: substituteInfo.userId ? {
                 userId: substituteInfo.userId,
                 name: substituteInfo.name,
@@ -477,9 +481,7 @@ const LeaveApplication = () => {
                 userId: departmentHeadInfo.userId,
                 name: departmentHeadInfo.name,
                 position: departmentHeadInfo.position,
-                department: departmentHeadInfo.department,
-                contact: departmentHeadInfo.contact,
-                phone: departmentHeadInfo.phone
+                department: departmentHeadInfo.department
             } : null,
             leaveTypes: selectedLeaveTypes,
             leaveContent: leaveContent,
@@ -754,7 +756,7 @@ const LeaveApplication = () => {
 
 
     // 결재라인 선택 확인 핸들러
-    const handleApprovalLineConfirm = (data: ConfirmedApprovalLineData) => {
+    const handleApprovalLineConfirm =  async (data: ConfirmedApprovalLineData) => {
         const { id, steps } = data;
 
         // ✅ 대직자/부서장 포함 여부 확인
@@ -774,9 +776,7 @@ const LeaveApplication = () => {
                     userId: '',
                     department: '',
                     name: '',
-                    position: '',
-                    contact: '',
-                    phone: ''
+                    position: ''
                 });
                 setLeaveApplication(prev => prev ? { ...prev, substituteId: '', substituteName: '' } : prev);
             } else {
@@ -785,11 +785,28 @@ const LeaveApplication = () => {
             }
         }
 
-        // ✅ Case 2: 부서장 확인 (동일한 로직)
-        if (hasDepartmentHead && !departmentHeadInfo.userId) {
-            alert('선택한 결재라인에 부서장이 포함되어 있습니다. 부서장을 선택해주세요.');
-            setShowApprovalLineSelector(true);
-            return;
+        // ✅ Case 2: 부서장 확인
+        const deptHeadStep = steps.find(step => step.approverType === 'DEPARTMENT_HEAD');
+        if (hasDepartmentHead) {
+            if (deptHeadStep?.approverId) {
+                try {
+                    const res = await axiosInstance.get(`/user/${deptHeadStep.approverId}`);
+                    setDepartmentHeadInfo({
+                        userId: res.data.userId,
+                        name: res.data.userName || '',
+                        position: res.data.jobLevel || '',
+                        department: res.data.deptCode || '',
+                    });
+                } catch {
+                    alert('부서장 정보를 불러오지 못했습니다. 결재라인을 수정해주세요.');
+                    setShowApprovalLineSelector(true);
+                    return;
+                }
+            } else {
+                alert('결재라인에 부서장이 지정되어 있지 않습니다. 결재라인을 수정해주세요.');
+                setShowApprovalLineSelector(true);
+                return;
+            }
         }
 
         if (!hasDepartmentHead && departmentHeadInfo.userId) {
@@ -798,9 +815,7 @@ const LeaveApplication = () => {
                     userId: '',
                     department: '',
                     name: '',
-                    position: '',
-                    contact: '',
-                    phone: ''
+                    position: ''
                 });
             } else {
                 setShowApprovalLineSelector(true);
@@ -1109,12 +1124,12 @@ const LeaveApplication = () => {
         if (signatureKey === 'departmentHead') {
             // DRAFT 상태에서 부서장이 선택되지 않았으면 선택 모달 열기
             if (applicationStatus === 'DRAFT' && !departmentHeadInfo.userId) {
-                setShowDeptHeadSelector(true);
+                alert('결재라인에서 부서장을 선택해주세요.');
                 return;
             }
 
             // 부서장이 선택되었는데 본인이 아니면 서명 불가
-            if (departmentHeadInfo.userId && currentUser.id !== departmentHeadInfo.userId) {
+            if (departmentHeadInfo.userId && String(currentUser.id) !== String(departmentHeadInfo.userId)) {
                 alert('선택된 부서장만 서명할 수 있습니다.');
                 return;
             }
@@ -1139,6 +1154,9 @@ const LeaveApplication = () => {
 
         const currentSignature = signatures[signatureKey]?.[0];
         const correctedBase64 = toSafeDataUrl(userSignatureImage);
+        console.log('[디버그] userSignatureImage 앞 80자:', userSignatureImage?.substring(0, 80));
+        console.log('[디버그] correctedBase64 앞 80자:', correctedBase64?.substring(0, 80));
+        console.log('[디버그] 둘이 같은가:', userSignatureImage === correctedBase64);
 
         // 이미 서명된 경우 - 서명 취소 확인
         if (currentSignature?.isSigned) {
@@ -1296,7 +1314,7 @@ const LeaveApplication = () => {
             // 성공 시 프론트엔드 상태 업데이트
             setSignatures(prev => ({
                 ...prev,
-                [signatureKey]: [{ text: '승인', imageUrl: userSignatureImage, isSigned: true, signatureDate: currentDate }]
+                [signatureKey]: [{ text: '승인', imageUrl: correctedBase64, isSigned: true, signatureDate: currentDate }]
             }));
 
             console.log(`${signatureKey} 서명 성공`, response);
@@ -1457,6 +1475,9 @@ const LeaveApplication = () => {
             case 'substitute':
                 return (String(currentUser.id) === String(leaveApplication.substituteId) &&
                     currentStep === 'SUBSTITUTE_APPROVAL');
+            case 'departmentHead':
+                return (String(currentUser.id) === String(departmentHeadInfo?.userId) &&
+                    currentStep === 'DEPARTMENT_HEAD_APPROVAL');
             case 'hrStaff':
                 return !!(
                     currentUser.permissions?.includes("HR_LEAVE_APPLICATION") &&
@@ -1476,7 +1497,7 @@ const LeaveApplication = () => {
             default:
                 return false;
         }
-    }, [currentUser, leaveApplication, applicantInfo.department]);
+    }, [departmentHeadInfo, currentUser, leaveApplication, applicantInfo.department]);
 
 // 인사권한 확인
 useEffect(() => {
@@ -1559,7 +1580,6 @@ const handleDownload = useCallback(
     [id]
 );
 
-// ✅ 추가
     const approvalTableSteps = useMemo(() => {
         return leaveApplication?.approvalSteps?.filter(s => s.stepOrder > 0) ?? [];
     }, [leaveApplication?.approvalSteps]);
@@ -1657,7 +1677,15 @@ const handleDownload = useCallback(
                 // 2. 서명 이미지 가져오기 (404 무시)
                 try {
                     const userSigImg = await fetchUserSignatureFromDB();
-                    setUserSignatureImage(userSigImg);
+                    setUserSignatureImage(userSigImg ? repairPngDataUrl(userSigImg) : null);
+                    if (userSigImg) {
+                        const b64 = userSigImg.replace('data:image/png;base64,', '');
+                        const bin = atob(b64.substring(0, 16));
+                        const bytes = Array.from(bin).map((c: string) => c.charCodeAt(0).toString(16).padStart(2,'0'));
+                        console.log('[서명 손상 체크] bytes 0~11:', bytes.join(' '));
+                        console.log('[서명 손상 체크] 손상여부:', userSigImg.includes('KGgogICA'));
+                    }
+
                 } catch (sigError) {
                     console.warn('서명 이미지 없음 (정상):', sigError);
                     setUserSignatureImage(null);
@@ -1708,9 +1736,7 @@ const handleDownload = useCallback(
                         userId: formData.departmentHeadInfo.userId || '',
                         department: formData.departmentHeadInfo.department || '',
                         name: formData.departmentHeadInfo.name || '',
-                        position: formData.departmentHeadInfo.position || '',
-                        contact: formData.departmentHeadInfo.contact || '',
-                        phone: formData.departmentHeadInfo.phone || ''
+                        position: formData.departmentHeadInfo.position || ''
                     });
                 }
 
@@ -1719,16 +1745,14 @@ const handleDownload = useCallback(
                     userId: appData.applicantId,
                     department: appData.applicantDept,
                     name: appData.applicantName,
-                    position: getPositionByJobLevel(fetchedUser.jobLevel),
-                    contact: appData.applicantContact,
-                    phone: appData.applicantPhone
+                    position: ''
                 };
                 setApplicantInfo(applicantInfoFromData);
 
             // leaveTypes 배열을 Record<string, boolean>으로 변환
             const initialLeaveTypes: Record<string, boolean> = {
                 연차휴가: false, 경조휴가: false, 특별휴가: false, 생리휴가: false,
-                분만휴가: false, 유산사산휴가: false, 병가: false, 기타: false
+                "분만휴가(배우자)": false, 유산사산휴가: false, 병가: false, 기타: false
             };
 
             const leaveTypesArray = formData.leaveTypes || [];
@@ -1744,11 +1768,12 @@ const handleDownload = useCallback(
             // 상태 업데이트
             setLeaveTypes(initialLeaveTypes);
 
-            // **[수정] leaveContent가 문자열일 경우, 객체로 변환하여 상태에 설정**
+            // **leaveContent가 문자열일 경우, 객체로 변환하여 상태에 설정**
             const newLeaveContent = {
                 경조휴가: '',
                 특별휴가: '',
                 병가: '',
+                기타: '',
             };
 
             // formData.leaveContent가 문자열이면 해당하는 필드에 값을 할당
@@ -2040,7 +2065,7 @@ return (
                     {/* 제목과 결재 테이블 */}
                     <div className="header-section">
                         <h1 className="leave-application-title">
-                            (&nbsp;&nbsp;&nbsp; 휴가 &nbsp;&nbsp;&nbsp;) 원
+                            (&nbsp;&nbsp;&nbsp; {leaveTitle} &nbsp;&nbsp;&nbsp;) 원
                         </h1>
                         <div className="flex-container">
                             <div className="table-container">
@@ -2123,7 +2148,8 @@ return (
                                                                     <span className="signature-text">승인</span>
                                                                 )
                                                             ) : (
-                                                                <span className="signature-placeholder">클릭하여 서명 후 승인</span>
+                                                                <span
+                                                                    className="signature-placeholder">클릭하여 서명 후 승인</span>
                                                             )}
                                                         </div>
                                                     </td>
@@ -2155,287 +2181,289 @@ return (
 
                     {/* 신청서 본문 */}
                     <div className="form-body">
-                        <table className="main-table">
-                            <tbody>
-                            {/* 신청자 정보 */}
-                            <tr>
-                                <th className="main-header" rowSpan={4}>신<br/>청<br/>자</th>
-                                <th className="sub-header">소속</th>
-                                <td className="input-cell" colSpan={3}>
-                                    <input
-                                        type="text"
-                                        value={departmentNames[applicantInfo.department] || applicantInfo.department}
-                                        onChange={(e) => setApplicantInfo(prev => ({
-                                            ...prev,
-                                            department: e.target.value
-                                        }))}
-                                        readOnly={isFormReadOnly}
-                                        className="form-input"
-                                        placeholder="소속 입력"
-                                    />
-                                </td>
-                                <th className="sub-header">부서장 확인란</th>
-                            </tr>
-                            <tr>
-                                <th className="sub-header">성명</th>
-                                <td className="input-cell" colSpan={3}>
-                                    <input
-                                        type="text"
-                                        value={applicantInfo.name}
-                                        onChange={(e) => setApplicantInfo(prev => ({...prev, name: e.target.value}))}
-                                        readOnly={true}
-                                        className="form-input"
-                                        placeholder="성명 입력"
-                                    />
-                                </td>
-                                <td className="signature-box" rowSpan={3} style={{padding: '4px'}}>
-                                    <div
-                                        className="signature-area-main"
-                                        onClick={() => {
-                                            if (applicationStatus === 'DRAFT') {
-                                                if (!departmentHeadInfo.userId) {
-                                                    setShowDeptHeadSelector(true);
-                                                    return;
-                                                }
-                                                if (currentUser?.id === departmentHeadInfo.userId) {
-                                                    handleSignatureClick('departmentHead');
-                                                    return;
-                                                }
-                                                alert('선택된 부서장만 서명할 수 있습니다.');
+                    <table className="main-table">
+                        <tbody>
+                        {/* 신청자 정보 */}
+                        <tr>
+                            <th className="main-header" rowSpan={4}>신<br/>청<br/>자</th>
+                            <th className="sub-header">소속</th>
+                            <td className="input-cell" colSpan={3}>
+                                <input
+                                    type="text"
+                                    value={departmentNames[applicantInfo.department] || applicantInfo.department}
+                                    onChange={(e) => setApplicantInfo(prev => ({
+                                        ...prev,
+                                        department: e.target.value
+                                    }))}
+                                    readOnly={isFormReadOnly}
+                                    className="form-input"
+                                    placeholder="소속 입력"
+                                />
+                            </td>
+                            <th className="sub-header">부서장 확인란</th>
+                        </tr>
+                        <tr>
+                            <th className="sub-header">성명</th>
+                            <td className="input-cell" colSpan={3}>
+                                <input
+                                    type="text"
+                                    value={applicantInfo.name}
+                                    onChange={(e) => setApplicantInfo(prev => ({...prev, name: e.target.value}))}
+                                    readOnly={true}
+                                    className="form-input"
+                                    placeholder="성명 입력"
+                                />
+                            </td>
+                            <td className="signature-box" rowSpan={3} style={{padding: '4px'}}>
+                                <div
+                                    className="signature-area-main"
+                                    onClick={() => {
+                                        if (applicationStatus === 'DRAFT') {
+                                            if (!departmentHeadInfo.userId) {
+                                                alert('결재라인에서 부서장을 선택해주세요.');
                                                 return;
                                             }
-                                            if (checkCanSign('departmentHead')) {
-                                                handleSignatureClick('departmentHead');
-                                            } else {
-                                                alert('서명할 권한이 없습니다.');
-                                            }
-                                        }}
-                                        style={{cursor: 'pointer'}}
-                                    >
-                                        {(() => {
-                                            // 1. 서명 완료
-                                            if (signatures.departmentHead?.[0]?.isSigned || leaveApplication?.isDeptHeadApproved) {
-                                                if (signatures.departmentHead?.[0]?.imageUrl) {
-                                                    return (
-                                                        <img
-                                                            src={toSafeDataUrl(signatures.departmentHead[0].imageUrl)}
-                                                            alt="부서장 서명"
-                                                            style={{width: 100, height: 'auto', objectFit: 'contain'}}
-                                                        />
-                                                    );
-                                                }
-                                                return <div className="sig-name-display"
-                                                            style={{color: '#10b981'}}>확인</div>;
-                                            }
 
-                                            // 2. 부서장 선택됨 (서명 전)
-                                            if (departmentHeadInfo.userId && departmentHeadInfo.name) {
+                                            if (currentUser?.id === departmentHeadInfo.userId) {
+                                                handleSignatureClick('departmentHead');
+                                                return;
+                                            }
+                                            alert('선택된 부서장만 서명할 수 있습니다.');
+                                            return;
+                                        }
+                                        if (checkCanSign('departmentHead')) {
+                                            handleSignatureClick('departmentHead');
+                                        } else {
+                                            alert('서명할 권한이 없습니다.');
+                                        }
+                                    }}
+                                    style={{cursor: 'pointer'}}
+                                >
+                                    {(() => {
+                                        // 1. 서명 완료
+                                        if (signatures.departmentHead?.[0]?.isSigned || leaveApplication?.isDeptHeadApproved) {
+                                            if (signatures.departmentHead?.[0]?.imageUrl) {
                                                 return (
-                                                    <>
-                                                        <div className="sig-name-display">{departmentHeadInfo.name}</div>
-                                                        <div className="sig-placeholder-text">(서명대기)</div>
-                                                    </>
+                                                    <img
+                                                        src={toSafeDataUrl(signatures.departmentHead[0].imageUrl)}
+                                                        alt="부서장 서명"
+                                                        style={{width: 100, height: 'auto', objectFit: 'contain'}}
+                                                    />
                                                 );
                                             }
+                                            return <div className="sig-name-display"
+                                                        style={{color: '#10b981'}}>확인</div>;
+                                        }
 
-                                            // 3. 미선택 (DRAFT)
-                                            if (applicationStatus === 'DRAFT') {
-                                                return <div className="sig-placeholder-text"
-                                                            style={{color: '#3b82f6', fontWeight: 600}}>클릭하여<br/>부서장 선택
-                                                </div>;
-                                            }
+                                        // 2. 부서장 선택됨 (서명 전)
+                                        if (departmentHeadInfo.userId && departmentHeadInfo.name) {
+                                            return (
+                                                <>
+                                                    <div className="sig-name-display">{departmentHeadInfo.name}</div>
+                                                    <div className="sig-placeholder-text">(서명대기)</div>
+                                                </>
+                                            );
+                                        }
 
-                                            return <div className="sig-placeholder-text">-</div>;
-                                        })()}
+                                        // 3. 미선택 (DRAFT)
+                                        if (applicationStatus === 'DRAFT') {
+                                            return <div className="sig-placeholder-text"
+                                                        style={{
+                                                            color: '#3b82f6',
+                                                            fontWeight: 600
+                                                        }}>결재라인에서<br/>확정됩니다.
+                                            </div>;
+                                        }
+
+                                        return <div className="sig-placeholder-text">-</div>;
+                                    })()}
+                                </div>
+
+                                {/* 해제 버튼 (DRAFT 전용) */}
+                                {applicationStatus === 'DRAFT' && departmentHeadInfo.userId && (
+                                    <div style={{textAlign: 'center', marginTop: '4px'}}>
+                                        <button
+                                            type="button"
+                                            className="btn-mini-action btn-mini-red"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (window.confirm('부서장 선택을 해제하시겠습니까?')) {
+                                                    setDepartmentHeadInfo({
+                                                        userId: '',
+                                                        department: '',
+                                                        name: '',
+                                                        position: ''
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            해제
+                                        </button>
                                     </div>
+                                )}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th className="sub-header">직책</th>
+                            <td className="input-cell" colSpan={3}>
+                                <input
+                                    type="text"
+                                    value={applicantInfo?.position}
+                                    onChange={(e) => setApplicantInfo(prev => ({
+                                        ...prev,
+                                        position: e.target.value
+                                    }))}
+                                    readOnly={isFormReadOnly}
+                                    className="form-input"
+                                    placeholder={getPositionByJobLevel(currentUser?.jobLevel) || '직책'}
+                                />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th className="sub-header">사번</th>
+                            <td className="input-cell" colSpan={3}>
+                                <input
+                                    type="text"
+                                    value={applicantInfo.userId}
+                                    readOnly={true}
+                                    className="form-input"
+                                />
+                            </td>
+                        </tr>
 
-                                    {/* 해제 버튼 (DRAFT 전용) */}
-                                    {applicationStatus === 'DRAFT' && departmentHeadInfo.userId && (
-                                        <div style={{textAlign: 'center', marginTop: '4px'}}>
-                                            <button
-                                                type="button"
-                                                className="btn-mini-action btn-mini-red"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (window.confirm('부서장 선택을 해제하시겠습니까?')) {
-                                                        setDepartmentHeadInfo({
-                                                            userId: '',
-                                                            department: '',
-                                                            name: '',
-                                                            position: '',
-                                                            contact: '',
-                                                            phone: ''
-                                                        });
-                                                    }
-                                                }}
-                                            >
-                                                해제
-                                            </button>
-                                        </div>
-                                    )}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th className="sub-header">직책</th>
-                                <td className="input-cell" colSpan={3}>
-                                    <input
-                                        type="text"
-                                        value={applicantInfo?.position}
-                                        readOnly={isFormReadOnly}
-                                        className="form-input"
-                                        placeholder="직책"
-                                    />
-                                </td>
-                            </tr>
-                            <tr>
-                                <th className="sub-header">연락처</th>
-                                <td className="input-cell" colSpan={3}>
-                                    <div className="contact-inputs">
-                                        <span>주소:</span>
-                                        <input
-                                            type="text"
-                                            value={applicantInfo.contact}
-                                            onChange={(e) => setApplicantInfo(prev => ({
-                                                ...prev,
-                                                contact: e.target.value
-                                            }))}
-                                            readOnly={true}
-                                            className="form-input"
-                                            placeholder="주소 입력"
-                                        />
-                                        <br/>
-                                        <span>전화번호:</span>
-                                        <input
-                                            type="text"
-                                            value={applicantInfo.phone}
-                                            onChange={(e) => setApplicantInfo(prev => ({
-                                                ...prev,
-                                                phone: e.target.value
-                                            }))}
-                                            readOnly={true}
-                                            className="form-input"
-                                            placeholder="전화번호 입력"
-                                        />
-                                    </div>
-                                </td>
-                            </tr>
-
-                            {/* 신청 내역 */}
-                            <tr>
-                                <th className="main-header" rowSpan={5}>신<br/>청<br/>내<br/>역</th>
-                                <th className="sub-header" rowSpan={4}>종류</th>
-                                <td className="leave-type-cell" colSpan={4}>
-                                    <div className="leave-types">
-                                        <div className="leave-type-row">
-                                            {Object.entries(leaveTypes).slice(0, 3).map(([type, checked]) => (
-                                                <label key={type} className="checkbox-label">
+                        {/* 신청 내역 */}
+                        <tr>
+                            <th className="main-header" rowSpan={5}>신<br/>청<br/>내<br/>역</th>
+                            <th className="sub-header" rowSpan={4}>종류</th>
+                            <td className="leave-type-cell" colSpan={4}>
+                                <div className="leave-types">
+                                    <div className="leave-type-row">
+                                        {Object.entries(leaveTypes).slice(0, 3).map(([type, checked]) => (
+                                            <label key={type} className="checkbox-label">
                                                 <input
-                                                        type="checkbox"
-                                                        checked={checked}
-                                                        onChange={() => handleLeaveTypeChange(type)}
-                                                        disabled={isFormReadOnly}
-                                                    />
-                                                    {type}
-                                                </label>
-                                            ))}
-                                        </div>
-                                        <div className="leave-type-row">
-                                            {Object.entries(leaveTypes).slice(3, 6).map(([type, checked]) => (
-                                                <label key={type} className="checkbox-label">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={checked}
-                                                        onChange={() => handleLeaveTypeChange(type)}
-                                                        disabled={isFormReadOnly}
-                                                    />
-                                                    {type}
-                                                </label>
-                                            ))}
-                                        </div>
-                                        <div className="leave-type-row">
-                                            {Object.entries(leaveTypes).slice(6).map(([type, checked]) => (
-                                                <label style={{marginRight: 26}} key={type} className="checkbox-label">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={checked}
-                                                        onChange={() => handleLeaveTypeChange(type)}
-                                                        disabled={isFormReadOnly}
-                                                    />
-                                                    {type}
-                                                </label>
-                                            ))}
-                                        </div>
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={() => handleLeaveTypeChange(type)}
+                                                    disabled={isFormReadOnly}
+                                                />
+                                                {type}
+                                            </label>
+                                        ))}
                                     </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th className="sub-header">경조휴가</th>
-                                <td className="input-cell" colSpan={3}>
-                                    <input
-                                        type="text"
-                                        value={leaveContent.경조휴가}
-                                        onChange={(e) => setLeaveContent(prev => ({...prev, 경조휴가: e.target.value}))}
-                                        className="form-input"
-                                        placeholder="내용"
-                                        disabled={isFormReadOnly}
-                                    />
-                                </td>
-                            </tr>
-                            <tr>
-                                <th className="sub-header">특별휴가</th>
-                                <td className="input-cell" colSpan={3}>
-                                    <input
-                                        type="text"
-                                        value={leaveContent.특별휴가}
-                                        onChange={(e) => setLeaveContent(prev => ({...prev, 특별휴가: e.target.value}))}
-                                        className="form-input"
-                                        placeholder="내용"
-                                        disabled={isFormReadOnly}
-                                    />
-                                </td>
-                            </tr>
-                            <tr>
-                                <th className="sub-header">병가</th>
-                                <td className="input-cell" colSpan={3}>
-                                    <input
-                                        type="text"
-                                        value={leaveContent.병가}
-                                        onChange={(e) => setLeaveContent(prev => ({...prev, 병가: e.target.value}))}
-                                        className="form-input"
-                                        placeholder="내용"
-                                        disabled={isFormReadOnly}
-                                    />
-                                </td>
-                            </tr>
+                                    <div className="leave-type-row">
+                                        {Object.entries(leaveTypes).slice(3, 6).map(([type, checked]) => (
+                                            <label key={type} className="checkbox-label">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={() => handleLeaveTypeChange(type)}
+                                                    disabled={isFormReadOnly}
+                                                />
+                                                {type}
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <div className="leave-type-row">
+                                        {Object.entries(leaveTypes).slice(6).map(([type, checked]) => (
+                                            <label key={type} className="checkbox-label">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={() => handleLeaveTypeChange(type)}
+                                                    disabled={isFormReadOnly}
+                                                />
+                                                {type}
+                                                {type === '기타' && (
+                                                    <input
+                                                        type="text"
+                                                        value={leaveContent.기타}
+                                                        onChange={(e) => {
+                                                            e.stopPropagation();
+                                                            setLeaveContent(prev => ({
+                                                                ...prev,
+                                                                기타: e.target.value
+                                                            }));
+                                                        }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="etc-input"
+                                                        placeholder="내용"
+                                                        disabled={isFormReadOnly}
+                                                    />
+                                                )}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th className="sub-header">경조휴가</th>
+                            <td className="input-cell" colSpan={3}>
+                                <input
+                                    type="text"
+                                    value={leaveContent.경조휴가}
+                                    onChange={(e) => setLeaveContent(prev => ({...prev, 경조휴가: e.target.value}))}
+                                    className="form-input"
+                                    placeholder="내용"
+                                    disabled={isFormReadOnly}
+                                />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th className="sub-header">특별휴가</th>
+                            <td className="input-cell" colSpan={3}>
+                                <input
+                                    type="text"
+                                    value={leaveContent.특별휴가}
+                                    onChange={(e) => setLeaveContent(prev => ({...prev, 특별휴가: e.target.value}))}
+                                    className="form-input"
+                                    placeholder="내용"
+                                    disabled={isFormReadOnly}
+                                />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th className="sub-header">병가</th>
+                            <td className="input-cell" colSpan={3}>
+                                <input
+                                    type="text"
+                                    value={leaveContent.병가}
+                                    onChange={(e) => setLeaveContent(prev => ({...prev, 병가: e.target.value}))}
+                                    className="form-input"
+                                    placeholder="내용"
+                                    disabled={isFormReadOnly}
+                                />
+                            </td>
+                        </tr>
 
-                            {/* 기간 */}
-                            <tr>
-                                <th className="main-header" rowSpan={1}>기간</th>
-                                <td className="period-cell" colSpan={3}>
-                                    {/* 개별 기간 */}
-                                    <div className="period-container">
-                                        {flexiblePeriods.length > 0 ? (
-                                            // flexiblePeriods에 데이터가 있으면 모든 항목을 렌더링
-                                            flexiblePeriods.map((period, index) => (
-                                                <div key={index} className="period-row-group">
-                                                    <div className="period-input-group">
-                                                        <input
-                                                            type="date"
-                                                            value={period.startDate}
-                                                            onChange={(e) => handleFlexiblePeriodChange(index, 'startDate', e.target.value)}
-                                                            className="form-input"
-                                                            readOnly={isFormReadOnly}
-                                                        />
-                                                        <span> ~ </span>
-                                                        <input
-                                                            type="date"
-                                                            value={period.endDate}
-                                                            onChange={(e) => handleFlexiblePeriodChange(index, 'endDate', e.target.value)}
-                                                            className="form-input"
-                                                            readOnly={isFormReadOnly}
-                                                        />
-                                                    </div>
-                                                    <span className="period-input-group-half-day">
+                        {/* 기간 */}
+                        <tr>
+                            <th className="main-header" rowSpan={1}>기간</th>
+                            <td className="period-cell" colSpan={3}>
+                                {/* 개별 기간 */}
+                                <div className="period-container">
+                                    {flexiblePeriods.length > 0 ? (
+                                        // flexiblePeriods에 데이터가 있으면 모든 항목을 렌더링
+                                        flexiblePeriods.map((period, index) => (
+                                            <div key={index} className="period-row-group">
+                                                <div className="period-input-group">
+                                                    <input
+                                                        type="date"
+                                                        value={period.startDate}
+                                                        onChange={(e) => handleFlexiblePeriodChange(index, 'startDate', e.target.value)}
+                                                        className="form-input"
+                                                        readOnly={isFormReadOnly}
+                                                    />
+                                                    <span> ~ </span>
+                                                    <input
+                                                        type="date"
+                                                        value={period.endDate}
+                                                        onChange={(e) => handleFlexiblePeriodChange(index, 'endDate', e.target.value)}
+                                                        className="form-input"
+                                                        readOnly={isFormReadOnly}
+                                                    />
+                                                </div>
+                                                <span className="period-input-group-half-day">
                                                             <label><input
                                                                 type="radio"
                                                                 name={`halfDayOption-${index}`}
@@ -2461,38 +2489,38 @@ return (
                                                                 disabled={isFormReadOnly}
                                                             /> 오후</label>
                                                         </span>
-                                                    {flexiblePeriods.length > 1 && (
-                                                        <button type="button"
-                                                                onClick={() => handleRemoveFlexiblePeriod(index)}
-                                                                disabled={isFormReadOnly}>-</button>
-                                                    )}
-                                                    <button type="button" onClick={handleAddFlexiblePeriod}
-                                                            disabled={isFormReadOnly}>+
-                                                        기간 추가
-                                                    </button>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            // flexiblePeriods가 비어있으면 기본 기간 입력란과 버튼을 렌더링
-                                            <div className="period-row-group">
-                                                <div className="period-input-group">
-                                                    <input
-                                                        type="date"
-                                                        value="" // 빈 값으로 초기화
-                                                        onChange={(e) => handleFlexiblePeriodChange(0, 'startDate', e.target.value)}
-                                                        className="form-input"
-                                                        readOnly={isFormReadOnly}
-                                                    />
-                                                    <span> ~ </span>
-                                                    <input
-                                                        type="date"
-                                                        value="" // 빈 값으로 초기화
-                                                        onChange={(e) => handleFlexiblePeriodChange(0, 'endDate', e.target.value)}
-                                                        className="form-input"
-                                                        readOnly={isFormReadOnly}
-                                                    />
-                                                </div>
-                                                <span className="period-input-group-half-day">
+                                                {flexiblePeriods.length > 1 && (
+                                                    <button type="button"
+                                                            onClick={() => handleRemoveFlexiblePeriod(index)}
+                                                            disabled={isFormReadOnly}>-</button>
+                                                )}
+                                                <button type="button" onClick={handleAddFlexiblePeriod}
+                                                        disabled={isFormReadOnly}>+
+                                                    기간 추가
+                                                </button>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        // flexiblePeriods가 비어있으면 기본 기간 입력란과 버튼을 렌더링
+                                        <div className="period-row-group">
+                                            <div className="period-input-group">
+                                                <input
+                                                    type="date"
+                                                    value="" // 빈 값으로 초기화
+                                                    onChange={(e) => handleFlexiblePeriodChange(0, 'startDate', e.target.value)}
+                                                    className="form-input"
+                                                    readOnly={isFormReadOnly}
+                                                />
+                                                <span> ~ </span>
+                                                <input
+                                                    type="date"
+                                                    value="" // 빈 값으로 초기화
+                                                    onChange={(e) => handleFlexiblePeriodChange(0, 'endDate', e.target.value)}
+                                                    className="form-input"
+                                                    readOnly={isFormReadOnly}
+                                                />
+                                            </div>
+                                            <span className="period-input-group-half-day">
                                                             <label><input
                                                                 type="radio"
                                                                 name="halfDayOption-0"
@@ -2518,173 +2546,146 @@ return (
                                                                 disabled={isFormReadOnly}
                                                             /> 오후</label>
                                                         </span>
-                                                <button type="button" onClick={handleAddFlexiblePeriod}
-                                                        disabled={isFormReadOnly}>+
-                                                    기간 추가
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </td>
-                                <td className="total-days-cell" rowSpan={1}>
-                                    총 기간: {totalDays} 일
-                                </td>
-                            </tr>
+                                            <button type="button" onClick={handleAddFlexiblePeriod}
+                                                    disabled={isFormReadOnly}>+
+                                                기간 추가
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </td>
+                            <td className="total-days-cell" rowSpan={1}>
+                                총 기간: {totalDays} 일
+                            </td>
+                        </tr>
 
-                            {/* 대직자 선택 모달 */}
-                            <tr>
-                                <th className="main-header" colSpan={2}>대직자</th>
-                                <td className="substitute-cell" colSpan={4}>
-                                    <div className="substitute-info">
-                                        {/* 직책 */}
-                                        <span>직책:</span>
-                                        <input
-                                            type="text"
-                                            value={substituteInfo.position || ''}
-                                            readOnly
-                                            className="form-input-inline"
-                                            placeholder="직책"
-                                        />
+                        {/* 대직자 선택 모달 */}
+                        <tr>
+                            <th className="main-header" colSpan={2}>대직자</th>
+                            <td className="substitute-cell" colSpan={4}>
+                                <div className="substitute-info">
+                                    {/* 직책 */}
+                                    <span>직책:</span>
+                                    <input
+                                        type="text"
+                                        value={substituteInfo.position || ''}
+                                        readOnly
+                                        className="form-input-inline"
+                                        placeholder="직책"
+                                    />
 
-                                        {/* 성명 */}
-                                        <span>성명:</span>
-                                        {applicationStatus === 'DRAFT' ? (
-                                            <div style={{display: 'inline-flex', alignItems: 'center', gap: '8px'}}>
-                                                <input
-                                                    type="text"
-                                                    value={substituteInfo.name || ''}
-                                                    readOnly
-                                                    className="form-input-inline"
-                                                    placeholder="조직도에서 선택"
-                                                    style={{width: '150px'}}
-                                                />
-                                                <button
-                                                    type="button"
-                                                    className="btn-mini-action btn-mini-blue"
-                                                    onClick={() => setShowSubstituteSelector(true)}
-                                                >
-                                                    선택
-                                                </button>
-                                                {substituteInfo.userId && (
-                                                    <button
-                                                        type="button"
-                                                        className="btn-mini-action btn-mini-red"
-                                                        onClick={() => {
-                                                            setSubstituteInfo({ userId: '', department: '', name: '', position: '', contact: '', phone: '' });
-                                                            setLeaveApplication(prev => prev ? { ...prev, substituteId: '', substituteName: '' } : prev);
-                                                        }}
-                                                    >
-                                                        삭제
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ) : (
+                                    {/* 성명 */}
+                                    <span>성명:</span>
+                                    {applicationStatus === 'DRAFT' ? (
+                                        <div style={{display: 'inline-flex', alignItems: 'center', gap: '8px'}}>
                                             <input
                                                 type="text"
-                                                value={substituteInfo.name || '— 미지정 —'}
+                                                value={substituteInfo.name || ''}
                                                 readOnly
-                                                className="form-input-inline disabled"
+                                                className="form-input-inline"
+                                                placeholder="조직도에서 선택"
+                                                style={{width: '150px'}}
                                             />
-                                        )}
-
-                                        {/* 서명 */}
-                                        <div
-                                            className="signature-inline"
-                                            onClick={() => handleSignatureClick('substitute')}
-                                        >
-                                            {(signatures.substitute?.[0]?.isSigned || leaveApplication?.isSubstituteApproved) ? (
-                                                signatures.substitute[0]?.imageUrl ? (
-                                                    <img
-                                                        src={toSafeDataUrl(signatures.substitute[0].imageUrl)}
-                                                        alt="대직자 서명"
-                                                        className="signature-image-inline"
-                                                        style={{width: 60, height: 'auto', objectFit: 'contain'}}
-                                                    />
-                                                ) : (
-                                                    '(사인이 이미 서명되었습니다.)'
-                                                )
-                                            ) : (
-                                                '(인)'
+                                            <button
+                                                type="button"
+                                                className="btn-mini-action btn-mini-blue"
+                                                onClick={() => setShowSubstituteSelector(true)}
+                                            >
+                                                선택
+                                            </button>
+                                            {substituteInfo.userId && (
+                                                <button
+                                                    type="button"
+                                                    className="btn-mini-action btn-mini-red"
+                                                    onClick={() => {
+                                                        setSubstituteInfo({
+                                                            userId: '',
+                                                            department: '',
+                                                            name: '',
+                                                            position: ''
+                                                        });
+                                                        setLeaveApplication(prev => prev ? {
+                                                            ...prev,
+                                                            substituteId: '',
+                                                            substituteName: ''
+                                                        } : prev);
+                                                    }}
+                                                >
+                                                    삭제
+                                                </button>
                                             )}
                                         </div>
-                                    </div>
-                                </td>
-                            </tr>
-                            {showSubstituteSelector && (
-                                <div className="approval-line-modal-overlay"
-                                     onClick={() => setShowSubstituteSelector(false)}>
-                                    <div className="approval-line-modal-content" onClick={(e) => e.stopPropagation()}>
-                                        <div className="approval-line-modal-header">
-                                            <h3>대직자 선택</h3>
-                                            <button
-                                                className="approval-line-modal-close"
-                                                onClick={() => setShowSubstituteSelector(false)}
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                        <div className="approval-line-modal-body">
-                                            <OrganizationChart
-                                                onUserSelect={(userId: string, userName: string, jobLevel: string) => {
-                                                    setSubstituteInfo({
-                                                        userId: userId,
-                                                        department: applicantInfo.department,
-                                                        name: userName,
-                                                        position: getPositionByJobLevel(jobLevel),
-                                                        contact: '',
-                                                        phone: ''
-                                                    });
-                                                    setLeaveApplication(prev => prev ? {
-                                                        ...prev,
-                                                        substituteId: userId,
-                                                        substituteName: userName
-                                                    } : prev);
-                                                    setShowSubstituteSelector(false);
-                                                }}
-                                                selectedUserId={substituteInfo.userId || undefined}
-                                                allDepartments={true}
-                                            />
-                                        </div>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            value={substituteInfo.name || '— 미지정 —'}
+                                            readOnly
+                                            className="form-input-inline disabled"
+                                        />
+                                    )}
+
+                                    {/* 서명 */}
+                                    <div
+                                        className="signature-inline"
+                                        onClick={() => handleSignatureClick('substitute')}
+                                    >
+                                        {(signatures.substitute?.[0]?.isSigned || leaveApplication?.isSubstituteApproved) ? (
+                                            signatures.substitute[0]?.imageUrl ? (
+                                                <img
+                                                    src={toSafeDataUrl(signatures.substitute[0].imageUrl)}
+                                                    alt="대직자 서명"
+                                                    className="signature-image-inline"
+                                                    style={{width: 60, height: 'auto', objectFit: 'contain'}}
+                                                />
+                                            ) : (
+                                                '(사인이 이미 서명되었습니다.)'
+                                            )
+                                        ) : (
+                                            '(인)'
+                                        )}
                                     </div>
                                 </div>
-                            )}
-
-                            {/* 부서장 선택 모달 */}
-                            {showDeptHeadSelector && (
-                                <div className="approval-line-modal-overlay" onClick={() => setShowDeptHeadSelector(false)}>
-                                    <div className="approval-line-modal-content" onClick={(e) => e.stopPropagation()}>
-                                        <div className="approval-line-modal-header">
-                                            <h3>부서장 선택</h3>
-                                            <button
-                                                className="approval-line-modal-close"
-                                                onClick={() => setShowDeptHeadSelector(false)}
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                        <div className="approval-line-modal-body">
-                                            <OrganizationChart
-                                                onUserSelect={(userId: string, userName: string, jobLevel: string) => {
-                                                    setDepartmentHeadInfo({
-                                                        userId: userId,
-                                                        department: applicantInfo.department,
-                                                        name: userName,
-                                                        position: getPositionByJobLevel(jobLevel),
-                                                        contact: '',
-                                                        phone: ''
-                                                    });
-                                                    setShowDeptHeadSelector(false);
-                                                }}
-                                                selectedUserId={departmentHeadInfo.userId || undefined}
-                                                allDepartments={true}
-                                            />
-                                        </div>
+                            </td>
+                        </tr>
+                        {showSubstituteSelector && (
+                            <div className="approval-line-modal-overlay"
+                                 onClick={() => setShowSubstituteSelector(false)}>
+                                <div className="approval-line-modal-content" onClick={(e) => e.stopPropagation()}>
+                                    <div className="approval-line-modal-header">
+                                        <h3>대직자 선택</h3>
+                                        <button
+                                            className="approval-line-modal-close"
+                                            onClick={() => setShowSubstituteSelector(false)}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    <div className="approval-line-modal-body">
+                                        <OrganizationChart
+                                            onUserSelect={(userId: string, userName: string, jobLevel: string) => {
+                                                setSubstituteInfo({
+                                                    userId: userId,
+                                                    department: applicantInfo.department,
+                                                    name: userName,
+                                                    position: getPositionByJobLevel(jobLevel)
+                                                });
+                                                setLeaveApplication(prev => prev ? {
+                                                    ...prev,
+                                                    substituteId: userId,
+                                                    substituteName: userName
+                                                } : prev);
+                                                setShowSubstituteSelector(false);
+                                            }}
+                                            selectedUserId={substituteInfo.userId || undefined}
+                                            allDepartments={true}
+                                            filterDeptCode={applicantInfo.department}
+                                        />
                                     </div>
                                 </div>
-                            )}
-
-                            </tbody>
-                        </table>
+                            </div>
+                        )}
+                        </tbody>
+                    </table>
 
                         {/* 하단 텍스트 */}
                         <div className="bottom-text">
@@ -2749,9 +2750,19 @@ return (
                                         {/* signatures.applicant의 첫 번째 요소에 signatureImageUrl이 있고, isSigned가 true인 경우 */}
                                     {signatures.applicant?.[0]?.imageUrl && signatures.applicant?.[0]?.isSigned ? (
                                         <img
-                                            src={signatures.applicant[0].imageUrl}
+                                            src={toSafeDataUrl(signatures.applicant[0].imageUrl!)}
                                             alt="신청인 서명"
-                                            className="actual-signature-image" // 이미지 스타일링을 위한 클래스 추가
+                                            className="actual-signature-image"
+                                            onError={(e) => {
+                                                (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                                const parent = (e.currentTarget as HTMLImageElement).parentElement;
+                                                if (parent && !parent.querySelector('.sig-error-text')) {
+                                                    const t = document.createElement('span');
+                                                    t.className = 'sig-error-text';
+                                                    t.textContent = '(서명됨)';
+                                                    parent.appendChild(t);
+                                                }
+                                            }}
                                         />
                                     ) : (
                                         // isSigned는 true이지만 signatureImageUrl이 없는 경우 (또는 isSigned만 true인 경우)
@@ -2769,14 +2780,7 @@ return (
 
                     <div className="editor-footer" style={{textAlign: 'center', margin: '20px 0'}}>
                         <div className="logo">
-                            <img
-                                src="/newExecution.ico"
-                                alt="Logo"
-                                style={{width: '40px', height: '40px'}}
-                            />
-                            <span style={{fontSize: '30px', color: '#000', marginLeft: '5px'}}>
-                                    선한병원
-                                </span>
+                            <img src="/logo.jpg" alt="Logo" style={{width: '180px', height: 'auto'}}/>
                         </div>
                         <div className="common-footer" style={{marginBottom: '30px'}}>
                             SUNHAN HOSPITIAL
@@ -2918,23 +2922,6 @@ return (
                                 </button>
                             </>
                         )}
-                        {/* 반려 모달 (입력용) */}
-                        <RejectModal
-                            isOpen={rejectModalOpen}
-                            onClose={() => setRejectModalOpen(false)}
-                            onSubmit={(enteredReason) => {
-                                handleManagerApproval('reject', enteredReason); // 직접 전달
-                            }}
-                        />
-
-                        {/* 반려 모달 (읽기 전용 — 이미 반려된 경우) */}
-                        <RejectModal
-                            isOpen={viewRejectReasonModalOpen}
-                            onClose={() => setViewRejectReasonModalOpen(false)}
-                            initialReason={reason}
-                            isReadOnly={true}
-                            title="반려 사유 확인"
-                        />
 
                         {/* 결재라인 선택 모달 */}
                         {showApprovalLineSelector && (
@@ -2946,24 +2933,42 @@ return (
                                 onCancel={handleApprovalLineCancel}
                             />
                         )}
-
-                        <RejectModal
-                            isOpen={showCancelModal}
-                            onClose={() => {
-                                setShowCancelModal(false);
-                                setCancelReason('');
-                            }}
-                            onSubmit={(enteredReason) => {
-                                handleCancelApproved(enteredReason);
-                            }}
-                            title="휴가원 취소"
-                            placeholder="취소 사유를 입력하세요 (연차가 복구됩니다)"
-                        />
                     </div>
                 </>
                 )}
             </div>
         </div>
+
+        {/* 반려 모달 (입력용) */}
+        <RejectModal
+            isOpen={rejectModalOpen}
+            onClose={() => setRejectModalOpen(false)}
+            onSubmit={(enteredReason) => {
+                handleManagerApproval('reject', enteredReason); // 직접 전달
+            }}
+        />
+
+        {/* 반려 모달 (읽기 전용 — 이미 반려된 경우) */}
+        <RejectModal
+            isOpen={viewRejectReasonModalOpen}
+            onClose={() => setViewRejectReasonModalOpen(false)}
+            initialReason={reason}
+            isReadOnly={true}
+            title="반려 사유 확인"
+        />
+
+        <RejectModal
+            isOpen={showCancelModal}
+            onClose={() => {
+                setShowCancelModal(false);
+                setCancelReason('');
+            }}
+            onSubmit={(enteredReason) => {
+                handleCancelApproved(enteredReason);
+            }}
+            title="휴가원 취소"
+            placeholder="취소 사유를 입력하세요 (연차가 복구됩니다)"
+        />
     </Layout>
 );
 };

@@ -23,6 +23,7 @@ interface OrganizationChartProps {
     selectedUserIds?: string[]; // 다중 선택용 추가
     multiSelect?: boolean; // 다중 선택 모드
     allDepartments?: boolean;
+    filterDeptCode?: string;
 }
 
 const OrganizationChart: React.FC<OrganizationChartProps> = ({
@@ -30,6 +31,7 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
                                                                  selectedUserId,
                                                                  selectedUserIds = [],
                                                                  multiSelect = false,
+                                                                 filterDeptCode,
                                                                  allDepartments = false
                                                              }) => {
     const [departments, setDepartments] = useState<Department[]>([]);
@@ -60,6 +62,15 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
 
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    // ✅ filterDeptCode가 있으면 해당 부서를 자동으로 펼침
+    useEffect(() => {
+        if (filterDeptCode && !loading) {
+            const baseCode = getBaseDeptCode(filterDeptCode);
+            setExpandedDepts(new Set([baseCode]));
+            fetchEmployees(baseCode);
+        }
+    }, [filterDeptCode, loading]);
 
     const handleSearch = async (term: string) => {
         try {
@@ -248,7 +259,10 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
                             검색 결과가 없습니다.
                         </div>
                     ) : (
-                        searchResults.map(emp => {
+                        (filterDeptCode
+                                ? searchResults.filter(emp => getBaseDeptCode(emp.deptCode) === getBaseDeptCode(filterDeptCode))
+                                : searchResults
+                        ).map(emp => {
                             const isSelected = multiSelect
                                 ? selectedUserIds.includes(emp.userId)
                                 : selectedUserId === emp.userId;
@@ -259,7 +273,7 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
                                     className={`org-employee-item ${isSelected ? 'selected' : ''}`}
                                     onClick={() => onUserSelect(emp.userId, emp.userName, emp.jobLevel)}
                                 >
-                                    <User className="org-icon" />
+                                    <User className="org-icon"/>
                                     <div className="org-employee-info">
                                         <span className="org-employee-name">{emp.userName}</span>
                                         <span className="org-employee-position">
@@ -275,7 +289,10 @@ const OrganizationChart: React.FC<OrganizationChartProps> = ({
             )}
 
             <div className="org-chart-tree">
-                {departments.map(dept => renderDepartment(dept))}
+                {(filterDeptCode
+                        ? departments.filter(dept => getBaseDeptCode(dept.deptCode) === getBaseDeptCode(filterDeptCode))
+                        : departments
+                ).map(dept => renderDepartment(dept))}
             </div>
         </div>
     );

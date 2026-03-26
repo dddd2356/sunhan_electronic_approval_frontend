@@ -1112,8 +1112,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px; /* 이름과 해제 버튼 사이 간격 */
     height: 100%;
+    background-color: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    padding: 2px 6px;
 }
 
 .wse-name-badge {

@@ -6,6 +6,7 @@ interface ApprovalStep {
     stepOrder: number;
     stepName: string;
     approverType: string;
+    approverId?: string;
     approverName?: string;
     isOptional?: boolean;
 }

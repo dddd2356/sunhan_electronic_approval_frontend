@@ -21,3 +21,27 @@ export function toSafeDataUrl(value: string): string {
         : cleaned;
     return `data:${detectMimeFromBase64(base64)};base64,${base64}`;
 }
+
+export function repairPngDataUrl(dataUrl: string): string {
+    if (!dataUrl || !dataUrl.startsWith('data:image/png;base64,')) return dataUrl;
+    // null byte(0x00)가 space(0x20)로 손상된 경우 IHDR chunk length 복원
+    return dataUrl.replace(
+        'data:image/png;base64,iVBORw0KGgogICA',
+        'data:image/png;base64,iVBORw0KGgoAAAA'
+    );
+}
+
+export function isPngDataUrlCorrupted(dataUrl: string): boolean {
+    try {
+        const b64 = dataUrl.startsWith('data:')
+            ? dataUrl.substring(dataUrl.indexOf(',') + 1)
+            : dataUrl;
+        const bin = atob(b64.substring(0, 16));
+        if (bin.charCodeAt(0) !== 0x89 || bin.charCodeAt(1) !== 0x50) return false;
+        return bin.charCodeAt(8) !== 0x00
+            || bin.charCodeAt(9) !== 0x00
+            || bin.charCodeAt(10) !== 0x00;
+    } catch {
+        return false;
+    }
+}

@@ -15,9 +15,9 @@ import './style.css';
 import axiosInstance from "../../views/Authentication/axiosInstance";
 import ApprovalLineSelector from "../ApprovalLineSelector";
 import RejectModal from "../RejectModal";
-import OrgChartModal from "../OrgChartModal";
 import OrganizationChart from "../OrganizationChart";
 import { toSafeDataUrl } from '../../utils/imageUtils';
+import OrgChartModal from "../OrgChartModal";
 
 interface TextRange {
     entryId: number;
@@ -41,7 +41,6 @@ const WorkScheduleEditor: React.FC = () => {
     const [departmentHeadInfo, setDepartmentHeadInfo] = useState<{userId: string}>({
         userId: ''
     });
-    const [showDeptHeadSelector, setShowDeptHeadSelector] = useState(false);
     // 편집 모드
     const [isEditable, setIsEditable] = useState(false);
 
@@ -79,30 +78,7 @@ const WorkScheduleEditor: React.FC = () => {
     const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const [canManageMembers, setCanManageMembers] = useState(false);
     const [weekdays, setWeekdays] = useState<Record<number, string>>({});
-    const handleDeptHeadSelect = (users: { id: string; name: string }[]) => {
-        if (users.length > 0) {
-            const selectedUser = users[0];  // 단일 선택이므로 첫 번째 요소
-            setDepartmentHeadInfo({ userId: selectedUser.id });
 
-            // ✅ approvalSteps의 부서장 칸 이름 업데이트
-            setScheduleData(prev => {
-                if (!prev) return prev;
-                return {
-                    ...prev,
-                    approvalSteps: prev.approvalSteps?.map((s: any) =>
-                        s.stepOrder === -1 ? { ...s, name: selectedUser.name } : s
-                    )
-                };
-            });
-        }
-        setShowDeptHeadSelector(false);
-    };
-
-    const handleDeptHeadClear = () => {
-        if (window.confirm('부서장 선택을 해제하시겠습니까?')) {
-            setDepartmentHeadInfo({ userId: '' });
-        }
-    };
     const loadHolidays = async (year: number) => {
         try {
             // ✅ 백엔드 프록시를 통해 호출
@@ -1401,29 +1377,33 @@ const WorkScheduleEditor: React.FC = () => {
 
     const handleApprovalLineConfirm = async (data: any) => {
         const { id: lineId, steps } = data;
-
-        // 부서장 확인
         const hasDepartmentHead = steps.some((step: any) => step.approverType === 'DEPARTMENT_HEAD');
 
-        if (hasDepartmentHead && !departmentHeadInfo.userId) {
-            alert('부서장을 선택해주세요.');
-            return;
+        // ✅ 로컬 변수로 관리 (state 비동기 문제 방지)
+        // ✅ approverId = userId string이므로 API 호출 불필요
+        let resolvedDeptHeadId = '';
+
+        if (hasDepartmentHead) {
+            const deptHeadStep = steps.find((step: any) => step.approverType === 'DEPARTMENT_HEAD');
+            if (deptHeadStep?.approverId) {
+                resolvedDeptHeadId = deptHeadStep.approverId;
+                setDepartmentHeadInfo({ userId: resolvedDeptHeadId });
+            } else {
+                alert('결재라인에 부서장이 지정되어 있지 않습니다. 결재라인을 수정해주세요.');
+                return;
+            }
         }
 
         if (!hasDepartmentHead && departmentHeadInfo.userId) {
-            if (window.confirm('선택한 결재라인에 부서장 단계가 없습니다. 부서장 정보를 제거하시겠습니까?')) {
-                setDepartmentHeadInfo({ userId: '' });
-            } else {
-                return;
-            }
+            setDepartmentHeadInfo({ userId: '' });
         }
 
         try {
             await axiosInstance.post(`/work-schedules/${id}/submit`, {
                 approvalLineId: lineId,
-                departmentHeadInfo: departmentHeadInfo.userId ? departmentHeadInfo : null
+                // ✅ state 대신 로컬 변수 사용
+                departmentHeadInfo: resolvedDeptHeadId ? { userId: resolvedDeptHeadId } : null
             });
-
             alert('근무표가 제출되었습니다.');
             setShowApprovalLineModal(false);
             navigate('/detail/work-schedule');
@@ -1575,11 +1555,10 @@ const WorkScheduleEditor: React.FC = () => {
                 {/* 헤더 */}
                 <div className="wse-schedule-header">
                     <div className="wse-header-logo">
-                        <img src="/newExecution.ico" alt="로고"/>
-                        <span>선한병원</span>
+                        <img src="/logo.jpg" alt="Logo" style={{width: '180px', height: 'auto'}}/>
                     </div>
                     <h1 className="wse-schedule-title">
-                        {scheduleData.yearMonth.replace('-', '년 ')}월 근무현황표
+                    {scheduleData.yearMonth.replace('-', '년 ')}월 근무현황표
                     </h1>
 
                     <div className="wse-header-actions">
@@ -1634,29 +1613,11 @@ const WorkScheduleEditor: React.FC = () => {
                                                 style={{textAlign: 'center', verticalAlign: 'middle', height: '40px'}}>
                                                 {step.stepOrder === -1 && schedule.approvalStatus === 'DRAFT' ? (
                                                     <div className="wse-dept-head-container">
-                                                        {departmentHeadInfo.userId ? (
-                                                            <>
-                                                                {/* 일반 칸과 동일한 클래스 적용 또는 생텍스트 출력 */}
-                                                                <span className="wse-name-badge">
-                        {scheduleData.approvalSteps?.find((s: any) => s.stepOrder === -1)?.name}
-                    </span>
-                                                                <button
-                                                                    onClick={handleDeptHeadClear}
-                                                                    className="wse-mini-btn wse-btn-danger"
-                                                                    title="해제"
-                                                                >
-                                                                    ✕
-                                                                </button>
-                                                            </>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => setShowDeptHeadSelector(true)}
-                                                                className="wse-mini-btn wse-btn-primary"
-                                                                style={{fontSize: '11px', padding: '4px 8px'}}
-                                                            >
-                                                                부서장 선택
-                                                            </button>
-                                                        )}
+                                                        <span style={{
+                                                            fontSize: '11px',
+                                                            color: '#2563eb',
+                                                            fontWeight: '600'
+                                                        }}>결재라인에서 확정</span>
                                                     </div>
                                                 ) : (
                                                     /* 일반 작성자나 결재자 칸 - 위와 동일한 폰트 스타일 적용 */
@@ -2371,16 +2332,6 @@ const WorkScheduleEditor: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                )}
-
-                {showDeptHeadSelector && (
-                    <OrgChartModal
-                        isOpen={showDeptHeadSelector}
-                        onClose={() => setShowDeptHeadSelector(false)}
-                        onSelect={handleDeptHeadSelect}
-                        multiSelect={false}
-                        allDepartments={true}
-                    />
                 )}
 
                 {/* 반려 모달 */}

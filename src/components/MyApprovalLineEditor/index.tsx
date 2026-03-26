@@ -35,7 +35,7 @@ interface ApprovalLinePayload {
 const approverTypeOptions = [
     { value: 'SPECIFIC_USER', label: '특정 사용자 (조직도 선택)' },
     { value: 'SUBSTITUTE', label: '대직자 (신청 시 선택)' },
-    { value: 'DEPARTMENT_HEAD', label: '부서장 (신청 시 선택)' }
+    { value: 'DEPARTMENT_HEAD', label: '부서장' }
 ];
 
 const jobLevelOptions = [
@@ -73,6 +73,7 @@ const MyApprovalLineEditor: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [currentUserDeptCode, setCurrentUserDeptCode] = useState<string | null>(null);
     const [ownerId, setOwnerId] = useState<string | null>(null); // createdBy from server when editing
     const isEditMode = Boolean(id);
     const getJobLevelText = (jobLevel: string): string => {
@@ -95,6 +96,7 @@ const MyApprovalLineEditor: React.FC = () => {
                 if (res.ok) {
                     const data = await res.json();
                     setCurrentUserId(data.userId ?? null);
+                    setCurrentUserDeptCode(data.deptCode ?? null);
                 } else {
                     // ignore
                 }
@@ -216,13 +218,14 @@ const MyApprovalLineEditor: React.FC = () => {
         }
 
         steps.forEach((step, index) => {
-            // ✅ SUBSTITUTE와 DEPARTMENT_HEAD는 approverId 검증 제외
-            if (step.approverType === 'SUBSTITUTE' || step.approverType === 'DEPARTMENT_HEAD') {
+            // ✅ SUBSTITUTE는 approverId 검증 제외
+            if (step.approverType === 'SUBSTITUTE') {
                 return; // 제출 시점에 선택하므로 결재라인 생성 시에는 비어있어도 됨
             }
 
             // ✅ SPECIFIC_USER만 approverId 필수 (isOptional이 아닌 경우)
-            if (step.approverType === 'SPECIFIC_USER' && !step.isOptional && !step.approverId) {
+            if ((step.approverType === 'SPECIFIC_USER' || step.approverType === 'DEPARTMENT_HEAD')
+                && !step.isOptional && !step.approverId) {
                 newErrors[`step_${index}`] = `${step.stepOrder}단계: 승인자를 선택하세요`;
             }
         });
@@ -334,7 +337,8 @@ const MyApprovalLineEditor: React.FC = () => {
 
         // DEPARTMENT_HEAD는 제출 시 선택
         if (step.approverType === 'DEPARTMENT_HEAD') {
-            alert('부서장은 휴가원 작성 시 신청자가 직접 선택합니다.');
+            setCurrentEditingStep(index);
+            setShowOrgChart(true);
             return;
         }
     };
@@ -506,17 +510,46 @@ const MyApprovalLineEditor: React.FC = () => {
                                         </div>
 
                                         {/*  승인자 선택 UI - 타입별 분기 */}
-                                        {/*  승인자 선택 UI - 타입별 분기 */}
                                         {step.approverType === 'SUBSTITUTE' ? (
                                             <div className="approval-line-info-message">
                                                 ✅ 대직자는 휴가원 작성 시 신청자가 직접 선택합니다.
                                             </div>
                                         ) : step.approverType === 'DEPARTMENT_HEAD' ? (
-                                            <div className="approval-line-info-message">
-                                                ✅ 부서장은 휴가원 작성 시 신청자가 직접 선택합니다.
+                                        <div className="approval-line-form-group">
+                                            <label>부서장 선택</label>
+                                            <div className="approval-line-user-select-row">
+                                                <input
+                                                    type="text"
+                                                    value={step.approverName || ''}
+                                                    readOnly
+                                                    placeholder="조직도에서 선택하세요"
+                                                />
+                                                <button
+                                                    className="approval-line-btn-select-user"
+                                                    onClick={() => openOrgChartForStep(index)}
+                                                >
+                                                    <User className="approval-line-icon" />
+                                                    사용자 선택
+                                                </button>
+                                                {step.approverId && (
+                                                    <button
+                                                        className="approval-line-btn-select-user"
+                                                        style={{ background: '#f3f4f6', color: '#374151', marginLeft: 4 }}
+                                                        onClick={() => {
+                                                            updateStep(index, 'approverId', undefined);
+                                                            updateStep(index, 'approverName', undefined);
+                                                        }}
+                                                    >
+                                                        초기화
+                                                    </button>
+                                                )}
                                             </div>
+                                            {errors[`step_${index}`] && (
+                                                <span className="approval-line-error-message">{errors[`step_${index}`]}</span>
+                                            )}
+                                        </div>
                                         ) : (
-                                            <div className="approval-line-form-group">
+                                        <div className="approval-line-form-group">
                                                 <label>승인자 선택</label>
                                                 <div className="approval-line-user-select-row">
                                                     <input
@@ -583,6 +616,11 @@ const MyApprovalLineEditor: React.FC = () => {
                                             : undefined
                                     }
                                     allDepartments={true}
+                                    filterDeptCode={
+                                        currentEditingStep !== null && steps[currentEditingStep]?.approverType === 'DEPARTMENT_HEAD'
+                                            ? currentUserDeptCode ?? undefined
+                                            : undefined
+                                    }
                                 />
                             </div>
                         </div>
