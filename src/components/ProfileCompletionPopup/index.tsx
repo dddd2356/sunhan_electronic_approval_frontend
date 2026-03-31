@@ -544,26 +544,26 @@ const ProfileCompletionPopup: React.FC<ProfileCompletionPopupProps> = ({
                             </label>
                         </div>
 
-                        {/* 선택 동의 */}
-                        <div className="consent-item">
-                            <label style={{display: 'flex', alignItems: 'center'}}>
-                                <input
-                                    type="checkbox"
-                                    checked={notificationConsent}
-                                    onChange={(e) => setNotificationConsent(e.target.checked)}
-                                    style={{marginRight: '8px'}}
-                                />
-                                <span><strong>[선택]</strong> 알림 수신동의 (SMS/알림톡)</span>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowNotificationModal(true)}
-                                    className="detail-btn"
-                                    style={{marginLeft: '10px', fontSize: '12px'}}
-                                >
-                                    자세히 보기
-                                </button>
-                            </label>
-                        </div>
+                        {/*/!* 선택 동의 *!/*/}
+                        {/*<div className="consent-item">*/}
+                        {/*    <label style={{display: 'flex', alignItems: 'center'}}>*/}
+                        {/*        <input*/}
+                        {/*            type="checkbox"*/}
+                        {/*            checked={notificationConsent}*/}
+                        {/*            onChange={(e) => setNotificationConsent(e.target.checked)}*/}
+                        {/*            style={{marginRight: '8px'}}*/}
+                        {/*        />*/}
+                        {/*        <span><strong>[선택]</strong> 알림 수신동의 (SMS/알림톡)</span>*/}
+                        {/*        <button*/}
+                        {/*            type="button"*/}
+                        {/*            onClick={() => setShowNotificationModal(true)}*/}
+                        {/*            className="detail-btn"*/}
+                        {/*            style={{marginLeft: '10px', fontSize: '12px'}}*/}
+                        {/*        >*/}
+                        {/*            자세히 보기*/}
+                        {/*        </button>*/}
+                        {/*    </label>*/}
+                        {/*</div>*/}
                     </div>
 
                     {/* 개인정보 동의서 모달 */}

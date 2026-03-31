@@ -505,37 +505,37 @@ const MyPage: React.FC = () => {
                                 </>
                             )}
 
-                            <div className="section-header">
-                                <h3 className="section-title">알림 설정</h3>
-                            </div>
-                            <div className="section-body">
-                                {isEditMode ? (
-                                    <div className="consent-box">
-                                        <label className="checkbox-wrapper">
-                                            <input
-                                                type="checkbox"
-                                                name="notificationConsent"
-                                                checked={formData.notificationConsent}
-                                                onChange={handleChange}
-                                            />
-                                            <span>SMS/알림톡 문서 도착 알림 수신 동의</span>
-                                        </label>
-                                        <button
-                                            type="button"
-                                            className="link-btn"
-                                            onClick={() => setShowNotificationPolicyModal(true)}
-                                        >
-                                            약관 보기
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="form-group">
-                                        <span className={`badge ${user.notificationConsent ? 'success' : 'error'}`}>
-                                            {user.notificationConsent ? '🔔 알림 수신 동의 중' : '🔕 알림 수신 거부 중'}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
+                            {/*<div className="section-header">*/}
+                            {/*    <h3 className="section-title">알림 설정</h3>*/}
+                            {/*</div>*/}
+                            {/*<div className="section-body">*/}
+                            {/*    {isEditMode ? (*/}
+                            {/*        <div className="consent-box">*/}
+                            {/*            <label className="checkbox-wrapper">*/}
+                            {/*                <input*/}
+                            {/*                    type="checkbox"*/}
+                            {/*                    name="notificationConsent"*/}
+                            {/*                    checked={formData.notificationConsent}*/}
+                            {/*                    onChange={handleChange}*/}
+                            {/*                />*/}
+                            {/*                <span>SMS/알림톡 문서 도착 알림 수신 동의</span>*/}
+                            {/*            </label>*/}
+                            {/*            <button*/}
+                            {/*                type="button"*/}
+                            {/*                className="link-btn"*/}
+                            {/*                onClick={() => setShowNotificationPolicyModal(true)}*/}
+                            {/*            >*/}
+                            {/*                약관 보기*/}
+                            {/*            </button>*/}
+                            {/*        </div>*/}
+                            {/*    ) : (*/}
+                            {/*        <div className="form-group">*/}
+                            {/*            <span className={`badge ${user.notificationConsent ? 'success' : 'error'}`}>*/}
+                            {/*                {user.notificationConsent ? '🔔 알림 수신 동의 중' : '🔕 알림 수신 거부 중'}*/}
+                            {/*            </span>*/}
+                            {/*        </div>*/}
+                            {/*    )}*/}
+                            {/*</div>*/}
                         </main>
                     </div>
                 ) : (
