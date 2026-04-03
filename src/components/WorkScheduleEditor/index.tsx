@@ -415,7 +415,7 @@ const WorkScheduleEditor: React.FC = () => {
                 `/work-schedules/${id}/final-approve`,
                 { stepOrder: currentStep?.stepOrder }
             );
-
+            window.dispatchEvent(new Event('pendingCountsChanged'));
             alert('전결 승인이 완료되었습니다.');
             navigate('/detail/work-schedule');
 
@@ -993,7 +993,7 @@ const WorkScheduleEditor: React.FC = () => {
                 `/work-schedules/${id}/approve-step`,
                 { approve: true, stepOrder: currentStep?.stepOrder }
             );
-
+            window.dispatchEvent(new Event('pendingCountsChanged'));
             alert('결재가 완료되었습니다.');
             navigate('/detail/work-schedule');
 
@@ -1676,7 +1676,7 @@ const WorkScheduleEditor: React.FC = () => {
                                             }}
                                         >
                                             {hasFinalApprovedBefore && !displaySignature ? (
-                                                <span className="wse-final-status">전결처리</span>
+                                                <span className="wse-final-status">전결</span>
                                             ) : isSigned ? (
                                                 displaySignature ? (
                                                     <img src={displaySignature} alt="서명" style={{

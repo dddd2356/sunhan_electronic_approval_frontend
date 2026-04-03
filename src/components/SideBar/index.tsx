@@ -19,7 +19,10 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
     const location = useLocation();
-
+    const [consentCount, setConsentCount] = useState<number>(0);
+    const [contractCount, setContractCount] = useState<number>(0);
+    const [leaveCount, setLeaveCount] = useState<number>(0);
+    const [workScheduleCount, setWorkScheduleCount] = useState<number>(0);
     const [profileName, setProfileName] = useState<string>('사용자');
     const [profileDepartment, setProfileDepartment] = useState<string>('');
     const [profileImage, setProfileImage] = useState<string>('');
@@ -55,6 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                         setCanCreateConsent(userData.consentPermissions.canCreate);
                         setCanManageConsent(userData.consentPermissions.canManage);
                     }
+                    fetchPendingCounts();
                     return;
                 }
             } catch {
@@ -63,6 +67,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         }
         checkUserStatus();
         checkConsentPermissions();
+        fetchPendingCounts();
+    }, []);
+
+    // ✅ 처리 완료 시 즉시 갱신을 위한 CustomEvent 리스너 추가 (별도 useEffect)
+    useEffect(() => {
+        window.addEventListener('pendingCountsChanged', fetchPendingCounts);
+        return () => window.removeEventListener('pendingCountsChanged', fetchPendingCounts);
     }, []);
 
     const checkUserStatus = () => {
@@ -100,6 +111,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 setProfileImage(imageData ? toSafeDataUrl(imageData) : defaultProfileImage);
             })
             .catch(() => setProfileImage(defaultProfileImage));
+    };
+
+    const fetchPendingCounts = async () => {
+        try {
+            const res = await axiosInstance.get('/user/me/pending-counts');
+            setConsentCount(res.data.consentCount ?? 0);
+            setContractCount(res.data.contractCount ?? 0);
+            setLeaveCount(res.data.leaveCount ?? 0);
+            setWorkScheduleCount(res.data.workScheduleCount ?? 0);
+        } catch {
+            // 실패해도 뱃지 없이 정상 표시
+        }
     };
 
     const handleLogout = async () => {
@@ -164,18 +187,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <li onClick={() => handleMenuClick('/detail/consent/my-list')}
                     className={`menu-item ${isActive('/detail/consent/my-list') ? 'active' : ''}`}>
                     <FileSignature size={18}/> <span>동의서</span>
+                    {consentCount > 0 && <span className="menu-badge">{consentCount}</span>}
                 </li>
                 <li onClick={() => handleMenuClick('/detail/employment-contract')}
                     className={`menu-item ${isActive('/detail/employment-contract') ? 'active' : ''}`}>
                     <FileText size={18}/> <span>근로계약서</span>
+                    {contractCount > 0 && <span className="menu-badge">{contractCount}</span>}
                 </li>
                 <li onClick={() => handleMenuClick('/detail/leave-application')}
                     className={`menu-item ${isActive('/detail/leave-application') ? 'active' : ''}`}>
                     <Calendar size={18}/> <span>휴가원</span>
+                    {leaveCount > 0 && <span className="menu-badge">{leaveCount}</span>}
                 </li>
                 <li onClick={() => handleMenuClick('/detail/work-schedule')}
                     className={`menu-item ${isActive('/detail/work-schedule') ? 'active' : ''}`}>
                     <ClipboardList size={18}/> <span>근무현황표</span>
+                    {workScheduleCount > 0 && <span className="menu-badge">{workScheduleCount}</span>}
                 </li>
                 <li onClick={() => handleMenuClick('/detail/approval-lines')}
                     className={`menu-item ${isActive('/detail/approval-lines') ? 'active' : ''}`}>

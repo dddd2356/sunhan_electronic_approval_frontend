@@ -298,7 +298,7 @@ const ConsentWritePage: React.FC = () => {
                 Number(agreementId),
                 submitData
             );
-
+            window.dispatchEvent(new Event('pendingCountsChanged'));
             alert('동의서가 제출되었습니다.');
             navigate('/detail/consent/my-list');
         } catch (error: any) {

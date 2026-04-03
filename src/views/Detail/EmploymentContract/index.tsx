@@ -445,7 +445,7 @@ const EmploymentContract = () => {
                 if (parsedFormData.agreements) {
                     setAgreements(parsedFormData.agreements);
                 }
-
+                window.dispatchEvent(new Event('pendingCountsChanged'));
                 alert('계약서가 승인되어 완료 처리되었습니다.');
                 navigate('/detail/employment-contract');
             } else {

@@ -865,6 +865,7 @@ const LeaveApplication = () => {
 
                 setLeaveApplication(response.data);
                 setApplicationStatus(response.data.status);
+                window.dispatchEvent(new Event('pendingCountsChanged'));
                 alert('대직자 승인이 완료되었습니다.');
 
             } else {
@@ -876,6 +877,7 @@ const LeaveApplication = () => {
 
                 setLeaveApplication(response.data);
                 setApplicationStatus(response.data.status);
+                window.dispatchEvent(new Event('pendingCountsChanged'));
                 alert('대직자 승인이 완료되었습니다. 다음 승인자에게 전송됩니다.');
             }
 
@@ -1043,6 +1045,7 @@ const LeaveApplication = () => {
                         };
                     });
                     setApplicationStatus(response.data.status);
+                    window.dispatchEvent(new Event('pendingCountsChanged'));
                     alert("승인이 완료되었습니다.");
                 } else {
                     // 기존 방식
@@ -1180,7 +1183,7 @@ const LeaveApplication = () => {
             } else {
                 await finalApproveLeaveApplication(parseInt(id));
             }
-
+            window.dispatchEvent(new Event('pendingCountsChanged'));
             alert("전결 승인이 완료되었습니다.");
 
             // ✅ 바로 목록으로 이동
@@ -2153,7 +2156,7 @@ return (
                                                         <div className="signature-area">
                                                             {isHigher ? (
                                                                 <div className="final-approval-mark">
-                                                                    <span>전결처리!</span>
+                                                                    <span>전결</span>
                                                                 </div>
                                                             ) : step.isFinalApproved ? (
                                                                 step.signatureUrl ? (
