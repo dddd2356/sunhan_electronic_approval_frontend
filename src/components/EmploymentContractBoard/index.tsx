@@ -409,7 +409,11 @@ const EmploymentContractBoard: React.FC = () => {
                 }
             });
 
-            filtered.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+            filtered.sort((a: any, b: any) => {
+                const createdDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                if (createdDiff !== 0) return createdDiff;
+                return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+            });
             setContracts(filtered);
         } catch (err) {
             console.error(err);
