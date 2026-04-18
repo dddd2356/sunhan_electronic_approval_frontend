@@ -28,21 +28,25 @@ export const fetchLeaveApplications = async (
     type: 'my' | 'pending' | 'completed',
     canViewCompleted?: boolean,
     page: number = 0, // Default to page 0
-    size: number = 10 // Default to size 10
+    size: number = 10, // Default to size 10
+    searchTerm: string = '',
+    searchType: string = 'applicant',
+    startDate: string = '',
+    endDate: string = ''
 ): Promise<PaginationResponse> => {
     let path = '';
 
     switch (type) {
         case 'my':
-            path = `${API_BASE}/leave-application/my?page=${page}&size=${size}`;
+            path = `${API_BASE}/leave-application/my?page=${page}&size=${size}&searchTerm=${encodeURIComponent(searchTerm)}&searchType=${searchType}${startDate ? `&startDate=${startDate}` : ''}${endDate ? `&endDate=${endDate}` : ''}`;
             break;
         case 'pending':
-            path = `${API_BASE}/leave-application/pending/me?page=${page}&size=${size}`;
+            path = `${API_BASE}/leave-application/pending/me?page=${page}&size=${size}&searchTerm=${encodeURIComponent(searchTerm)}&searchType=${searchType}${startDate ? `&startDate=${startDate}` : ''}${endDate ? `&endDate=${endDate}` : ''}`;
             break;
         case 'completed':
             path = canViewCompleted
-                ? `${API_BASE}/leave-application/completed?page=${page}&size=${size}`
-                : `${API_BASE}/leave-application/completed/me?page=${page}&size=${size}`;
+                ? `${API_BASE}/leave-application/completed?page=${page}&size=${size}&searchTerm=${encodeURIComponent(searchTerm)}&searchType=${searchType}${startDate ? `&startDate=${startDate}` : ''}${endDate ? `&endDate=${endDate}` : ''}`
+                : `${API_BASE}/leave-application/completed/me?page=${page}&size=${size}&searchTerm=${encodeURIComponent(searchTerm)}&searchType=${searchType}${startDate ? `&startDate=${startDate}` : ''}${endDate ? `&endDate=${endDate}` : ''}`;
             break;
     }
 
