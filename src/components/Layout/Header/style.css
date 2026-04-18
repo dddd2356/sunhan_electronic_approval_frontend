@@ -115,8 +115,8 @@
     }
 
     .hospital-image {
-        width: 28px;
-        height: 28px;
+        width: 100px;
+        height: 40px;
     }
 
     .menu-toggle-btn {
@@ -130,5 +130,9 @@
 @media (max-width: 480px) {
     .image-text {
         font-size: 14px;
+    }
+    .hospital-image {
+        width: 85px;
+        height: 34px;
     }
 }

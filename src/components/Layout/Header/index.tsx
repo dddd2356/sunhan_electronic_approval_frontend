@@ -1,6 +1,6 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Menu, Bell, Search } from 'lucide-react'; // 아이콘 추가
+import {useNavigate} from 'react-router-dom';
+import {Menu} from 'lucide-react'; // 아이콘 추가
 import './style.css';
 import hospitalImage from './assets/images/logo.jpg';
 
