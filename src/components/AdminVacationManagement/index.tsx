@@ -24,6 +24,7 @@ interface VacationStatus {
     annualRemainingDays?: number;
     usedCarryoverDays?: number;
     usedRegularDays?: number;
+    expiredCarryoverDays?: number;
     // 하위 호환
     totalVacationDays: number;
     usedVacationDays: number;
@@ -419,12 +420,24 @@ const AdminVacationManagement: React.FC = () => {
                                                     {vacationStatus.usedCarryoverDays ?? 0}일
                                                 </span>
                                             </div>
-                                            <div className="vacation-current-stat remaining">
-                                                <span className="vacation-current-stat-label">이월 미사용</span>
-                                                <span className="vacation-current-stat-value">
-                                                    {(vacationStatus.annualCarryoverDays ?? 0) - (vacationStatus.usedCarryoverDays ?? 0)}일
-                                                </span>
-                                            </div>
+                                            {(() => {
+                                                const isAfterMarch = new Date().getMonth() >= 2;
+                                                const expired = vacationStatus.expiredCarryoverDays ?? 0;
+                                                const unused = Math.max(0, (vacationStatus.annualCarryoverDays ?? 0) - (vacationStatus.usedCarryoverDays ?? 0));
+                                                return (
+                                                    <div className="vacation-current-stat remaining"
+                                                         style={isAfterMarch && expired > 0 ? {borderColor: '#ef4444'} : {}}>
+                                                        <span className="vacation-current-stat-label"
+                                                              style={isAfterMarch && expired > 0 ? {color: '#ef4444'} : {}}>
+                                                            {isAfterMarch && expired > 0 ? '이월 소멸' : '이월 미사용'}
+                                                        </span>
+                                                        <span className="vacation-current-stat-value"
+                                                              style={isAfterMarch && expired > 0 ? {color: '#ef4444'} : {}}>
+                                                            {isAfterMarch ? expired : unused}일
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
 
                                             <div className="vacation-current-stat regular">
                                                 <span className="vacation-current-stat-label">정상 일수</span>

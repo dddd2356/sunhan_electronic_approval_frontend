@@ -45,6 +45,7 @@ interface EmployeeVacation {
     annualUsageRate?: number;
     usedCarryoverDays?: number;
     usedRegularDays?: number;
+    expiredCarryoverDays?: number;
     remainingCarryoverDays?: number;
     // 하위 호환
     totalDays: number;
@@ -836,7 +837,7 @@ const AdminVacationStatistics: React.FC = () => {
                                                             {sortBy === 'annualCarryover' && sortOrder === 'asc' ? '▲' : '▼'}
                                                         </span>
                                                     </th>
-                                                    <th>이월 미사용</th>
+                                                    <th>{new Date().getMonth() >= 2 ? '이월 소멸' : '이월 미사용'}</th>
                                                     <th onClick={() => handleSort('annualRegular')}>
                                                         정상 <span
                                                         className={`vs-sort-icon ${sortBy === 'annualRegular' ? 'active' : ''}`}>
@@ -883,8 +884,11 @@ const AdminVacationStatistics: React.FC = () => {
                                                         <td className="vs-table-carryover">
                                                             {emp.annualCarryover || 0}일
                                                         </td>
-                                                        <td className="vs-table-carryover-remaining">
-                                                            {((emp.annualCarryover || 0) - (emp.usedCarryoverDays || 0)) || 0}일
+                                                        <td className="vs-table-carryover-remaining"
+                                                            style={new Date().getMonth() >= 2 && (emp.expiredCarryoverDays || 0) > 0 ? {color: '#ef4444'} : {}}>
+                                                            {new Date().getMonth() >= 2
+                                                                ? (emp.expiredCarryoverDays || 0)
+                                                                : Math.max(0, (emp.annualCarryover || 0) - (emp.usedCarryoverDays || 0))}일
                                                         </td>
                                                         <td className="vs-table-regular">
                                                             {emp.annualRegular || 15}일
